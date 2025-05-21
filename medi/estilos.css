@@ -1,0 +1,78 @@
+/* INICIO */
+#contenedor-pagina_inicio {
+    display: flex;
+    flex-direction: column;
+    min-height: 80vh;
+}
+
+
+#contenido-principal {
+    flex-grow: 1;
+    padding: 30px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+
+.mensaje-bienvenida strong {
+    color: #0b5ed7;
+}
+
+
+.imagen-admin {
+    max-width: 250px;
+    height: auto;
+    display: inline-block;
+}
+
+
+
+/* 
+
+
+
+MENU Y FOOTER 
+
+
+*/
+
+.navbar-custom-blue {
+    background-color:rgb(0, 117, 201) !important;
+  }
+
+.footer-collapsible.navbar-custom-blue {
+    padding-top: 0.7rem !important;
+    padding-bottom: 0.7rem !important;
+    position: relative; 
+  }
+
+  
+ 
+  .footer-visible-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer; 
+      padding-left: var(--bs-gutter-x, 0.75rem);
+      padding-right: var(--bs-gutter-x, 0.75rem);
+  }
+
+  .footer-toggler {
+    color: #ffffff;
+    background: none;
+    border: none;
+  }
+
+
+
+/* 
+
+
+
+/* CONTINUEN SUS ESTILOS ACA */
+
+
+
+
