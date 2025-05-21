@@ -13,7 +13,6 @@
     justify-content: center;
     align-items: center;
     text-align: center;
-    
 }
 
 
@@ -75,3 +74,86 @@ MENU Y FOOTER
 
 
 /* CONTINUEN SUS ESTILOS ACA */
+
+/* === MÓDULO CITAS - ESTILOS BASADOS EN LA IMAGEN === */
+
+.cuerpo_citas {
+
+    background-color: white;
+   
+}
+
+.opcion_cita {
+    background-color: #f1f5f9; /* Gris claro */
+    border-radius: 12px;
+    border: none;
+    padding: 20px;
+    transition: transform 0.2s ease;
+    min-height: 220px;
+}
+
+.opcion_cita:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.icono-opcion {
+    font-size: 3rem;
+}
+
+.card-title {
+    font-weight: 600;
+}
+
+.btn-primary {
+    border-radius: 20px;
+    padding: 6px 24px;
+    font-weight: 500;
+}
+
+
+/* Íconos con Font Awesome */
+.icono_citas {
+  color: white;
+}
+/* Estilo general para tarjetas */
+.es_cita_medica,
+.es_turno_examen,
+.es_turno_medicamentos {
+    background-color: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    transition: box-shadow 0.3s ease;
+}
+
+.es_cita_medica:hover,
+.es_turno_examen:hover,
+.es_turno_medicamentos:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Título dentro de las tarjetas */
+.card h5 {
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Botón "Ingresar" */
+.card .btn-primary {
+    border-radius: 20px;
+    padding: 6px 24px;
+    font-weight: 500;
+}
+
+/* Aumenta tamaño del ícono */
+.bi {
+    font-size: 2.8rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .botones_citas {
+      flex-direction: column;
+      align-items: center;
+  }
+}
