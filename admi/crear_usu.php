@@ -10,7 +10,6 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_
     exit;
 }
 
-
 $conex_db = new database();
 $con = $conex_db->conectar();
 
