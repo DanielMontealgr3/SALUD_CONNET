@@ -65,6 +65,19 @@ MENU Y FOOTER
     border: none;
   }
 
+.input-error {
+    border-color: red;
+}
+.input-success {
+    border-color: green;
+}
+.mensaje-error-cliente {
+    color: red;
+    font-size: 0.875em;
+}
+.visible {
+    display: block;
+}
 
 
 /* 
@@ -72,7 +85,6 @@ MENU Y FOOTER
 
 
 /* CONTINUEN SUS ESTILOS ACA */
-
 
 
 
