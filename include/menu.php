@@ -66,7 +66,7 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Alianzas</a></li>
                         <?php elseif ($rol_usuario == 2): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_medicas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas_medicas.php">Citas Médicas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'cita_medica.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>cita_medica.php">Citas Médicas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_citas.php">Mis Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_medicamentos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_medicamentos.php">Mis Medicamentos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_pedidos.php">Mis pedidos</a></li>
@@ -77,9 +77,10 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'reportes_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>reportes_farma.php">Reportes</a></li>
                         <?php elseif ($rol_usuario == 4): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'agenda_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>agenda_medico.php">Agenda</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'pacientes_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>pacientes_medico.php">Pacientes</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial_medico.php">Historial Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php.php">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_orden.php">Crear ordenes</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_ordenes.php">Ver ordenes</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial.php">Historial paciente</a></li>
                         <?php endif; ?>
                         <?php if ($rol_usuario): ?>
                             <li class="nav-item dropdown">
