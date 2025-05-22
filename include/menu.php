@@ -73,7 +73,6 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_pedidos.php">Mis pedidos</a></li>
                         <?php elseif ($rol_usuario == 3): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'pedidos_pendientes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>pedidos_pendientes.php">Pedidos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inventario_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inventario_farma.php">Inventario</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'reportes_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>reportes_farma.php">Reportes</a></li>
                         <?php elseif ($rol_usuario == 4): ?>
