@@ -48,8 +48,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $pdo->commit();
 
      
-     header("Location: agendar_cita.php?documento=" . urlencode($cita['doc_pac']));
-exit;
+    // Obtener documento del paciente a partir del id_historia
+$queryDoc = "
+    SELECT c.doc_pac 
+    FROM historia_clinica h
+    JOIN citas c ON h.id_cita = c.id_cita
+    WHERE h.id_historia = :id_historia
+";
+$stmtDoc = $pdo->prepare($queryDoc);
+$stmtDoc->execute([':id_historia' => $_POST['id_historia']]);
+$cita = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+
+if ($cita && isset($cita['doc_pac'])) {
+    header("Location: agendar_cita.php?documento=" . urlencode($cita['doc_pac']));
+    exit;
+} else {
+    echo "<script>
+            alert('No se pudo obtener el documento del paciente.');
+            window.history.back();
+          </script>";
+    exit;
+}
+
 
     } catch (Exception $e) {
         $pdo->rollBack();

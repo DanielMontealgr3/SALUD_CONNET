@@ -37,7 +37,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':observaciones' => $observaciones // puedes dejar observaciones opcional si lo deseas
         ]);
 
-       header("Location: deta_historia_clini.php?documento=" . urlencode($cita['doc_pac']));
+
+     // Después del INSERT
+$query_doc = "SELECT doc_pac FROM citas WHERE id_cita = :id_cita";
+$stmt_doc = $pdo->prepare($query_doc);
+$stmt_doc->execute([':id_cita' => $id_cita]);
+$cita = $stmt_doc->fetch(PDO::FETCH_ASSOC);
+
+if ($cita && isset($cita['doc_pac'])) {
+    header("Location: deta_historia_clini.php?documento=" . urlencode($cita['doc_pac']));
+    exit;
+} else {
+    echo "<script>
+            alert('No se encontró el documento del paciente.');
+            window.history.back();
+          </script>";
+}
 
     
         exit;

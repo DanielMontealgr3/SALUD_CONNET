@@ -64,8 +64,8 @@ $estado = $stmtEstado->fetch(PDO::FETCH_ASSOC);
 <?php include '../include/menu.php'; ?>
 
 <div class="container mt-4">
+    
     <h2 class="mb-4">Consulta Médica para <?= htmlspecialchars($cita['nom_usu']); ?> (Documento: <?= htmlspecialchars($cita['doc_usu']); ?>)</h2>
-
     <form action="guarda_consul.php" method="POST">
         <input type="hidden" name="id_cita" value="<?= htmlspecialchars($cita['id_cita']); ?>">
 
