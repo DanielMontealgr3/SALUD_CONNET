@@ -66,7 +66,7 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Alianzas</a></li>
                         <?php elseif ($rol_usuario == 2): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'cita_medica.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>cita_medica.php">Citas Médicas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php">Citas Médicas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_citas.php">Mis Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_medicamentos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_medicamentos.php">Mis Medicamentos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_pedidos.php">Mis pedidos</a></li>
