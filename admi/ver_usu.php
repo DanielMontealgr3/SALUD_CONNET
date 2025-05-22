@@ -134,7 +134,6 @@ if ($con) {
     <?php include '../include/footer.php'; ?>
     <div class="modal-confirmacion" id="modalConfirmacionEliminar" style="display:none;"><div class="modal-contenido"><h4>Confirmar Eliminación</h4><p id="mensajeConfirmacion">¿Está seguro?</p><div class="modal-botones"><button id="btnConfirmarEliminacion" class="btn btn-danger">Eliminar</button><button id="btnCancelarEliminacion" class="btn btn-secondary">Cancelar</button></div></div></div>
     <div id="editarUsuarioModalPlaceholder"></div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/editar_usuario_admin.js?v=<?php echo time(); ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

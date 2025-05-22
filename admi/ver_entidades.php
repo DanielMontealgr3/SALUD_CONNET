@@ -209,7 +209,6 @@ if ($con) {
     <div id="modalEditarEntidadContainer"></div>
     <div class="modal-confirmacion" id="modalConfirmacionEliminar" style="display:none;"><div class="modal-contenido"><h4>Confirmar Eliminación</h4><p id="mensajeConfirmacion">¿Está seguro?</p><div class="modal-botones"><button id="btnConfirmarEliminacion" class="btn btn-danger">Eliminar</button><button id="btnCancelarEliminacion" class="btn btn-secondary">Cancelar</button></div></div></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/editar_entidad.js"></script>
     <script>
          document.addEventListener('DOMContentLoaded', function () {

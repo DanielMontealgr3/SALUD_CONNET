@@ -1,7 +1,7 @@
 <?php
 require_once '../include/validar_sesion.php';
 require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../include/conexion.php';
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -26,7 +26,7 @@ $id_especialidad_sel_form = ''; $id_rol_sel_form = '';
 
 $php_error_message = '';
 $php_success_message_registro = '';
-$php_warning_message_afiliacion = '';
+$php_warning_message_afiliacion_link = '';
 
 if (isset($_SESSION['form_data_crear_usu'])) {
     $form_data = $_SESSION['form_data_crear_usu'];
@@ -45,7 +45,7 @@ if (isset($_SESSION['form_data_crear_usu'])) {
     if (empty($id_est_sel_usuario_form)) $id_est_sel_usuario_form = 1;
     $id_especialidad_sel_form = filter_var($form_data['id_especialidad'] ?? $id_especialidad_sel_form, FILTER_VALIDATE_INT);
     $id_rol_sel_form = filter_var($form_data['id_rol'] ?? $id_rol_sel_form, FILTER_VALIDATE_INT);
-    unset($_SESSION['form_data_crear_usu']);
+    unset($_SESSION['form_data_crear_usu']); 
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $nom_usu_post = trim($_POST['nom_usu'] ?? '');
     $fecha_nac_post = trim($_POST['fecha_nac'] ?? '');
     $tel_usu_post = trim($_POST['tel_usu'] ?? '');
-    $correo_usu_post = filter_var(trim($_POST['correo_usu'] ?? ''), FILTER_SANITIZE_EMAIL);
+    $correo_usu_post_form = filter_var(trim($_POST['correo_usu'] ?? ''), FILTER_SANITIZE_EMAIL);
     $id_dep_sel_post = trim($_POST['id_dep'] ?? '');
     $id_mun_sel_post = trim($_POST['id_mun'] ?? '');
     $id_barrio_sel_post = trim($_POST['id_barrio'] ?? '');
@@ -71,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $nom_usu_form = $nom_usu_post;
     $fecha_nac_form = $fecha_nac_post;
     $tel_usu_form = $tel_usu_post;
-    $correo_usu_form = $correo_usu_post;
+    $correo_usu_form = $correo_usu_post_form;
     $id_dep_sel_form = $id_dep_sel_post;
     $id_mun_sel_form = $id_mun_sel_post;
     $id_barrio_sel_form = $id_barrio_sel_post;
@@ -82,93 +82,115 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $id_rol_sel_form = $id_rol_sel_post;
 
     $registro_usuario_exitoso = false;
+    $errores_validacion = []; 
 
-    if (!$con) {
+    if (empty($doc_usu_post)) $errores_validacion[] = "El documento es obligatorio.";
+    if (empty($id_tipo_doc_sel_post)) $errores_validacion[] = "El tipo de documento es obligatorio.";
+    if (empty($nom_usu_post)) $errores_validacion[] = "El nombre completo es obligatorio.";
+    if (empty($correo_usu_post_form)) {
+        $errores_validacion[] = "El correo electrónico es obligatorio.";
+    } elseif (!filter_var($correo_usu_post_form, FILTER_VALIDATE_EMAIL)) {
+        $errores_validacion[] = "El formato del correo electrónico no es válido.";
+    }
+    if (empty($contra_nueva_post)) $errores_validacion[] = "La contraseña es obligatoria.";
+
+
+    if (!$con) { 
         $conex_db_temp = new database();
         $con = $conex_db_temp->conectar();
     }
 
-    if ($con) {
-        if (!empty($doc_usu_post) && !empty($id_tipo_doc_sel_post) && !empty($nom_usu_post) && !empty($contra_nueva_post)) {
-            $hashed_password = password_hash($contra_nueva_post, PASSWORD_DEFAULT);
-            $sql_check_existencia_usuario = "SELECT doc_usu FROM usuarios WHERE doc_usu = :doc AND id_tipo_doc = :tipo_doc";
-            $stmt_check_existencia = $con->prepare($sql_check_existencia_usuario);
-            $stmt_check_existencia->execute([':doc' => $doc_usu_post, ':tipo_doc' => $id_tipo_doc_sel_post]);
+    if ($con && empty($errores_validacion)) {
+        $sql_check_existencia_doc = "SELECT doc_usu FROM usuarios WHERE doc_usu = :doc AND id_tipo_doc = :tipo_doc";
+        $stmt_check_existencia_doc = $con->prepare($sql_check_existencia_doc);
+        $stmt_check_existencia_doc->execute([':doc' => $doc_usu_post, ':tipo_doc' => $id_tipo_doc_sel_post]);
 
-            if ($stmt_check_existencia->rowCount() > 0) {
-                $php_error_message = "<div class='alert alert-danger'>Error de Duplicidad: El documento '" . htmlspecialchars($doc_usu_post) . "' ya está registrado como usuario con el tipo de documento seleccionado.</div>";
-                $_SESSION['form_data_crear_usu'] = $_POST;
-            } else {
-                $id_especialidad_db = ($id_rol_sel_post != $ID_ROL_MEDICO_PHP || empty($id_especialidad_sel_post)) ? $ID_ESPECIALIDAD_NO_APLICA_PHP : $id_especialidad_sel_post;
-                $sql_insert_usuario = "INSERT INTO usuarios (doc_usu, id_tipo_doc, nom_usu, fecha_nac, tel_usu, correo_usu, id_barrio, direccion_usu, pass, id_gen, id_est, id_especialidad, id_rol) VALUES (:doc_usu, :id_tipo_doc, :nom_usu, :fecha_nac, :tel_usu, :correo_usu, :id_barrio, :direccion_usu, :pass, :id_gen, :id_est_usuario, :id_especialidad, :id_rol)";
-                $stmt_insert_usuario = $con->prepare($sql_insert_usuario);
-                $params_insert_usuario = [
-                    ':doc_usu' => $doc_usu_post, ':id_tipo_doc' => $id_tipo_doc_sel_post, ':nom_usu' => $nom_usu_post,
-                    ':fecha_nac' => $fecha_nac_post ?: null, ':tel_usu' => $tel_usu_post ?: null, ':correo_usu' => $correo_usu_post ?: null,
-                    ':id_barrio' => $id_barrio_sel_post ?: null, ':direccion_usu' => $direccion_usu_post ?: null, ':pass' => $hashed_password,
-                    ':id_gen' => $id_gen_sel_post ?: null, ':id_est_usuario' => $id_est_sel_usuario_post,
-                    ':id_especialidad' => $id_especialidad_db, ':id_rol' => $id_rol_sel_post ?: null
-                ];
-                try {
-                    if ($stmt_insert_usuario->execute($params_insert_usuario)) {
-                        $registro_usuario_exitoso = true;
-                        unset($_SESSION['form_data_crear_usu']);
-                        $nombre_usuario_msg_reg = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
-                        $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_reg . "</strong> registrado exitosamente.</div>";
+        $sql_check_existencia_correo = "SELECT doc_usu FROM usuarios WHERE correo_usu = :correo";
+        $stmt_check_existencia_correo = $con->prepare($sql_check_existencia_correo);
+        $stmt_check_existencia_correo->execute([':correo' => $correo_usu_post_form]);
 
-                    } else {
-                        $errorInfo = $stmt_insert_usuario->errorInfo();
-                        $php_error_message = "<div class='alert alert-danger'>Error SQL al Insertar Usuario: " . ($errorInfo[2] ?? 'Desconocido') . "</div>";
-                        $_SESSION['form_data_crear_usu'] = $_POST;
-                    }
-                } catch (PDOException $e) {
-                    $php_error_message = "<div class='alert alert-danger'>PDOException al Insertar Usuario: " . $e->getMessage() . "</div>";
+        if ($stmt_check_existencia_doc->rowCount() > 0) {
+            $php_error_message = "<div class='alert alert-danger error-servidor-duplicidad'>El documento que intenta ingresar ya está inscrito con el tipo de documento seleccionado.</div>";
+            $_SESSION['form_data_crear_usu'] = $_POST; 
+        } elseif ($stmt_check_existencia_correo->rowCount() > 0) {
+            $php_error_message = "<div class='alert alert-danger error-servidor-duplicidad'>El correo que intenta ingresar ya se encuentra en uso.</div>";
+            $_SESSION['form_data_crear_usu'] = $_POST;
+        } else {
+            $hashed_password = password_hash($contra_nueva_post, PASSWORD_DEFAULT); 
+            $id_especialidad_db = ($id_rol_sel_post != $ID_ROL_MEDICO_PHP || empty($id_especialidad_sel_post)) ? $ID_ESPECIALIDAD_NO_APLICA_PHP : $id_especialidad_sel_post;
+            
+            $sql_insert_usuario = "INSERT INTO usuarios (doc_usu, id_tipo_doc, nom_usu, fecha_nac, tel_usu, correo_usu, id_barrio, direccion_usu, pass, id_gen, id_est, id_especialidad, id_rol) VALUES (:doc_usu, :id_tipo_doc, :nom_usu, :fecha_nac, :tel_usu, :correo_usu, :id_barrio, :direccion_usu, :pass, :id_gen, :id_est_usuario, :id_especialidad, :id_rol)";
+            $stmt_insert_usuario = $con->prepare($sql_insert_usuario);
+            $params_insert_usuario = [
+                ':doc_usu' => $doc_usu_post, ':id_tipo_doc' => $id_tipo_doc_sel_post, ':nom_usu' => $nom_usu_post,
+                ':fecha_nac' => $fecha_nac_post ?: null, ':tel_usu' => $tel_usu_post ?: null, ':correo_usu' => $correo_usu_post_form,
+                ':id_barrio' => $id_barrio_sel_post ?: null, ':direccion_usu' => $direccion_usu_post ?: null, ':pass' => $hashed_password,
+                ':id_gen' => $id_gen_sel_post ?: null, ':id_est_usuario' => $id_est_sel_usuario_post ?: 1, 
+                ':id_especialidad' => $id_especialidad_db, ':id_rol' => $id_rol_sel_post ?: null
+            ];
+            try {
+                if ($stmt_insert_usuario->execute($params_insert_usuario)) {
+                    $registro_usuario_exitoso = true;
+                    unset($_SESSION['form_data_crear_usu']); 
+                    $nombre_usuario_msg_reg = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
+                    $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_reg . "</strong> registrado exitosamente.</div>";
+
+                } else { 
+                    $errorInfo = $stmt_insert_usuario->errorInfo();
+                    $php_error_message = "<div class='alert alert-danger'>Error SQL al Insertar Usuario: " . ($errorInfo[2] ?? 'Desconocido') . "</div>";
                     $_SESSION['form_data_crear_usu'] = $_POST;
                 }
-            }
-        } else {
-            $php_error_message = "<div class='alert alert-danger'>Faltan datos obligatorios (documento, tipo de documento, nombre, contraseña) para registrar el usuario.</div>";
-            $_SESSION['form_data_crear_usu'] = $_POST;
-        }
-
-        if ($registro_usuario_exitoso && empty($php_error_message)) {
-            try {
-                $stmt_afiliado = $con->prepare("SELECT id_estado FROM afiliados WHERE doc_afiliado = :doc_usu_param");
-                $stmt_afiliado->bindParam(':doc_usu_param', $doc_usu_post, PDO::PARAM_STR);
-                $stmt_afiliado->execute();
-                $afiliado_data = $stmt_afiliado->fetch(PDO::FETCH_ASSOC);
-
-                $nombre_usuario_msg_afi = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
-                $url_afiliacion = 'afiliacion_usu.php?doc_usu=' . urlencode($doc_usu_post) . '&id_tipo_doc=' . urlencode($id_tipo_doc_sel_post ?? '');
-
-                if ($afiliado_data && $afiliado_data['id_estado'] == 1) {
-                    $nom_tipo_doc_msg_completo = "Documento";
-                     if (!empty($id_tipo_doc_sel_post)) {
-                        $stmt_tipo_doc_lookup_c = $con->prepare("SELECT nom_doc FROM tipo_identificacion WHERE id_tipo_doc = :id_tipo_doc");
-                        $stmt_tipo_doc_lookup_c->bindParam(':id_tipo_doc', $id_tipo_doc_sel_post, PDO::PARAM_INT);
-                        $stmt_tipo_doc_lookup_c->execute();
-                        $tipo_doc_info_c = $stmt_tipo_doc_lookup_c->fetch(PDO::FETCH_ASSOC);
-                        if ($tipo_doc_info_c) {
-                            $nom_tipo_doc_msg_completo = $tipo_doc_info_c['nom_doc'];
-                        }
-                    }
-                    $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_afi . "</strong> (" . htmlspecialchars($nom_tipo_doc_msg_completo) . ": " . htmlspecialchars($doc_usu_post) . ") creado y afiliado exitosamente.</div>";
-                    $php_warning_message_afiliacion = '';
-                    $doc_usu_form = ''; $id_tipo_doc_sel_form = ''; $nom_usu_form = ''; $fecha_nac_form = ''; $tel_usu_form = ''; $correo_usu_form = ''; $id_dep_sel_form = ''; $id_mun_sel_form = ''; $id_barrio_sel_form = ''; $direccion_usu_form = ''; $id_gen_sel_form = ''; $id_est_sel_usuario_form = 1; $id_especialidad_sel_form = ''; $id_rol_sel_form = ''; $municipios_pre = []; $barrios_pre = [];
-
-                } else {
-                    $php_warning_message_afiliacion = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
-                                           "El usuario <strong>" . $nombre_usuario_msg_afi . "</strong> no está afiliado activamente a ninguna entidad promotora de salud." .
-                                           "<a href='" . $url_afiliacion . "' class='btn btn-success btn-sm btn-afiliar'>Afiliar Usuario</a>" .
-                                           "</div>";
-                }
             } catch (PDOException $e) {
-                $php_warning_message_afiliacion = "<div class='alert alert-danger'>Se registró el usuario, pero hubo un error al verificar su estado de afiliación: " . $e->getMessage() . ". Por favor, verifique manualmente la afiliación o intente afiliar. <a href='" . $url_afiliacion . "' class='btn btn-info btn-sm mt-2'>Intentar Afiliar</a></div>";
+                $php_error_message = "<div class='alert alert-danger'>PDOException al Insertar Usuario: " . $e->getMessage() . "</div>";
+                $_SESSION['form_data_crear_usu'] = $_POST;
             }
         }
-    } else {
+    } elseif(!empty($errores_validacion)) { 
+        $php_error_message = "<div class='alert alert-danger'><ul>";
+        foreach($errores_validacion as $error) {
+            $php_error_message .= "<li>" . htmlspecialchars($error) . "</li>";
+        }
+        $php_error_message .= "</ul></div>";
+        $_SESSION['form_data_crear_usu'] = $_POST;
+    }
+     else { 
         $php_error_message = "<div class='alert alert-danger'>Error de conexión a la base de datos. No se pudo procesar el registro.</div>";
         $_SESSION['form_data_crear_usu'] = $_POST;
+    }
+    if ($registro_usuario_exitoso && empty($php_error_message)) {
+        try {
+            $stmt_afiliado = $con->prepare("SELECT id_estado FROM afiliados WHERE doc_afiliado = :doc_usu_param");
+            $stmt_afiliado->bindParam(':doc_usu_param', $doc_usu_post, PDO::PARAM_STR);
+            $stmt_afiliado->execute();
+            $afiliado_data = $stmt_afiliado->fetch(PDO::FETCH_ASSOC);
+
+            $nombre_usuario_msg_afi = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
+            $url_afiliacion_pagina = 'afiliacion.php?doc_usu=' . urlencode($doc_usu_post) . '&id_tipo_doc=' . urlencode($id_tipo_doc_sel_post ?? '');
+            
+            if ($afiliado_data && $afiliado_data['id_estado'] == 1) { 
+                $nom_tipo_doc_msg_completo = "Documento";
+                 if (!empty($id_tipo_doc_sel_post)) { 
+                    $stmt_tipo_doc_lookup_c = $con->prepare("SELECT nom_doc FROM tipo_identificacion WHERE id_tipo_doc = :id_tipo_doc");
+                    $stmt_tipo_doc_lookup_c->bindParam(':id_tipo_doc', $id_tipo_doc_sel_post, PDO::PARAM_INT);
+                    $stmt_tipo_doc_lookup_c->execute();
+                    $tipo_doc_info_c = $stmt_tipo_doc_lookup_c->fetch(PDO::FETCH_ASSOC);
+                    if ($tipo_doc_info_c) {
+                        $nom_tipo_doc_msg_completo = $tipo_doc_info_c['nom_doc'];
+                    }
+                }
+                $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_afi . "</strong> (" . htmlspecialchars($nom_tipo_doc_msg_completo) . ": " . htmlspecialchars($doc_usu_post) . ") creado y afiliado exitosamente.</div>";
+                $php_warning_message_afiliacion_link = ''; 
+                $doc_usu_form = ''; $id_tipo_doc_sel_form = ''; $nom_usu_form = ''; $fecha_nac_form = ''; $tel_usu_form = ''; $correo_usu_form = ''; $id_dep_sel_form = ''; $id_mun_sel_form = ''; $id_barrio_sel_form = ''; $direccion_usu_form = ''; $id_gen_sel_form = ''; $id_est_sel_usuario_form = 1; $id_especialidad_sel_form = ''; $id_rol_sel_form = ''; $municipios_pre = []; $barrios_pre = [];
+
+            } else { 
+                $php_warning_message_afiliacion_link = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
+                                       "El usuario <strong>" . $nombre_usuario_msg_afi . "</strong> no está afiliado activamente." .
+                                       "<a href='" . $url_afiliacion_pagina . "' class='btn btn-success btn-sm ms-2'>Afiliar Usuario</a>" .
+                                       "</div>";
+            }
+        } catch (PDOException $e) { 
+             $php_warning_message_afiliacion_link = "<div class='alert alert-danger'>Se registró el usuario, pero hubo un error al verificar su estado de afiliación: " . $e->getMessage() . ". Por favor, verifique manualmente. <a href='" . $url_afiliacion_pagina . "' class='btn btn-info btn-sm mt-2'>Intentar Afiliar</a></div>";
+        }
     }
 }
 
@@ -188,6 +210,7 @@ if ($con) {
             $municipios_pre = $stmt_mun->fetchAll(PDO::FETCH_ASSOC);
         }
 
+
         if (!empty($id_mun_sel_form) && !empty($id_dep_sel_form)) {
             $stmt_check_mun_validez = $con->prepare("SELECT COUNT(*) FROM municipio WHERE id_mun = :id_mun AND id_dep = :id_dep");
             $stmt_check_mun_validez->bindParam(':id_mun', $id_mun_sel_form, PDO::PARAM_STR);
@@ -198,25 +221,22 @@ if ($con) {
                 $stmt_bar->bindParam(':id_mun', $id_mun_sel_form, PDO::PARAM_STR);
                 $stmt_bar->execute();
                 $barrios_pre = $stmt_bar->fetchAll(PDO::FETCH_ASSOC);
-            } else { $id_mun_sel_form = ''; $id_barrio_sel_form = ''; }
+            } else { $id_mun_sel_form = ''; $id_barrio_sel_form = ''; } 
         } else { $id_barrio_sel_form = ''; }
 
     } catch (PDOException $e) {
         if (empty($php_error_message)) { $php_error_message = "<div class='alert alert-danger'>PDOException (carga inicial de selects): " . $e->getMessage() . "</div>"; }
     }
-} elseif (empty($php_error_message) && empty($php_warning_message_afiliacion) && empty($php_success_message_registro)) {
+} elseif (empty($php_error_message) && empty($php_warning_message_afiliacion_link) && empty($php_success_message_registro)) {
+
     $php_error_message = "<div class='alert alert-danger'>Error: No se pudo conectar a la base de datos para carga inicial de selects.</div>";
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Nuevo Usuario - Administración</title>
+    <title>Crear Nuevo Usuario</title>
     <link rel="icon" type="image/png" href="../img/loguito.png">
-    <link rel="stylesheet" href="../css/estilo.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <?php include '../include/menu.php'; ?>
@@ -224,18 +244,20 @@ if ($con) {
         <div class="container-fluid mt-3">
              <div class="form-container mx-auto">
                 <h3 class="text-center">Crear Nuevo Usuario</h3>
-                <?php
-                    if (!empty($php_error_message)) {
-                        echo $php_error_message;
-                    } else {
-                        if (!empty($php_success_message_registro)) {
-                            echo $php_success_message_registro;
+                <div id="mensajesServidorGlobal">
+                    <?php
+                        if (!empty($php_error_message)) {
+                            echo $php_error_message;
+                        } else {
+                            if (!empty($php_success_message_registro)) {
+                                echo $php_success_message_registro;
+                            }
+                            if (!empty($php_warning_message_afiliacion_link)) {
+                                echo $php_warning_message_afiliacion_link;
+                            }
                         }
-                        if (!empty($php_warning_message_afiliacion)) {
-                            echo $php_warning_message_afiliacion;
-                        }
-                    }
-                ?>
+                    ?>
+                </div>
                 <form id="formCrearUsuario" action="crear_usu.php" method="POST" novalidate>
                     <div id="paso1">
                         <p class="text-muted text-center mb-2">Paso 1 de 2: Datos Personales</p>
@@ -253,7 +275,7 @@ if ($con) {
                             <div class="col-md-4">
                                 <label for="doc_usu" class="form-label">Documento (*):</label>
                                 <input type="text" id="doc_usu" name="doc_usu" class="form-control" value="<?php echo htmlspecialchars($doc_usu_form); ?>" required tabindex="2">
-                                 <div class="invalid-feedback"></div>
+                                 <div class="invalid-feedback" id="error-doc_usu"></div>
                             </div>
                              <div class="col-md-4">
                                  <label for="fecha_nac" class="form-label">Fecha Nacimiento (*):</label>
@@ -273,7 +295,7 @@ if ($con) {
                              <div class="col-md-8">
                                  <label for="correo_usu" class="form-label">Correo Electrónico (*):</label>
                                 <input type="email" id="correo_usu" name="correo_usu" class="form-control" value="<?php echo htmlspecialchars($correo_usu_form); ?>" required tabindex="6">
-                                 <div class="invalid-feedback"></div>
+                                 <div class="invalid-feedback" id="error-correo_usu"></div>
                             </div>
                              <div class="col-md-4">
                                 <label for="id_gen" class="form-label">Género (*):</label>
@@ -385,7 +407,7 @@ if ($con) {
                                 <button type="button" id="btnAnterior" class="btn btn-secondary w-100" tabindex="17"><i class="bi bi-arrow-left-circle"></i> Anterior</button>
                             </div>
                             <div class="col-6">
-                                <button type="submit" name="crear_usuario" class="btn btn-secondary w-100" disabled tabindex="18">Crear Usuario <i class="bi bi-check-circle"></i></button>
+                                <button type="submit" name="crear_usuario" id="btnCrearUsuarioSubmit" class="btn btn-primary w-100" disabled tabindex="18">Crear Usuario <i class="bi bi-check-circle"></i></button>
                             </div>
                         </div>
                     </div>
@@ -394,7 +416,6 @@ if ($con) {
         </div>
     </main>
     <?php include '../include/footer.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/crear_usu.js"></script> 
 </body>
 </html>
