@@ -77,9 +77,10 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'reportes_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>reportes_farma.php">Reportes</a></li>
                         <?php elseif ($rol_usuario == 4): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'agenda_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>agenda_medico.php">Agenda</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'pacientes_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>pacientes_medico.php">Pacientes</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial_medico.php">Historial Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php.php">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_orden.php">Crear ordenes</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_ordenes.php">Ver ordenes</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial.php">Historial paciente</a></li>
                         <?php endif; ?>
                         <?php if ($rol_usuario): ?>
                             <li class="nav-item dropdown">
