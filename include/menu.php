@@ -19,6 +19,7 @@ $path_to_js_folder_php_context = "../js/";
     <title>Menú - SaludConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <link rel="icon" type="image/png" href="<?php echo $path_to_img_folder_php_context; ?>loguito.png">
     <?php
     $estilo_rol_path = "";
@@ -66,7 +67,7 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Alianzas</a></li>
                         <?php elseif ($rol_usuario == 2): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'cita_medica.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>cita_medica.php">Citas Médicas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php">Citas Médicas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_citas.php">Mis Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_medicamentos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_medicamentos.php">Mis Medicamentos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_pedidos.php">Mis pedidos</a></li>
