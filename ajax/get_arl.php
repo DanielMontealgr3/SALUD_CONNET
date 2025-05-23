@@ -16,7 +16,9 @@ if ($con) {
         $stmt = $con->query("SELECT id_arl, nom_arl FROM arl ORDER BY nom_arl ASC");
         $arl_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $response['success'] = true;
-        $response['data'] = $arl_list;
+        $response['data'] = array_map(function($item) {
+            return ['id' => $item['id_arl'], 'nombre' => $item['nom_arl']];
+        }, $arl_list);
         $response['message'] = 'ARL cargadas exitosamente.';
     } catch (PDOException $e) {
         $response['message'] = "Error al cargar ARL: " . $e->getMessage();
