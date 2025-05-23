@@ -17,7 +17,9 @@ if ($con) {
         $eps_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $response['success'] = true;
-        $response['data'] = $eps_list;
+        $response['data'] = array_map(function($item) {
+            return ['id' => $item['nit_eps'], 'nombre' => $item['nombre_eps']];
+        }, $eps_list);
         $response['message'] = 'EPS cargadas exitosamente.';
 
     } catch (PDOException $e) {

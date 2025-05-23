@@ -4,7 +4,18 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("El elemento del modal 'modalAfiliacionUsuario' no fue encontrado.");
         return;
     }
-    const modalAfiliacion = new bootstrap.Modal(modalAfiliacionElement);
+    let modalAfiliacionInstance = null;
+    try {
+        modalAfiliacionInstance = new bootstrap.Modal(modalAfiliacionElement);
+    } catch (e) {
+        console.error("Error inicializando el modal de Bootstrap:", e);
+        const bodyElement = document.body;
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'container mt-3';
+        errorDiv.innerHTML = '<div class="alert alert-danger">Error crítico al cargar componentes del modal.</div>';
+        bodyElement.insertBefore(errorDiv, bodyElement.firstChild);
+        return;
+    }
     
     const formAfiliacionModal = document.getElementById('formAfiliacionUsuarioModal');
     const tipoEntidadSelect = document.getElementById('tipo_entidad_afiliacion_modal');
@@ -19,40 +30,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnGuardarAfiliacionModal = document.getElementById('btnGuardarAfiliacionModal');
     const modalGlobalErrorDiv = document.getElementById('modalAfiliacionGlobalError');
 
-    if (!formAfiliacionModal || !tipoEntidadSelect || !contenedorEpsSelect || !selectEps || 
-        !contenedorArlSelect || !selectArl || !docAfiliadoModalHidden || !idTipoDocModalHidden ||
-        !docAfiliadoModalDisplay || !modalMessageDiv || !btnGuardarAfiliacionModal || !modalGlobalErrorDiv) {
-        console.error("Uno o más elementos del formulario del modal de afiliación no fueron encontrados. Verifica los IDs.");
-        if(modalGlobalErrorDiv) modalGlobalErrorDiv.innerHTML = "<div class='alert alert-danger'>Error interno al cargar el formulario. Contacte a soporte.</div>";
+    const elementosFaltantes = [
+        {el: formAfiliacionModal, id: 'formAfiliacionUsuarioModal'}, {el: tipoEntidadSelect, id: 'tipo_entidad_afiliacion_modal'},
+        {el: contenedorEpsSelect, id: 'contenedor_select_entidad_eps_modal'}, {el: selectEps, id: 'entidad_especifica_eps_modal'},
+        {el: contenedorArlSelect, id: 'contenedor_select_entidad_arl_modal'}, {el: selectArl, id: 'entidad_especifica_arl_modal'},
+        {el: docAfiliadoModalHidden, id: 'doc_afiliado_modal_hidden'}, {el: idTipoDocModalHidden, id: 'id_tipo_doc_modal_hidden'},
+        {el: docAfiliadoModalDisplay, id: 'doc_afiliado_modal_display'}, {el: modalMessageDiv, id: 'modalAfiliacionMessage'},
+        {el: btnGuardarAfiliacionModal, id: 'btnGuardarAfiliacionModal'}, {el: modalGlobalErrorDiv, id: 'modalAfiliacionGlobalError'}
+    ].filter(item => !item.el);
+
+    if (elementosFaltantes.length > 0) {
+        const idsFaltantes = elementosFaltantes.map(item => item.id).join(', ');
+        console.error(`Elementos del DOM no encontrados en el modal: ${idsFaltantes}.`);
+        if(modalGlobalErrorDiv) modalGlobalErrorDiv.innerHTML = `<div class='alert alert-danger'>Error interno: componentes del formulario no encontrados (${idsFaltantes}). Contacte a soporte.</div>`;
         return;
     }
 
     function resetModalForm() {
-        if(formAfiliacionModal) formAfiliacionModal.reset();
-        if(contenedorEpsSelect) contenedorEpsSelect.style.display = 'none';
-        if(contenedorArlSelect) contenedorArlSelect.style.display = 'none';
-        if(selectEps) {
-            selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
-            selectEps.required = false;
-        }
-        if(selectArl) {
-            selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
-            selectArl.required = false;
-        }
-        if(docAfiliadoModalDisplay) docAfiliadoModalDisplay.value = '';
-        if(docAfiliadoModalHidden) docAfiliadoModalHidden.value = '';
-        if(idTipoDocModalHidden) idTipoDocModalHidden.value = '';
-        if(modalMessageDiv) modalMessageDiv.innerHTML = '';
-        if(modalGlobalErrorDiv) modalGlobalErrorDiv.innerHTML = '';
+        formAfiliacionModal.reset();
+        contenedorEpsSelect.style.display = 'none';
+        selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
+        selectEps.removeAttribute('required');
+
+        contenedorArlSelect.style.display = 'none';
+        selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
+        selectArl.removeAttribute('required');
+        
+        docAfiliadoModalDisplay.value = '';
+        docAfiliadoModalHidden.value = '';
+        idTipoDocModalHidden.value = '';
+        modalMessageDiv.innerHTML = '';
+        modalGlobalErrorDiv.innerHTML = '';
         
         clearValidationErrorsModal();
         const estadoModalSelect = document.getElementById('id_estado_modal');
-        if(estadoModalSelect) estadoModalSelect.value = '1'; 
-        if(tipoEntidadSelect) tipoEntidadSelect.value = '';
+        if (estadoModalSelect) estadoModalSelect.value = '1'; 
+        tipoEntidadSelect.value = '';
     }
 
     function clearValidationErrorsModal() {
-        if (!formAfiliacionModal) return;
         const errorMessages = formAfiliacionModal.querySelectorAll('.invalid-feedback');
         errorMessages.forEach(msg => { msg.textContent = ''; });
         const formControls = formAfiliacionModal.querySelectorAll('.form-control, .form-select');
@@ -65,96 +81,97 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (element) {
              element.classList.add('is-invalid');
-        } else { console.warn(`Elemento con ID '${elementId}' no encontrado.`); }
+        } else { console.warn(`Elemento con ID '${elementId}' no encontrado para mostrar error.`); }
 
         if (errorDiv) {
             errorDiv.textContent = message;
-        } else { console.warn(`Div de error 'error-${elementId}' no encontrado.`); }
+        } else { console.warn(`Div de feedback 'error-${elementId}' no encontrado.`); }
     }
     
     window.abrirModalAfiliacion = function (docUsuario, idTipoDoc) {
         resetModalForm();
-        if(docAfiliadoModalDisplay) docAfiliadoModalDisplay.value = docUsuario;
-        if(docAfiliadoModalHidden) docAfiliadoModalHidden.value = docUsuario;
-        if(idTipoDocModalHidden) idTipoDocModalHidden.value = idTipoDoc;
-        modalAfiliacion.show();
+        docAfiliadoModalDisplay.value = docUsuario;
+        docAfiliadoModalHidden.value = docUsuario;
+        idTipoDocModalHidden.value = idTipoDoc;
+        if (modalAfiliacionInstance) {
+            modalAfiliacionInstance.show();
+        } else {
+            console.error("Instancia del modal no disponible para mostrar.");
+            if(modalGlobalErrorDiv) modalGlobalErrorDiv.innerHTML = "<div class='alert alert-danger'>Error: No se puede mostrar el formulario de afiliación.</div>";
+        }
     };
     
     tipoEntidadSelect.addEventListener('change', function () {
         const tipo = this.value;
         
-        if(contenedorEpsSelect) contenedorEpsSelect.style.display = 'none';
-        if(selectEps) {
-            selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
-            selectEps.required = false;
-        }
-        if(contenedorArlSelect) contenedorArlSelect.style.display = 'none';
-        if(selectArl) {
-            selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
-            selectArl.required = false;
-        }
-        if(modalMessageDiv) modalMessageDiv.innerHTML = '';
-        clearValidationErrorsModal(); 
+        contenedorEpsSelect.style.display = 'none';
+        selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
+        selectEps.removeAttribute('required');
+
+        contenedorArlSelect.style.display = 'none';
+        selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
+        selectArl.removeAttribute('required');
+
+        modalMessageDiv.innerHTML = '';
+        clearValidationErrorsModal();
 
         if (tipo === 'eps') {
-            if(contenedorEpsSelect) contenedorEpsSelect.style.display = 'block';
-            if(selectEps) {
-                selectEps.required = true;
-                selectEps.innerHTML = '<option value="">Cargando EPS...</option>';
-            }
+            contenedorEpsSelect.style.display = 'block';
+            selectEps.setAttribute('required', 'required');
+            selectEps.innerHTML = '<option value="">Cargando EPS...</option>';
+            
             fetch('../ajax/get_eps.php') 
                 .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    if (!response.ok) throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
                 })
                 .then(data => {
-                    if(selectEps) selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
+                    selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
                     if (data.success && data.data && data.data.length > 0) {
                         data.data.forEach(eps => {
                             const option = document.createElement('option');
-                            option.value = eps.nit_eps;
-                            option.textContent = `${eps.nombre_eps} (NIT: ${eps.nit_eps})`;
-                            if(selectEps) selectEps.appendChild(option);
+                            option.value = eps.id;
+                            option.textContent = eps.nombre; 
+                            selectEps.appendChild(option);
                         });
                     } else {
-                        if(selectEps) selectEps.innerHTML = `<option value="">${data.message || 'No se encontraron EPS'}</option>`;
+                        selectEps.innerHTML = `<option value="">${data.message || 'No se encontraron EPS'}</option>`;
                         if(modalMessageDiv && !data.success) modalMessageDiv.innerHTML = `<div class="alert alert-warning">${data.message || 'No se pudieron cargar las EPS.'}</div>`;
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching EPS:', error);
-                    if(selectEps) selectEps.innerHTML = '<option value="">Error al cargar EPS</option>';
-                    if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error cargando EPS: ${error.message}.</div>`;
+                    selectEps.innerHTML = '<option value="">Error al cargar EPS</option>';
+                    if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error al cargar la lista de EPS: ${error.message}.</div>`;
                 });
         } else if (tipo === 'arl') {
-            if(contenedorArlSelect) contenedorArlSelect.style.display = 'block';
-            if(selectArl) {
-                selectArl.required = true;
-                selectArl.innerHTML = '<option value="">Cargando ARL...</option>';
-            }
+            contenedorArlSelect.style.display = 'block';
+            selectArl.setAttribute('required', 'required');
+            selectArl.innerHTML = '<option value="">Cargando ARL...</option>';
+
             fetch('../ajax/get_arl.php') 
                 .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    if (!response.ok) throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
                 })
                 .then(data => {
-                    if(selectArl) selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
+                    selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
                     if (data.success && data.data && data.data.length > 0) {
                         data.data.forEach(arl_item => {
                             const option = document.createElement('option');
-                            option.value = arl_item.id_arl;
-                            option.textContent = arl_item.nom_arl;
-                           if(selectArl) selectArl.appendChild(option);
+                            option.value = arl_item.id; 
+                            option.textContent = arl_item.nombre; 
+                           selectArl.appendChild(option);
                         });
                     } else {
-                        if(selectArl) selectArl.innerHTML = `<option value="">${data.message || 'No se encontraron ARL'}</option>`;
+                        selectArl.innerHTML = `<option value="">${data.message || 'No se encontraron ARL'}</option>`;
                         if(modalMessageDiv && !data.success) modalMessageDiv.innerHTML = `<div class="alert alert-warning">${data.message || 'No se pudieron cargar las ARL.'}</div>`;
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching ARL:', error);
-                    if(selectArl) selectArl.innerHTML = '<option value="">Error al cargar ARL</option>';
-                     if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error cargando ARL: ${error.message}.</div>`;
+                    selectArl.innerHTML = '<option value="">Error al cargar ARL</option>';
+                    if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error al cargar la lista de ARL: ${error.message}.</div>`;
                 });
         }
     });
@@ -163,20 +180,23 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         event.stopPropagation();
         clearValidationErrorsModal();
-        if(modalMessageDiv) modalMessageDiv.innerHTML = '';
+        modalMessageDiv.innerHTML = '';
         let isValid = true;
 
-        if (!docAfiliadoModalHidden.value.trim()) { isValid = false; }
+        if (!docAfiliadoModalHidden.value.trim()) { 
+            modalGlobalErrorDiv.innerHTML = "<div class='alert alert-danger'>Error: Documento del afiliado no especificado.</div>";
+            isValid = false; 
+        }
         if (!tipoEntidadSelect.value) {
-            showValidationErrorModal('tipo_entidad_afiliacion_modal', 'Seleccione un tipo de entidad.');
+            showValidationErrorModal('tipo_entidad_afiliacion_modal', 'Debe seleccionar un tipo de entidad.');
             isValid = false;
         } else {
             if (tipoEntidadSelect.value === 'eps' && !selectEps.value) {
-                showValidationErrorModal('entidad_especifica_eps_modal', 'Seleccione una EPS.');
+                showValidationErrorModal('entidad_especifica_eps_modal', 'Debe seleccionar una EPS específica.');
                 isValid = false;
             }
             if (tipoEntidadSelect.value === 'arl' && !selectArl.value) {
-                showValidationErrorModal('entidad_especifica_arl_modal', 'Seleccione una ARL.');
+                showValidationErrorModal('entidad_especifica_arl_modal', 'Debe seleccionar una ARL específica.');
                 isValid = false;
             }
         }
@@ -184,48 +204,51 @@ document.addEventListener('DOMContentLoaded', function () {
         const estadoModal = document.getElementById('id_estado_modal');
 
         if (regimenModal && !regimenModal.value) {
-            showValidationErrorModal('id_regimen_modal', 'Seleccione un régimen.');
+            showValidationErrorModal('id_regimen_modal', 'Debe seleccionar un régimen.');
             isValid = false;
         }
         if (estadoModal && !estadoModal.value) {
-            showValidationErrorModal('id_estado_modal', 'Seleccione un estado.');
+            showValidationErrorModal('id_estado_modal', 'Debe seleccionar un estado de afiliación.');
             isValid = false;
         }
 
         if (isValid) {
-            if(btnGuardarAfiliacionModal) {
-                btnGuardarAfiliacionModal.disabled = true;
-                btnGuardarAfiliacionModal.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
-            }
+            btnGuardarAfiliacionModal.disabled = true;
+            btnGuardarAfiliacionModal.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
             
             const formData = new FormData(formAfiliacionModal);
             formData.append('guardar_afiliacion_modal_submit', '1');
 
-            fetch(window.location.pathname, { 
+            fetch(window.location.pathname + window.location.search, { 
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error HTTP ${response.status} al guardar: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    modalMessageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
                     setTimeout(() => {
-                        modalAfiliacion.hide(); 
-                    }, 1500);
+                        if (modalAfiliacionInstance) modalAfiliacionInstance.hide(); 
+                    }, 2000);
                 } else {
-                    if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Error desconocido al guardar.'}</div>`;
+                    modalMessageDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Ocurrió un error desconocido al guardar la afiliación.'}</div>`;
                 }
             })
             .catch(error => {
-                console.error('Error en submit del modal:', error);
-                if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error de comunicación con el servidor al guardar.</div>`;
+                console.error('Error en submit del modal de afiliación:', error);
+                modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error de comunicación con el servidor: ${error.message}. Intente de nuevo.</div>`;
             })
             .finally(() => {
-                 if(btnGuardarAfiliacionModal){
-                    btnGuardarAfiliacionModal.disabled = false;
-                    btnGuardarAfiliacionModal.innerHTML = 'Guardar Afiliación';
-                 }
+                 btnGuardarAfiliacionModal.disabled = false;
+                 btnGuardarAfiliacionModal.innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar Afiliación';
             });
+        } else {
+             modalMessageDiv.innerHTML = `<div class="alert alert-warning">Por favor, corrija los campos marcados.</div>`;
         }
     });
 });
