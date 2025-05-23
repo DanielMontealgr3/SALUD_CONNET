@@ -5,9 +5,11 @@ require_once '../include/conexion.php';
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-if (!isset($_SESSION['pagina_anterior_afiliacion'])) {
-    $_SESSION['pagina_anterior_afiliacion'] = $_SERVER['HTTP_REFERER'] ?? 'crear_usu.php';
+$pagina_anterior_para_volver = $_SESSION['pagina_anterior_afiliacion'] ?? $_SERVER['HTTP_REFERER'] ?? 'crear_usu.php';
+if (isset($_SESSION['pagina_anterior_afiliacion'])) {
+    unset($_SESSION['pagina_anterior_afiliacion']);
 }
+
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1) {
     header('Location: ../inicio_sesion.php');
@@ -20,128 +22,132 @@ $con = $conex_db->conectar();
 $page_error_message = '';
 $doc_afiliado_get = '';
 $id_tipo_doc_get_val = '';
-$nombre_afiliado_display = 'Usuario no encontrado';
-$tipo_doc_nombre_display = '';
 $modal_regimen_list = [];
 $modal_estado_list_afiliado = [];
 $modal_php_error_message_init = '';
+$nombre_afiliado_display_for_title = 'Usuario';
 
 
-if (isset($_GET['doc_usu']) && isset($_GET['id_tipo_doc'])) {
+if (isset($_GET['doc_usu']) && !empty(trim($_GET['doc_usu'])) && isset($_GET['id_tipo_doc']) && !empty(trim($_GET['id_tipo_doc']))) {
     $doc_afiliado_get = trim($_GET['doc_usu']);
     $id_tipo_doc_get_val = trim($_GET['id_tipo_doc']);
 
     if ($con) {
         try {
-            $sql_usuario = "SELECT u.nom_usu, ti.nom_doc 
-                            FROM usuarios u 
-                            JOIN tipo_identificacion ti ON u.id_tipo_doc = ti.id_tipo_doc
-                            WHERE u.doc_usu = :doc_usu AND u.id_tipo_doc = :id_tipo_doc";
-            $stmt_usuario = $con->prepare($sql_usuario);
-            $stmt_usuario->bindParam(':doc_usu', $doc_afiliado_get, PDO::PARAM_STR);
-            $stmt_usuario->bindParam(':id_tipo_doc', $id_tipo_doc_get_val, PDO::PARAM_INT);
-            $stmt_usuario->execute();
-            $usuario_info = $stmt_usuario->fetch(PDO::FETCH_ASSOC);
+            $sql_usuario_nom = "SELECT nom_usu FROM usuarios WHERE doc_usu = :doc_usu AND id_tipo_doc = :id_tipo_doc";
+            $stmt_usuario_nom = $con->prepare($sql_usuario_nom);
+            $stmt_usuario_nom->bindParam(':doc_usu', $doc_afiliado_get, PDO::PARAM_STR);
+            $stmt_usuario_nom->bindParam(':id_tipo_doc', $id_tipo_doc_get_val, PDO::PARAM_INT);
+            $stmt_usuario_nom->execute();
+            $usuario_nom_info = $stmt_usuario_nom->fetch(PDO::FETCH_ASSOC);
+            
+            if($usuario_nom_info && !empty($usuario_nom_info['nom_usu'])){
+                $nombre_afiliado_display_for_title = htmlspecialchars($usuario_nom_info['nom_usu']);
+            } else {
+                $page_error_message = "<div class='alert alert-danger'>No se encontró un usuario con el documento y tipo de documento proporcionados.</div>";
+            }
 
-            if ($usuario_info) {
-                $nombre_afiliado_display = htmlspecialchars($usuario_info['nom_usu']);
-                $tipo_doc_nombre_display = htmlspecialchars($usuario_info['nom_doc']);
-
+            if(empty($page_error_message)) {
                 $stmt_reg = $con->query("SELECT id_regimen, nom_reg FROM regimen ORDER BY nom_reg ASC");
                 $modal_regimen_list = $stmt_reg->fetchAll(PDO::FETCH_ASSOC);
-        
-                $stmt_est = $con->query("SELECT id_est, nom_est FROM estado WHERE id_est IN (1, 2) ORDER BY nom_est ASC");
+            
+                $stmt_est = $con->query("SELECT id_est, nom_est FROM estado WHERE id_est IN (1, 2) ORDER BY FIELD(id_est, 1, 2), nom_est ASC");
                 $modal_estado_list_afiliado = $stmt_est->fetchAll(PDO::FETCH_ASSOC);
-
-            } else {
-                $page_error_message = "<div class='alert alert-danger'>No se encontró información para el usuario especificado.</div>";
             }
+
         } catch (PDOException $e) {
-            $page_error_message = "<div class='alert alert-danger'>Error al consultar datos del usuario o listas: " . $e->getMessage() . "</div>";
-             $modal_php_error_message_init = "Error al cargar datos para el formulario: " . $e->getMessage();
+            $page_error_message = "<div class='alert alert-danger'>Error al cargar datos iniciales para la afiliación: " . htmlspecialchars($e->getMessage()) . "</div>";
+            $modal_php_error_message_init = "Error al cargar datos para el formulario: " . htmlspecialchars($e->getMessage());
         }
     } else {
-        $page_error_message = "<div class='alert alert-danger'>Error de conexión a la base de datos.</div>";
+        $page_error_message = "<div class='alert alert-danger'>Error de conexión a la base de datos. No se pueden cargar los datos para la afiliación.</div>";
     }
 } else {
-    $page_error_message = "<div class='alert alert-danger'>No se ha proporcionado un documento y tipo de documento válidos para la afiliación.</div>";
+    $page_error_message = "<div class='alert alert-danger'>Parámetros incompletos o incorrectos. No se puede procesar la solicitud de afiliación. Por favor, regrese e inténtelo de nuevo.</div>";
 }
 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_afiliacion_modal_submit'])) {
-    $response = ['success' => false, 'message' => 'Error desconocido.'];
+    $response = ['success' => false, 'message' => 'Error desconocido al procesar la afiliación.'];
     
     $doc_afiliado_post = trim($_POST['doc_afiliado_modal_hidden'] ?? '');
     $tipo_entidad_sel_post = trim($_POST['tipo_entidad_afiliacion_modal'] ?? '');
-    $id_entidad_sel_post = '';
+    
+    $id_eps_valor = null;
+    $id_arl_valor = null;
 
-    if ($tipo_entidad_sel_post === 'eps' && isset($_POST['entidad_especifica_eps_modal'])) {
-        $id_entidad_sel_post = trim($_POST['entidad_especifica_eps_modal']);
-    } elseif ($tipo_entidad_sel_post === 'arl' && isset($_POST['entidad_especifica_arl_modal'])) {
-        $id_entidad_sel_post = filter_input(INPUT_POST, 'entidad_especifica_arl_modal', FILTER_VALIDATE_INT);
+    if ($tipo_entidad_sel_post === 'eps') {
+        $id_eps_valor = trim($_POST['entidad_especifica_eps_modal'] ?? null); 
+    } elseif ($tipo_entidad_sel_post === 'arl') {
+        $id_arl_valor = filter_input(INPUT_POST, 'entidad_especifica_arl_modal', FILTER_VALIDATE_INT);
     }
 
     $id_regimen_sel_post = filter_input(INPUT_POST, 'id_regimen_modal', FILTER_VALIDATE_INT);
     $id_estado_sel_post = filter_input(INPUT_POST, 'id_estado_modal', FILTER_VALIDATE_INT);
-    $fecha_actual_db = date('Y-m-d H:i:s');
+    $fecha_actual_db = date('Y-m-d');
 
     if (empty($doc_afiliado_post)) {
-        $response['message'] = "El documento del afiliado es requerido.";
-    } elseif (empty($tipo_entidad_sel_post) || ($tipo_entidad_sel_post != 'eps' && $tipo_entidad_sel_post != 'arl')) {
+        $response['message'] = "El documento del afiliado es un campo requerido.";
+    } elseif (empty($tipo_entidad_sel_post) || !in_array($tipo_entidad_sel_post, ['eps', 'arl'])) {
         $response['message'] = "Debe seleccionar un tipo de entidad válido (EPS o ARL).";
-    } elseif (empty($id_entidad_sel_post)) {
-        $response['message'] = "Debe seleccionar una " . strtoupper($tipo_entidad_sel_post) . " específica.";
-    } elseif (empty($id_regimen_sel_post)) {
-        $response['message'] = "El régimen es requerido.";
-    } elseif (empty($id_estado_sel_post)) {
-        $response['message'] = "El estado de afiliación es requerido.";
+    } elseif ($tipo_entidad_sel_post === 'eps' && (empty($id_eps_valor) || !is_string($id_eps_valor) )) {
+        $response['message'] = "Debe seleccionar una EPS específica.";
+    } elseif ($tipo_entidad_sel_post === 'arl' && (empty($id_arl_valor) || !is_numeric($id_arl_valor))) {
+        $response['message'] = "Debe seleccionar una ARL específica.";
+    } elseif (empty($id_regimen_sel_post) || !is_numeric($id_regimen_sel_post)) {
+        $response['message'] = "El régimen es un campo requerido.";
+    } elseif (empty($id_estado_sel_post) || !is_numeric($id_estado_sel_post)) {
+        $response['message'] = "El estado de afiliación es un campo requerido.";
     } else {
         if ($con) {
             try {
-                $nit_eps_param = null;
-                $id_arl_param = null;
-                $columna_fk_eps_en_afiliados = 'id_eps'; 
-
-                if ($tipo_entidad_sel_post === 'eps') {
-                    $nit_eps_param = $id_entidad_sel_post; 
-                } elseif ($tipo_entidad_sel_post === 'arl') {
-                    $id_arl_param = (int)$id_entidad_sel_post; 
-                }
-
                 $stmt_check = $con->prepare("SELECT id_afiliacion FROM afiliados WHERE doc_afiliado = :doc_afiliado");
                 $stmt_check->bindParam(':doc_afiliado', $doc_afiliado_post, PDO::PARAM_STR);
                 $stmt_check->execute();
-                $existe_afiliado_id = $stmt_check->fetchColumn();
+                $id_afiliacion_existente = $stmt_check->fetchColumn();
 
-                if ($existe_afiliado_id) {
-                    $sql = "UPDATE afiliados SET fecha_afi = :fecha_afi, {$columna_fk_eps_en_afiliados} = :nit_eps_param, id_regimen = :id_regimen, id_arl = :id_arl_param, id_estado = :id_estado WHERE doc_afiliado = :doc_afiliado";
+                if ($id_afiliacion_existente) {
+                    $sql = "UPDATE afiliados SET 
+                                fecha_afi = :fecha_afi, 
+                                id_eps = :id_eps, 
+                                id_regimen = :id_regimen, 
+                                id_arl = :id_arl, 
+                                id_estado = :id_estado 
+                            WHERE id_afiliacion = :id_afiliacion";
                 } else {
-                    $sql = "INSERT INTO afiliados (doc_afiliado, fecha_afi, {$columna_fk_eps_en_afiliados}, id_regimen, id_arl, id_estado) VALUES (:doc_afiliado, :fecha_afi, :nit_eps_param, :id_regimen, :id_arl_param, :id_estado)";
+                    $sql = "INSERT INTO afiliados (doc_afiliado, fecha_afi, id_eps, id_regimen, id_arl, id_estado) 
+                            VALUES (:doc_afiliado, :fecha_afi, :id_eps, :id_regimen, :id_arl, :id_estado)";
                 }
                 
                 $stmt_guardar = $con->prepare($sql);
+                
                 $params_guardar = [
-                    ':doc_afiliado' => $doc_afiliado_post, 
                     ':fecha_afi' => $fecha_actual_db,
-                    ':nit_eps_param' => $nit_eps_param, 
+                    ':id_eps' => ($tipo_entidad_sel_post === 'eps' ? $id_eps_valor : null),
                     ':id_regimen' => $id_regimen_sel_post,
-                    ':id_arl_param' => $id_arl_param, 
+                    ':id_arl' => ($tipo_entidad_sel_post === 'arl' ? $id_arl_valor : null),
                     ':id_estado' => $id_estado_sel_post
                 ];
 
+                if ($id_afiliacion_existente) {
+                    $params_guardar[':id_afiliacion'] = $id_afiliacion_existente;
+                } else {
+                    $params_guardar[':doc_afiliado'] = $doc_afiliado_post;
+                }
+
                 if ($stmt_guardar->execute($params_guardar)) {
                     $response['success'] = true;
-                    $response['message'] = "Afiliación guardada para " . htmlspecialchars($doc_afiliado_post) . ".";
-                    $response['doc_afiliado'] = $doc_afiliado_post;
+                    $accion = $id_afiliacion_existente ? "actualizada" : "registrada";
+                    $response['message'] = "Afiliación " . $accion . " exitosamente para el documento " . htmlspecialchars($doc_afiliado_post) . ".";
                 } else {
                     $errorInfo = $stmt_guardar->errorInfo();
-                    $response['message'] = "Error SQL: " . ($errorInfo[2] ?? 'Desconocido');
+                    $response['message'] = "Error SQL al guardar la afiliación: " . htmlspecialchars($errorInfo[2] ?? 'Desconocido');
                 }
             } catch (PDOException $e) {
-                $response['message'] = "Error DB: " . $e->getMessage();
+                $response['message'] = "Excepción de Base de Datos al guardar: " . htmlspecialchars($e->getMessage());
             }
         } else {
-            $response['message'] = "Error de conexión al procesar formulario.";
+            $response['message'] = "Error de conexión a la base de datos al intentar procesar el formulario.";
         }
     }
     header('Content-Type: application/json');
@@ -155,56 +161,55 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_afiliacion_mod
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestionar Afiliación de Usuario</title>
-
+    <title>Gestionar Afiliación de <?php echo $nombre_afiliado_display_for_title; ?></title>
 </head>
-<body class="d-flex flex-column">
+<body class="d-flex flex-column min-vh-100">
     <?php include '../include/menu.php'; ?>
 
-    <main id="contenido-principal" class="flex-grow-1">
-        <div class="page-content-wrapper">
-            <div class="contenedor-info-usuario">
-                <?php if (!empty($page_error_message)): ?>
+    <main id="contenido-principal" class="flex-grow-1 py-4">
+        <div class="container">
+            <?php if (!empty($page_error_message)): ?>
+                <div class="alert alert-danger">
                     <?php echo $page_error_message; ?>
-                    <div class="text-center mt-3">
-                        <a href="<?php echo htmlspecialchars($_SESSION['pagina_anterior_afiliacion'] ?? 'crear_usu.php'); ?>" class="btn btn-primary">Volver</a>
-                    </div>
-                <?php else: ?>
-                    <div class="usuario-info-header">
-                        <p class="mb-0"><strong><?php echo $tipo_doc_nombre_display; ?>:</strong> <?php echo htmlspecialchars($doc_afiliado_get); ?></p>
-                    </div>
-                    <?php 
-                        if (!empty($modal_php_error_message_init)) {
-                            echo "<div class='alert alert-danger'>$modal_php_error_message_init</div>";
-                        }
-                        include 'modal_afiliacion_usu.php'; 
-                    ?>
-                <?php endif; ?>
-            </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="<?php echo htmlspecialchars($pagina_anterior_para_volver); ?>" class="btn btn-secondary">Volver</a>
+                </div>
+            <?php else: ?>
+                <?php 
+                    if (!empty($modal_php_error_message_init)) {
+                        echo "<div class='alert alert-warning'>$modal_php_error_message_init. El formulario puede no funcionar correctamente.</div>";
+                    }
+                    include 'modal_afiliacion_usu.php'; 
+                ?>
+            <?php endif; ?>
         </div>
     </main>
 
     <?php include '../include/footer.php'; ?>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/afiliacion_modal.js"></script>
 
-    <?php if (empty($page_error_message) && !empty($doc_afiliado_get) && !empty($id_tipo_doc_get_val)): ?>
+    <?php 
+    // El script para abrir el modal y manejar su cierre SÓLO se incluye si NO hay error de página
+    if (empty($page_error_message) && !empty($doc_afiliado_get) && !empty($id_tipo_doc_get_val)): 
+    ?>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const docUsuarioJS = '<?php echo addslashes(htmlspecialchars($doc_afiliado_get)); ?>';
             const tipoDocUsuarioJS = '<?php echo addslashes(htmlspecialchars($id_tipo_doc_get_val)); ?>';
-            const paginaAnteriorJS = '<?php echo addslashes(htmlspecialchars($_SESSION['pagina_anterior_afiliacion'] ?? "crear_usu.php")); ?>';
+            const paginaAnteriorJS = '<?php echo addslashes(htmlspecialchars($pagina_anterior_para_volver)); ?>'; 
             
             if (docUsuarioJS && tipoDocUsuarioJS && typeof abrirModalAfiliacion === 'function') {
                 abrirModalAfiliacion(docUsuarioJS, tipoDocUsuarioJS);
             } else {
-                console.error("No se pudo abrir el modal de afiliación automáticamente. Datos: ", docUsuarioJS, tipoDocUsuarioJS);
-                const errorDivModal = document.getElementById('modalAfiliacionGlobalError');
-                if(errorDivModal){
-                     errorDivModal.innerHTML = '<div class="alert alert-danger">Error al preparar el formulario de afiliación. Por favor, intente de nuevo o contacte a soporte.</div>';
-                } else if(document.querySelector('.contenedor-info-usuario')){
-                     document.querySelector('.contenedor-info-usuario').innerHTML += '<div class="alert alert-danger mt-3">Error al preparar el formulario de afiliación. Por favor, intente de nuevo o contacte a soporte.</div>';
+                console.error("Error crítico: No se pudo abrir el modal de afiliación o la función no está definida. Doc:", docUsuarioJS, "TipoDoc:", tipoDocUsuarioJS);
+                const mainContent = document.getElementById('contenido-principal');
+                if (mainContent) {
+                    const errorDivContainer = document.createElement('div');
+                    errorDivContainer.className = 'container mt-3';
+                    errorDivContainer.innerHTML = '<div class="alert alert-danger">Error crítico: No se pudo inicializar el formulario de afiliación. Por favor, <a href="' + paginaAnteriorJS + '" class="alert-link">intente de nuevo</a> o contacte a soporte.</div>';
+                    mainContent.insertBefore(errorDivContainer, mainContent.firstChild);
                 }
             }
 
@@ -217,7 +222,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_afiliacion_mod
         });
     </script>
     <?php 
-        unset($_SESSION['pagina_anterior_afiliacion']);
     endif; 
     ?>
 </body>

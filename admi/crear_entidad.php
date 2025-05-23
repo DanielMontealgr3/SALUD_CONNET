@@ -213,11 +213,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear Nueva Entidad - Administración</title>
-    <link rel="stylesheet" href="../css/estilo.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <?php include '../include/menu.php'; ?>
