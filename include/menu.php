@@ -18,36 +18,82 @@ $path_to_js_folder_php_context = "../js/";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú - SaludConnect</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <link rel="icon" type="image/png" href="<?php echo $path_to_img_folder_php_context; ?>loguito.png">
     <?php
     $estilo_rol_path = "";
-    if ($rol_usuario == 1 && file_exists('../admi/estilo.css')) { $estilo_rol_path = '../admi/estilo.css'; }
-    elseif ($rol_usuario == 2 && file_exists('../paci/estilos.css')) { $estilo_rol_path = '../paci/estilos.css'; }
-    elseif ($rol_usuario == 3 && file_exists('../farma/estilos.css')) { $estilo_rol_path = '../farma/estilos.css'; }
-    elseif ($rol_usuario == 4 && file_exists('../medi/estilos.css')) { $estilo_rol_path = '../medi/estilos.css'; }
+    if ($rol_usuario == 1 && file_exists( ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'admi/estilo.css')) { $estilo_rol_path = ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'admi/estilo.css'; }
+    elseif ($rol_usuario == 2 && file_exists( ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'paci/estilos.css')) { $estilo_rol_path = ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'paci/estilos.css'; }
+    elseif ($rol_usuario == 3 && file_exists( ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'farma/estilos.css')) { $estilo_rol_path = ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'farma/estilos.css'; }
+    elseif ($rol_usuario == 4 && file_exists( ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'medi/estilos.css')) { $estilo_rol_path = ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'medi/estilos.css'; }
+    
     if (!empty($estilo_rol_path)) { echo '<link rel="stylesheet" href="' . $estilo_rol_path . '?v=' . time() . '">'; }
+    else if (file_exists( ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'css/estilo.css')) { echo '<link rel="stylesheet" href="' . ($currentPage == 'inicio.php' || $currentPage == 'index.php' ? '' : '../') . 'css/estilo.css' . '?v=' . time() . '">'; }
     ?>
     <style>
+        body { padding-top: 62px; } 
+        .navbar-custom-blue { background-color: rgb(0, 117, 201) !important; }
         .navbar-custom-blue .navbar-brand img { max-height: 45px; width: auto; margin-right: 8px; }
         .navbar-custom-blue .navbar-brand { display: flex; align-items: center; font-weight: 500; color: #ffffff; }
-        .navbar-custom-blue .nav-link { color: #e0e0e0; padding: .6rem .8rem; margin: 0 .1rem; border-radius: .25rem; transition: background-color 0.2s ease, color 0.2s ease; }
+        .navbar-custom-blue .nav-link { 
+            color: #e0e0e0; 
+            padding: .6rem .8rem; 
+            margin: 0 .5rem; 
+            border-radius: .25rem; 
+            transition: background-color 0.2s ease, color 0.2s ease; 
+            font-size: 0.9rem;
+        }
         .navbar-custom-blue .nav-link:hover,
         .navbar-custom-blue .nav-link:focus { color: #fff; background-color: rgba(255,255,255,.12); }
         .navbar-custom-blue .nav-link.active { color: #fff !important; font-weight: 600 !important; background-color: rgba(255,255,255,.20); }
+        
         .navbar-custom-blue .nav-link.dropdown-toggle i.bi-person-circle { font-size: 1.7rem; vertical-align: middle; }
         .navbar-custom-blue .nav-link.dropdown-toggle { display: flex; align-items: center; padding-top: .4rem; padding-bottom: .4rem; }
-        .navbar-custom-blue .dropdown-toggle::after { display: none; }
-        .navbar-custom-blue .navbar-toggler { border-color: rgba(255,255,255,.45); }
-        .navbar-custom-blue .navbar-toggler-icon { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2.2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); }
-        .navbar-custom-blue .dropdown-menu { background-color: #005A9C; border: 1px solid rgba(0,0,0,0.15); border-radius: .3rem; margin-top: .6rem !important; font-size: .9rem; min-width: 220px; padding-top: 0; padding-bottom: 0; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); }
+        
+        .navbar-custom-blue .dropdown-toggle::after { margin-left: .4em; vertical-align: .1em; } 
+        .navbar-custom-blue li.dropdown > a.dropdown-toggle[href="#navbarDropdownUserMenu"]::after,
+        .navbar-custom-blue .nav-link.dropdown-toggle#navbarDropdownUserMenu::after { display: none; }
+
+        .navbar-custom-blue .navbar-toggler { border-color: rgba(255,255,255,.45); padding: .25rem .6rem;}
+        .navbar-custom-blue .navbar-toggler-icon { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2.2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); width: 1.3em; height: 1.3em;}
+        
+        .navbar-custom-blue .dropdown-menu { 
+            background-color: #005A9C; 
+            border: 1px solid rgba(0,0,0,0.15); 
+            border-radius: .3rem; 
+            margin-top: 0.8rem !important; 
+            font-size: .9rem; 
+            min-width: auto; 
+            padding-top: 0; 
+            padding-bottom: 0; 
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15); 
+        }
+        .navbar-custom-blue .dropdown-menu.dropdown-menu-end { 
+            margin-top: .6rem !important; 
+            min-width: 220px; 
+        }
+
         .navbar-custom-blue .dropdown-header-custom { padding: .8rem 1.2rem .5rem 1.2rem; color: #ffffff; font-weight: bold; font-size: 1rem; background-color: transparent; pointer-events: none; }
-        .navbar-custom-blue .dropdown-item { color: #f8f9fa; padding: .6rem 1.2rem; display: flex; align-items: center; font-size: 0.9rem; }
+        .navbar-custom-blue .dropdown-item { 
+            color: #f8f9fa; 
+            padding: .6rem 1.2rem; 
+            display: flex; 
+            align-items: center; 
+            font-size: 0.9rem; 
+        }
         .navbar-custom-blue .dropdown-item:hover,
         .navbar-custom-blue .dropdown-item:focus { color: #ffffff; background-color: rgba(255,255,255,.15); }
         .navbar-custom-blue .dropdown-item i.bi { margin-right: .8rem; font-size: 1rem; width: 1.3em; text-align: center; line-height: 1; }
         .navbar-custom-blue .dropdown-divider { border-top: 1px solid rgba(255,255,255,.2); margin: 0; }
+        
+        .navbar-custom-blue .dropdown-item.active, 
+        .navbar-custom-blue .dropdown-item:active {
+            color: #fff !important;
+            font-weight: 600 !important; 
+            background-color: rgba(255,255,255,.20);
+        }
     </style>
 </head>
 <body>
@@ -60,10 +106,37 @@ $path_to_js_folder_php_context = "../js/";
                     <ul class="navbar-nav ms-auto align-items-center">
                         <?php if ($rol_usuario == 1): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_usu.php">Usuarios</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_usu.php">Crear Usuario</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_entidades.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_entidades.php">Ver Entidades</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_entidad.php">Crear Entidad</a></li>
+                            
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_usu.php' || $currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownUsuarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Usuarios
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownUsuarios">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_usu.php">Ver Usuarios</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_usu.php">Crear Usuario</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_entidades.php' || $currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownEntidades" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Entidades
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownEntidades">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_entidades.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_entidades.php">Ver Entidades</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_entidad.php">Crear Entidad</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_horarios.php' || $currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownHorarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Horarios Medico
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownHorarios">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_horarios.php">Ver Horarios</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_horario.php">Crear Horario</a></li>
+                                </ul>
+                            </li>
+                            
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Alianzas</a></li>
                         <?php elseif ($rol_usuario == 2): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
@@ -73,15 +146,18 @@ $path_to_js_folder_php_context = "../js/";
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>mis_pedidos.php">Mis pedidos</a></li>
                         <?php elseif ($rol_usuario == 3): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'pedidos_pendientes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>pedidos_pendientes.php">Pedidos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inventario_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inventario_farma.php">Inventario</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'reportes_farma.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>reportes_farma.php">Reportes</a></li>
                         <?php elseif ($rol_usuario == 4): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
+<<<<<<< HEAD
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php">Citas</a></li>
+=======
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_medi.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas_medi.php">Citas</a></li>
+>>>>>>> main
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_orden.php">Crear ordenes</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_ordenes.php">Ver ordenes</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial.php">Historial paciente</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_paci.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial_paci.php">Historial paciente</a></li>
                         <?php endif; ?>
                         <?php if ($rol_usuario): ?>
                             <li class="nav-item dropdown">
@@ -105,7 +181,6 @@ $path_to_js_folder_php_context = "../js/";
     <div id="perfilModalPlaceholderContainerGlobal"></div>
 
     <script src="<?php echo $path_to_js_folder_php_context; ?>editar_perfil.js?v=<?php echo time(); ?>"></script>
-
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const perfilLink = document.getElementById('abrirPerfilModalLink');
@@ -117,7 +192,7 @@ $path_to_js_folder_php_context = "../js/";
                 e.preventDefault();
                 modalGlobalContainer.innerHTML = '<div class="d-flex justify-content-center align-items-center" style="position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 2000;"><div class="spinner-border text-light" role="status"></div></div>';
 
-                fetch('../include/modal_perfil.php')
+                fetch('<?php echo $path_to_include_folder_php_context; ?>modal_perfil.php')
                     .then(response => {
                         if (!response.ok) throw new Error('Fetch modal_perfil.php: ' + response.status + ' ' + response.statusText);
                         return response.text();
@@ -198,7 +273,7 @@ $path_to_js_folder_php_context = "../js/";
             if(saveButton) saveButton.disabled = true;
             if(messageDiv) messageDiv.innerHTML = '<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2"></div><span>Actualizando...</span></div>';
             
-            fetch('../include/mi_perfil.php', { method: 'POST', body: formData })
+            fetch('<?php echo $path_to_include_folder_php_context; ?>mi_perfil.php', { method: 'POST', body: formData })
             .then(response => response.text().then(text => {
                 try { return JSON.parse(text); } catch (e) { console.error("POST no JSON:", text); throw new Error("Respuesta servidor (update) no JSON.");}
             }))

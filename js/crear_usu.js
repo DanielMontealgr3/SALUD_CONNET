@@ -50,8 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (v.length < 5 || v.length > 100) return {isValid: false, message: "Debe tener 5-100 caracteres."};
             return {isValid: true};
         }, name: "Nombre", interacted: false},
-        {el: telUsu, req: false, fn: v => {
-            if (v === "") return {isValid: true};
+        {el: telUsu, req: true, fn: v => { 
+            if (v === "") return {isValid: false, message: "Teléfono es requerido."}; 
             if (!/^\d+$/.test(v)) return {isValid: false, message: "Solo números permitidos."};
             if (v.length < 7 || v.length > 11) return {isValid: false, message: "Debe tener 7-11 dígitos."};
             return {isValid: true};
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {el: correoUsu, req: true, fn: v => {
              if (v === "") return {isValid: false, message: "Correo es requerido."};
              if(!/^\S+@\S+\.\S+$/.test(v)) return {isValid: false, message: "Formato de correo inválido."};
+             if (v.length > 150) return {isValid: false, message: "Máx 150 caracteres."};
              return {isValid: true};
         }, name: "Correo", interacted: false},
         {el: idGen, req: true, fn: null, name: "Género", interacted: false}
@@ -68,13 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
         {el: idDepSelect, req: true, fn: null, name: "Departamento", interacted: false},
         {el: idMunSelect, req: true, fn: null, name: "Municipio", interacted: false},
         {el: idBarrioSelect, req: true, fn: null, name: "Barrio", interacted: false},
-        {el: direccionUsu, req: false, fn: v => v.length <= 200 || v === "", name: "Dirección", msg: "Máx 200 caracteres.", interacted: false},
+        {el: direccionUsu, req: false, fn: v => {
+            if (v === "") return {isValid: true};
+            if (v.length > 200) return {isValid: false, message: "Máx 200 caracteres."};
+            return {isValid: true};
+        }, name: "Dirección", interacted: false},
         {el: idRolSelect, req: true, fn: null, name: "Rol", interacted: false},
         {el: idEspecialidadSelect, req: false, fn: null, name: "Especialidad", interacted: false},
         {el: idEstSelect, req: true, fn: null, name: "Estado Usuario", interacted: false},
         {el: contrasena, req: true, fn: v => {
             if (v === "") return {isValid: false, message: "Contraseña es requerida."};
             if (!(v.length >= 8 && /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[\W_]/.test(v))) return {isValid: false, message: "Mín 8: Mayús, minús, núm, símb."};
+            if (v.length > 200) return {isValid: false, message: "Máx 200 caracteres."};
             return {isValid: true};
         }, name: "Contraseña", interacted: false}
     ];
@@ -85,6 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackEl.textContent = message;
         }
         
+        if (el.disabled) { 
+            el.classList.remove('is-valid', 'is-invalid');
+            if (feedbackEl) feedbackEl.textContent = '';
+            return;
+        }
+
         if (isValid && el.value.trim() !== "" && (el.dataset.interacted === "true" || forceShowError) ) {
             el.classList.remove('is-invalid');
             el.classList.add('is-valid');
@@ -92,30 +104,29 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('is-valid');
             el.classList.add('is-invalid');
         } else { 
-            el.classList.remove('is-valid');
-            el.classList.remove('is-invalid');
+            el.classList.remove('is-valid', 'is-invalid');
              if (feedbackEl) feedbackEl.textContent = '';
         }
     }
     
     function validateSingleField(fieldConfig, forceShowError = false) {
-        const { el, req, fn, name, msg } = fieldConfig;
-        if (!el) return true;
+        const { el, req, fn, name } = fieldConfig;
+        if (!el || el.disabled) return true; 
 
         let result = { isValid: true, message: "" };
         const val = el.value.trim();
 
-        if (req && val === "" && !el.disabled) {
+        if (req && val === "") {
             result = { isValid: false, message: `${name} es requerido.` };
-        } else if (val !== "" && fn) {
+        } else if (val !== "" && fn) { 
             const fnRes = fn(el.value); 
             if (typeof fnRes === 'object') { 
                 result = fnRes;
             } else { 
                 result.isValid = fnRes;
-                if (!fnRes) result.message = msg || `${name} inválido.`;
+                if (!fnRes) result.message = fieldConfig.msg || `${name} inválido.`;
             }
-        } else if (el.tagName === 'SELECT' && req && el.value === "" && !el.disabled){
+        } else if (el.tagName === 'SELECT' && req && el.value === "" ){
              result = { isValid: false, message: `${name} es requerido.` };
         }
         
@@ -126,21 +137,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateFormStep(stepFields, updateButton, forceShowAllErrors = false) {
         let isStepValid = true;
         stepFields.forEach(fieldConfig => {
-            if (forceShowAllErrors) fieldConfig.el.dataset.interacted = "true"; // Marcar como interactuado para forzar la muestra del error
+            if (forceShowAllErrors && fieldConfig.el) fieldConfig.el.dataset.interacted = "true"; 
             if (!validateSingleField(fieldConfig, forceShowAllErrors)) {
                 isStepValid = false;
             }
         });
 
         if(updateButton){
-            if(stepFields === camposPaso1 && btnSiguiente){
-                btnSiguiente.disabled = !isStepValid;
-                btnSiguiente.classList.toggle('btn-success', isStepValid);
-                btnSiguiente.classList.toggle('btn-secondary', !isStepValid);
-            } else if (stepFields === camposPaso2 && btnCrearUsuario){
-                btnCrearUsuario.disabled = !isStepValid;
-                btnCrearUsuario.classList.toggle('btn-success', isStepValid);
-                btnCrearUsuario.classList.toggle('btn-secondary', !isStepValid);
+            const targetButton = (stepFields === camposPaso1) ? btnSiguiente : btnCrearUsuario;
+            if (targetButton) {
+                targetButton.disabled = !isStepValid;
+                targetButton.classList.toggle('btn-success', isStepValid); 
+                targetButton.classList.toggle('btn-secondary', !isStepValid); 
             }
         }
         return isStepValid;
@@ -148,12 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (btnSiguiente) {
         btnSiguiente.addEventListener('click', () => {
-            if (validateFormStep(camposPaso1, true, true)) { // Forzar muestra de errores en paso 1
+            if (validateFormStep(camposPaso1, true, true)) { 
                 paso1Div.style.display = 'none';
                 paso2Div.style.display = 'block';
-                validateFormStep(camposPaso2, true, false); // Validar paso 2, pero no forzar errores aún
+                validateFormStep(camposPaso2, true, false); 
             } else {
-                 alert('Por favor, corrija los errores en el Paso 1.');
+                 const firstInvalid = camposPaso1.find(f => f.el && f.el.classList.contains('is-invalid'));
+                 if(firstInvalid && firstInvalid.el) firstInvalid.el.focus();
             }
         });
     }
@@ -163,9 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
             paso2Div.style.display = 'none';
             paso1Div.style.display = 'block';
             validateFormStep(camposPaso1, true, false); 
-            btnCrearUsuario.disabled = true; 
-            btnCrearUsuario.classList.remove('btn-success');
-            btnCrearUsuario.classList.add('btn-secondary');
+            if(btnCrearUsuario) {
+                btnCrearUsuario.disabled = true; 
+                btnCrearUsuario.classList.remove('btn-success');
+                btnCrearUsuario.classList.add('btn-secondary');
+            }
         });
     }
 
@@ -176,11 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!paso1Valido || !paso2Valido) {
                 event.preventDefault();
-                alert('Por favor, corrija los errores en el formulario.');
-                if (!paso1Valido && paso2Div.style.display !== 'none') {
+                if (!paso1Valido && paso2Div.style.display !== 'none') { 
                     paso2Div.style.display = 'none';
                     paso1Div.style.display = 'block';
                     validateFormStep(camposPaso1, true, true); 
+                    const firstInvalidP1 = camposPaso1.find(f => f.el && f.el.classList.contains('is-invalid'));
+                    if(firstInvalidP1 && firstInvalidP1.el) firstInvalidP1.el.focus();
+
+                } else if (!paso2Valido) {
+                    const firstInvalidP2 = camposPaso2.find(f => f.el && f.el.classList.contains('is-invalid'));
+                    if(firstInvalidP2 && firstInvalidP2.el) firstInvalidP2.el.focus();
                 }
             }
         });
@@ -199,9 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     validateFormStep(camposPaso2, true, false); 
                 }
             });
-             // Adicionalmente, para inputs de texto, validar en blur si no hubo 'input' (ej. si pegan texto)
             if (fieldConfig.el.type === 'text' || fieldConfig.el.type === 'email' || fieldConfig.el.type === 'password') {
-                fieldConfig.el.addEventListener('blur', () => {
+                fieldConfig.el.addEventListener('blur', () => { 
                     fieldConfig.el.dataset.interacted = "true";
                     validateSingleField(fieldConfig, true);
                     if(paso1Div.style.display !== 'none') validateFormStep(camposPaso1, true, false);
@@ -216,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let valorEncontrado = false;
         opciones.forEach(opcion => {
             const optionTag = document.createElement('option');
-            optionTag.value = String(opcion.id);
+            optionTag.value = String(opcion.id); 
             optionTag.textContent = opcion.nombre;
             if (valorActual !== null && String(valorActual) === String(opcion.id)) {
                  optionTag.selected = true; valorEncontrado = true;
@@ -229,43 +244,44 @@ document.addEventListener('DOMContentLoaded', () => {
         setFieldValidationUI(selectElement, true, "", false); 
     }
 
-    function resetSelect(selectElement, placeholder, tooltip) {
-         setFieldValidationUI(selectElement, true, "", false); 
+    function resetSelect(selectElement, placeholder, tooltipIfDisabled) {
          selectElement.innerHTML = `<option value="">${placeholder}</option>`;
          selectElement.disabled = true;
-         selectElement.title = tooltip;
+         selectElement.title = tooltipIfDisabled;
+         setFieldValidationUI(selectElement, true, "", false);
+         selectElement.dataset.interacted = "false"; 
     }
 
     if (idDepSelect) {
         idDepSelect.addEventListener('change', function() {
-            this.dataset.interacted = "true"; // Marcar como interactuado
+            this.dataset.interacted = "true";
             const idDep = this.value;
+            resetSelect(idMunSelect, 'Seleccione departamento...', 'Seleccione un departamento primero');
             resetSelect(idBarrioSelect, 'Seleccione municipio...', 'Seleccione un municipio primero');
-            idBarrioSelect.dataset.interacted = "false"; // Resetear interacción para barrio
+            
             if (idDep) {
                  idMunSelect.disabled = false; idMunSelect.title = '';
-                 idMunSelect.dataset.interacted = "false"; // Resetear interacción
                  idMunSelect.innerHTML = '<option value="">Cargando municipios...</option>';
                  fetch(`../ajax/get_municipios.php?id_dep=${encodeURIComponent(idDep)}`)
-                    .then(response => response.ok ? response.json() : Promise.reject(`Error ${response.status}`))
+                    .then(response => response.ok ? response.json() : Promise.reject({status: response.status, text: response.statusText}))
                     .then(data => {
                         if (data && Array.isArray(data)) {
-                            if (data.length > 0) { cargarOpciones(idMunSelect, data, 'Seleccione municipio...', null); }
-                            else { resetSelect(idMunSelect, 'No hay municipios', 'No hay municipios para este departamento'); }
+                            const valorMunActual = document.getElementById('id_mun').dataset.valorPhp || null;
+                            cargarOpciones(idMunSelect, data, 'Seleccione municipio...', valorMunActual);
+                            if(valorMunActual) idMunSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            document.getElementById('id_mun').dataset.valorPhp = ''; 
                         } else { throw new Error('Formato de respuesta inesperado (municipios)'); }
-                        idMunSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     })
                     .catch(error => {
-                        console.error(`Error cargando municipios: ${error}`);
-                        resetSelect(idMunSelect, 'Error al cargar', 'Error de red, servidor o formato');
-                        idMunSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.error(`Error cargando municipios: ${error.status} ${error.text}`, error);
+                        resetSelect(idMunSelect, 'Error al cargar', 'Error de red o servidor');
+                    })
+                    .finally(() => { 
+                        validateFormStep(camposPaso2, true, false);
                     });
-            } else {
-                resetSelect(idMunSelect, 'Seleccione departamento...', 'Seleccione un departamento primero');
-                 idMunSelect.dataset.interacted = "false";
-                idMunSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            } else { 
+                validateFormStep(camposPaso2, true, false); 
             }
-            validateFormStep(camposPaso2, true, false); // Revalidar el paso 2
         });
     }
 
@@ -273,112 +289,120 @@ document.addEventListener('DOMContentLoaded', () => {
         idMunSelect.addEventListener('change', function() {
             this.dataset.interacted = "true";
             const idMun = this.value;
+            resetSelect(idBarrioSelect, 'Seleccione municipio...', 'Seleccione un municipio primero');
+
             if (idMun && !idMunSelect.disabled) {
                 idBarrioSelect.disabled = false; idBarrioSelect.title = '';
-                idBarrioSelect.dataset.interacted = "false";
                 idBarrioSelect.innerHTML = '<option value="">Cargando barrios...</option>';
                 fetch(`../ajax/get_barrios.php?id_mun=${encodeURIComponent(idMun)}`)
-                    .then(response => response.ok ? response.json() : Promise.reject(`Error ${response.status}`))
+                    .then(response => response.ok ? response.json() : Promise.reject({status: response.status, text: response.statusText}))
                     .then(data => {
                          if (data && Array.isArray(data)) {
-                            if (data.length > 0) { cargarOpciones(idBarrioSelect, data, 'Seleccione barrio...', null); }
-                            else { resetSelect(idBarrioSelect, 'No hay barrios', 'No hay barrios para este municipio'); }
+                            const valorBarrioActual = document.getElementById('id_barrio').dataset.valorPhp || null;
+                            cargarOpciones(idBarrioSelect, data, 'Seleccione barrio...', valorBarrioActual);
+                            document.getElementById('id_barrio').dataset.valorPhp = '';
                         } else { throw new Error('Formato de respuesta inesperado (barrios)'); }
                     })
                     .catch(error => {
-                         console.error(`Error cargando barrios: ${error}`);
-                         resetSelect(idBarrioSelect, 'Error al cargar', 'Error de red, servidor o formato');
+                         console.error(`Error cargando barrios: ${error.status} ${error.text}`, error);
+                         resetSelect(idBarrioSelect, 'Error al cargar', 'Error de red o servidor');
+                    })
+                    .finally(() => {
+                        validateFormStep(camposPaso2, true, false);
                     });
-            } else {
-                 resetSelect(idBarrioSelect, 'Seleccione municipio...', 'Seleccione un municipio primero');
-                 idBarrioSelect.dataset.interacted = "false";
+            } else { 
+                validateFormStep(camposPaso2, true, false);
             }
-            validateFormStep(camposPaso2, true, false);
         });
     }
 
     function manejarEspecialidad() {
         if (!idRolSelect || !idEspecialidadSelect) return;
         const selectedRolId = parseInt(idRolSelect.value);
-        setFieldValidationUI(idEspecialidadSelect, true, "", false);
-        idEspecialidadSelect.title = '';
-        
         const espConfig = camposPaso2.find(f => f.el === idEspecialidadSelect);
 
         if (selectedRolId === ID_ROL_MEDICO_JS) {
             idEspecialidadSelect.disabled = false;
-            if(espConfig) espConfig.req = true;
+            idEspecialidadSelect.title = 'Seleccione especialidad';
+            if(espConfig) espConfig.req = true; 
+
             let noAplicaOption = null;
             for (let option of idEspecialidadSelect.options) {
                 if (parseInt(option.value) === ID_ESPECIALIDAD_NO_APLICA_JS) {
                     option.style.display = 'none'; noAplicaOption = option;
                 } else { option.style.display = ''; }
             }
-            if (noAplicaOption && noAplicaOption.selected) { idEspecialidadSelect.value = ""; }
+            if (idEspecialidadSelect.value === String(ID_ESPECIALIDAD_NO_APLICA_JS)) {
+                idEspecialidadSelect.value = "";
+            }
             const placeholderOption = idEspecialidadSelect.querySelector('option[value=""]');
             if (placeholderOption) placeholderOption.textContent = "Seleccione especialidad (*)";
-            if (idEspecialidadSelect.value === "" || parseInt(idEspecialidadSelect.value || 0) === ID_ESPECIALIDAD_NO_APLICA_JS) {
-                 idEspecialidadSelect.value = "";
+
+        } else if (idRolSelect.value !== "") { 
+            idEspecialidadSelect.disabled = true; 
+            idEspecialidadSelect.title = 'No aplica para este rol';
+            if(espConfig) espConfig.req = false; 
+            
+            let noAplicaOption = idEspecialidadSelect.querySelector(`option[value="${ID_ESPECIALIDAD_NO_APLICA_JS}"]`);
+            if (noAplicaOption) {
+                noAplicaOption.selected = true;
+                noAplicaOption.style.display = '';
+            } else { 
+                const opt = document.createElement('option');
+                opt.value = ID_ESPECIALIDAD_NO_APLICA_JS;
+                opt.text = "No Aplica"; 
+                opt.selected = true;
+                idEspecialidadSelect.add(opt, 0);
             }
-        } else if (idRolSelect.value !== "") {
-            idEspecialidadSelect.disabled = true; idEspecialidadSelect.title = 'Aplica solo para rol Médico';
-            if(espConfig) espConfig.req = false;
-            const noAplicaValueString = String(ID_ESPECIALIDAD_NO_APLICA_JS);
-            let noAplicaOptionExists = false;
-            for (let option of idEspecialidadSelect.options) {
-                if (option.value === noAplicaValueString) {
-                    option.selected = true; option.style.display = ''; noAplicaOptionExists = true;
-                } else { option.style.display = 'none';}
+             for (let option of idEspecialidadSelect.options) { 
+                if (parseInt(option.value) !== ID_ESPECIALIDAD_NO_APLICA_JS && option.value !== "") {
+                    option.style.display = 'none';
+                }
             }
-            if (!noAplicaOptionExists) {
-                let placeholderOpt = idEspecialidadSelect.querySelector('option[value=""]');
-                if (placeholderOpt) { placeholderOpt.textContent = "No aplica"; idEspecialidadSelect.value = "";}
-                else { idEspecialidadSelect.value = ""; }
-            } else { idEspecialidadSelect.value = noAplicaValueString; }
-        } else {
-            idEspecialidadSelect.disabled = true; idEspecialidadSelect.title = 'Seleccione un rol primero';
+            setFieldValidationUI(idEspecialidadSelect, true, "", false); 
+        } else { 
+            idEspecialidadSelect.disabled = true; 
+            idEspecialidadSelect.title = 'Seleccione un rol primero';
             if(espConfig) espConfig.req = false;
             idEspecialidadSelect.value = "";
             const placeholderOption = idEspecialidadSelect.querySelector('option[value=""]');
             if (placeholderOption) placeholderOption.textContent = "Seleccione rol...";
-            for (let option of idEspecialidadSelect.options) { option.style.display = ''; }
+            for (let option of idEspecialidadSelect.options) { option.style.display = ''; } 
+            setFieldValidationUI(idEspecialidadSelect, true, "", false); 
         }
-        // Si el rol cambia, la especialidad podría dejar de ser requerida,
-        // así que se limpia su validación si no es Médico
-        if(selectedRolId !== ID_ROL_MEDICO_JS) setFieldValidationUI(idEspecialidadSelect, true, "", false);
     }
 
     if (idRolSelect) { 
         idRolSelect.addEventListener('change', () => {
             idRolSelect.dataset.interacted = "true";
             manejarEspecialidad();
-            validateFormStep(camposPaso2, true, false);
+            validateFormStep(camposPaso2, true, false); 
         });
     }
     
-    if (idDepSelect && idDepSelect.value) {
-        const idMunActualPHP = idMunSelect.value; 
-        const idBarrioActualPHP = idBarrioSelect.value;
+    if (idMunSelect && idMunSelect.value) idMunSelect.dataset.valorPhp = idMunSelect.value;
+    if (idBarrioSelect && idBarrioSelect.value) idBarrioSelect.dataset.valorPhp = idBarrioSelect.value;
 
-        if (idMunActualPHP) {
-            if (idBarrioActualPHP && idBarrioSelect.options.length > 1) {
-               // Ya cargado
-            } else if (idBarrioSelect.options.length <=1){ 
-                 setTimeout(() => idMunSelect.dispatchEvent(new Event('change', {bubbles: true})), 0);
-            }
-        } else if (idMunSelect.options.length <=1 ){ 
-            setTimeout(() => idDepSelect.dispatchEvent(new Event('change', {bubbles:true})), 0);
-        }
-    } else {
+    if (idDepSelect && idDepSelect.value) {
+        idDepSelect.dispatchEvent(new Event('change', {bubbles:true}));
+    } else { 
         if(idMunSelect) resetSelect(idMunSelect, 'Seleccione departamento...', 'Seleccione un departamento primero');
         if(idBarrioSelect) resetSelect(idBarrioSelect, 'Seleccione municipio...', 'Seleccione un municipio primero');
     }
+    
     manejarEspecialidad();
-    // No validar al inicio para no mostrar errores
-    btnSiguiente.disabled = true; 
-    btnSiguiente.classList.remove('btn-success');
-    btnSiguiente.classList.add('btn-secondary');
-    btnCrearUsuario.disabled = true;
-    btnCrearUsuario.classList.remove('btn-success');
-    btnCrearUsuario.classList.add('btn-secondary');
+
+    if(btnSiguiente){
+        btnSiguiente.disabled = true; 
+        btnSiguiente.classList.remove('btn-success');
+        btnSiguiente.classList.add('btn-secondary');
+    }
+    if(btnCrearUsuario){
+        btnCrearUsuario.disabled = true;
+        btnCrearUsuario.classList.remove('btn-success');
+        btnCrearUsuario.classList.add('btn-secondary');
+    }
+    validateFormStep(camposPaso1, true, false);
+    validateFormStep(camposPaso2, true, false);
+
 });
