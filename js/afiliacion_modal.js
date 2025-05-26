@@ -48,13 +48,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function resetModalForm() {
         formAfiliacionModal.reset();
+        
+        tipoEntidadSelect.value = '';
+        tipoEntidadSelect.classList.remove('is-invalid', 'is-valid');
+        document.getElementById('error-tipo_entidad_afiliacion_modal').textContent = '';
+
+
         contenedorEpsSelect.style.display = 'none';
         selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
         selectEps.removeAttribute('required');
+        selectEps.classList.remove('is-invalid', 'is-valid');
+        document.getElementById('error-entidad_especifica_eps_modal').textContent = '';
+
 
         contenedorArlSelect.style.display = 'none';
         selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
         selectArl.removeAttribute('required');
+        selectArl.classList.remove('is-invalid', 'is-valid');
+        document.getElementById('error-entidad_especifica_arl_modal').textContent = '';
+
         
         docAfiliadoModalDisplay.value = '';
         docAfiliadoModalHidden.value = '';
@@ -62,30 +74,57 @@ document.addEventListener('DOMContentLoaded', function () {
         modalMessageDiv.innerHTML = '';
         modalGlobalErrorDiv.innerHTML = '';
         
-        clearValidationErrorsModal();
+        
+        const regimenModalSelect = document.getElementById('id_regimen_modal');
+        if(regimenModalSelect) {
+            regimenModalSelect.value = '';
+            regimenModalSelect.classList.remove('is-invalid', 'is-valid');
+            document.getElementById('error-id_regimen_modal').textContent = '';
+        }
+
         const estadoModalSelect = document.getElementById('id_estado_modal');
-        if (estadoModalSelect) estadoModalSelect.value = '1'; 
-        tipoEntidadSelect.value = '';
+        if (estadoModalSelect) {
+            estadoModalSelect.value = '1';
+            estadoModalSelect.classList.remove('is-invalid', 'is-valid');
+            document.getElementById('error-id_estado_modal').textContent = '';
+        }
     }
 
     function clearValidationErrorsModal() {
-        const errorMessages = formAfiliacionModal.querySelectorAll('.invalid-feedback');
-        errorMessages.forEach(msg => { msg.textContent = ''; });
-        const formControls = formAfiliacionModal.querySelectorAll('.form-control, .form-select');
-        formControls.forEach(control => { control.classList.remove('is-invalid'); });
+        formAfiliacionModal.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        formAfiliacionModal.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+        formAfiliacionModal.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
     }
 
-    function showValidationErrorModal(elementId, message) {
+    function showValidationErrorModal(elementId, message, isGlobal = false) {
+        if (isGlobal && modalGlobalErrorDiv) {
+            modalGlobalErrorDiv.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+            return;
+        }
+
         const element = document.getElementById(elementId);
         const errorDiv = document.getElementById('error-' + elementId);
         
         if (element) {
              element.classList.add('is-invalid');
+             element.classList.remove('is-valid');
         } else { console.warn(`Elemento con ID '${elementId}' no encontrado para mostrar error.`); }
 
         if (errorDiv) {
             errorDiv.textContent = message;
         } else { console.warn(`Div de feedback 'error-${elementId}' no encontrado.`); }
+    }
+
+    function markAsValid(elementId) {
+        const element = document.getElementById(elementId);
+        const errorDiv = document.getElementById('error-' + elementId);
+        if(element) {
+            element.classList.remove('is-invalid');
+            element.classList.add('is-valid');
+        }
+        if(errorDiv) {
+            errorDiv.textContent = '';
+        }
     }
     
     window.abrirModalAfiliacion = function (docUsuario, idTipoDoc) {
@@ -93,6 +132,11 @@ document.addEventListener('DOMContentLoaded', function () {
         docAfiliadoModalDisplay.value = docUsuario;
         docAfiliadoModalHidden.value = docUsuario;
         idTipoDocModalHidden.value = idTipoDoc;
+        
+        // Para pacientes, podríamos preseleccionar EPS y ocultar ARL.
+        // Esta lógica podría expandirse si se pasa el rol del usuario.
+        // Por ahora, se deja manual.
+
         if (modalAfiliacionInstance) {
             modalAfiliacionInstance.show();
         } else {
@@ -107,20 +151,26 @@ document.addEventListener('DOMContentLoaded', function () {
         contenedorEpsSelect.style.display = 'none';
         selectEps.innerHTML = '<option value="">Seleccione EPS...</option>';
         selectEps.removeAttribute('required');
+        selectEps.classList.remove('is-invalid', 'is-valid');
+        document.getElementById('error-entidad_especifica_eps_modal').textContent = '';
+
 
         contenedorArlSelect.style.display = 'none';
         selectArl.innerHTML = '<option value="">Seleccione ARL...</option>';
         selectArl.removeAttribute('required');
+        selectArl.classList.remove('is-invalid', 'is-valid');
+        document.getElementById('error-entidad_especifica_arl_modal').textContent = '';
 
         modalMessageDiv.innerHTML = '';
-        clearValidationErrorsModal();
+        // No limpiar todos los errores de validación aquí, solo los específicos de EPS/ARL
 
         if (tipo === 'eps') {
+            markAsValid('tipo_entidad_afiliacion_modal');
             contenedorEpsSelect.style.display = 'block';
             selectEps.setAttribute('required', 'required');
             selectEps.innerHTML = '<option value="">Cargando EPS...</option>';
             
-            fetch('../ajax/get_eps.php') 
+            fetch('../ajax/get_eps.php')
                 .then(response => {
                     if (!response.ok) throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
@@ -131,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         data.data.forEach(eps => {
                             const option = document.createElement('option');
                             option.value = eps.id;
-                            option.textContent = eps.nombre; 
+                            option.textContent = eps.nombre;
                             selectEps.appendChild(option);
                         });
                     } else {
@@ -145,11 +195,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error al cargar la lista de EPS: ${error.message}.</div>`;
                 });
         } else if (tipo === 'arl') {
+            markAsValid('tipo_entidad_afiliacion_modal');
             contenedorArlSelect.style.display = 'block';
             selectArl.setAttribute('required', 'required');
             selectArl.innerHTML = '<option value="">Cargando ARL...</option>';
 
-            fetch('../ajax/get_arl.php') 
+            fetch('../ajax/get_arl.php')
                 .then(response => {
                     if (!response.ok) throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
@@ -159,8 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success && data.data && data.data.length > 0) {
                         data.data.forEach(arl_item => {
                             const option = document.createElement('option');
-                            option.value = arl_item.id; 
-                            option.textContent = arl_item.nombre; 
+                            option.value = arl_item.id;
+                            option.textContent = arl_item.nombre;
                            selectArl.appendChild(option);
                         });
                     } else {
@@ -173,31 +224,58 @@ document.addEventListener('DOMContentLoaded', function () {
                     selectArl.innerHTML = '<option value="">Error al cargar ARL</option>';
                     if(modalMessageDiv) modalMessageDiv.innerHTML = `<div class="alert alert-danger">Error al cargar la lista de ARL: ${error.message}.</div>`;
                 });
+        } else {
+            // Si se deselecciona, se muestra error si es requerido
+             if (tipoEntidadSelect.hasAttribute('required')) {
+                showValidationErrorModal('tipo_entidad_afiliacion_modal', 'Debe seleccionar un tipo de entidad.');
+            }
         }
     });
+
+    [selectEps, selectArl, document.getElementById('id_regimen_modal'), document.getElementById('id_estado_modal')].forEach(selectField => {
+        if(selectField) {
+            selectField.addEventListener('change', function() {
+                if (this.value) {
+                    markAsValid(this.id);
+                } else {
+                    if (this.hasAttribute('required')) { // Solo mostrar error si es requerido y está vacío
+                         showValidationErrorModal(this.id, `Debe seleccionar una opción para ${this.previousElementSibling.textContent.replace('(*)', '').trim()}.`);
+                    }
+                }
+            });
+        }
+    });
+
 
     formAfiliacionModal.addEventListener('submit', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        clearValidationErrorsModal();
+        clearValidationErrorsModal(); 
         modalMessageDiv.innerHTML = '';
+        if(modalGlobalErrorDiv) modalGlobalErrorDiv.innerHTML = '';
         let isValid = true;
 
-        if (!docAfiliadoModalHidden.value.trim()) { 
-            modalGlobalErrorDiv.innerHTML = "<div class='alert alert-danger'>Error: Documento del afiliado no especificado.</div>";
+        if (!docAfiliadoModalHidden.value.trim()) {
+            showValidationErrorModal('', 'Error: Documento del afiliado no especificado.', true);
             isValid = false; 
         }
         if (!tipoEntidadSelect.value) {
             showValidationErrorModal('tipo_entidad_afiliacion_modal', 'Debe seleccionar un tipo de entidad.');
             isValid = false;
         } else {
+            markAsValid('tipo_entidad_afiliacion_modal');
             if (tipoEntidadSelect.value === 'eps' && !selectEps.value) {
                 showValidationErrorModal('entidad_especifica_eps_modal', 'Debe seleccionar una EPS específica.');
                 isValid = false;
+            } else if (tipoEntidadSelect.value === 'eps') {
+                 markAsValid('entidad_especifica_eps_modal');
             }
+
             if (tipoEntidadSelect.value === 'arl' && !selectArl.value) {
                 showValidationErrorModal('entidad_especifica_arl_modal', 'Debe seleccionar una ARL específica.');
                 isValid = false;
+            } else if (tipoEntidadSelect.value === 'arl') {
+                markAsValid('entidad_especifica_arl_modal');
             }
         }
         const regimenModal = document.getElementById('id_regimen_modal');
@@ -206,10 +284,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (regimenModal && !regimenModal.value) {
             showValidationErrorModal('id_regimen_modal', 'Debe seleccionar un régimen.');
             isValid = false;
+        } else if (regimenModal) {
+            markAsValid('id_regimen_modal');
         }
+
         if (estadoModal && !estadoModal.value) {
             showValidationErrorModal('id_estado_modal', 'Debe seleccionar un estado de afiliación.');
             isValid = false;
+        } else if (estadoModal) {
+             markAsValid('id_estado_modal');
         }
 
         if (isValid) {
@@ -219,13 +302,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData(formAfiliacionModal);
             formData.append('guardar_afiliacion_modal_submit', '1');
 
-            fetch(window.location.pathname + window.location.search, { 
+            fetch(window.location.pathname + window.location.search, {
                 method: 'POST',
                 body: formData
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error HTTP ${response.status} al guardar: ${response.statusText}`);
+                    return response.text().then(text => { throw new Error(`Error HTTP ${response.status} al guardar: ${text || response.statusText}`); });
                 }
                 return response.json();
             })
@@ -233,8 +316,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     modalMessageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
                     setTimeout(() => {
-                        if (modalAfiliacionInstance) modalAfiliacionInstance.hide(); 
-                    }, 2000);
+                        if (modalAfiliacionInstance) modalAfiliacionInstance.hide();
+                    }, 1500);
                 } else {
                     modalMessageDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Ocurrió un error desconocido al guardar la afiliación.'}</div>`;
                 }
@@ -248,7 +331,9 @@ document.addEventListener('DOMContentLoaded', function () {
                  btnGuardarAfiliacionModal.innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar Afiliación';
             });
         } else {
-             modalMessageDiv.innerHTML = `<div class="alert alert-warning">Por favor, corrija los campos marcados.</div>`;
+             if(modalMessageDiv && !modalMessageDiv.innerHTML && modalGlobalErrorDiv && !modalGlobalErrorDiv.innerHTML) {
+                modalMessageDiv.innerHTML = `<div class="alert alert-warning">Por favor, corrija los campos marcados.</div>`;
+             }
         }
     });
 });
