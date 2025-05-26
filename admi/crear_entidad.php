@@ -1,6 +1,4 @@
 <?php
-// MANTENER TODO EL BLOQUE PHP DE LA RESPUESTA ANTERIOR AQUÍ
-// (includes, session, conexión, funciones de validación, procesamiento POST)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -45,7 +43,6 @@ $nom_gerente_ips_val = $_POST['nom_gerente_ips'] ?? '';
 $tel_ips_val = $_POST['tel_ips'] ?? '';
 $correo_ips_val = $_POST['correo_ips'] ?? '';
 
-// Carga inicial de Departamentos
 if ($con) {
     try {
         $stmt_dep = $con->query("SELECT id_dep, nom_dep FROM departamento ORDER BY nom_dep ASC");
@@ -57,15 +54,19 @@ if ($con) {
     $php_error_message = "<div class='alert alert-danger'>Error de conexión inicial a la base de datos.</div>";
 }
 
-// Funciones de Validación PHP
 function validar_nit_php($nit) {
     if (empty($nit)) return "El NIT es obligatorio.";
     if (!ctype_digit($nit)) return "El NIT debe contener solo números.";
+    if (strlen($nit) < 7) return "El NIT debe tener al menos 7 dígitos.";
     return true;
 }
 function validar_nombre_php($nombre, $campo = "Nombre") {
     if (empty($nombre)) return "El $campo es obligatorio.";
-    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u', $nombre)) return "El $campo solo debe contener letras y espacios.";
+    if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.]+$/u', $nombre)) return "El $campo solo debe contener letras, puntos y espacios.";
+    return true;
+}
+function validar_direccion_php($direccion, $campo = "Dirección"){
+    if (empty($direccion)) return "La $campo es obligatoria.";
     return true;
 }
 function validar_telefono_php($telefono) {
@@ -80,7 +81,6 @@ function validar_correo_php($correo) {
     return true;
 }
 
-// Procesamiento del Formulario POST
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
     if (!$con) {
         $conex_db_temp = new database();
@@ -107,6 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
 
                 $val_nit = validar_nit_php($nit_farm); if ($val_nit !== true) $errores_validacion[] = $val_nit;
                 $val_nom = validar_nombre_php($nom_farm, "Nombre Farmacia"); if ($val_nom !== true) $errores_validacion[] = $val_nom;
+                $val_dir = validar_direccion_php($direc_farm); if ($val_dir !== true) $errores_validacion[] = $val_dir;
                 if (!empty($nom_gerente_farm)) { $val_gerente = validar_nombre_php($nom_gerente_farm, "Nombre Gerente"); if ($val_gerente !== true) $errores_validacion[] = $val_gerente; }
                 if (!empty($tel_farm)) { $val_tel = validar_telefono_php($tel_farm); if ($val_tel !== true) $errores_validacion[] = $val_tel; }
                 if (!empty($correo_farm)) { $val_correo = validar_correo_php($correo_farm); if ($val_correo !== true) $errores_validacion[] = $val_correo; }
@@ -116,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
                     $stmt = $con->prepare($sql);
                     $params_farm = [
                         ':nit' => $nit_farm, ':nombre' => $nom_farm,
-                        ':direccion' => $direc_farm ?: null, ':gerente' => $nom_gerente_farm ?: null,
+                        ':direccion' => $direc_farm, ':gerente' => $nom_gerente_farm ?: null,
                         ':telefono' => $tel_farm ?: null, ':correo' => $correo_farm ?: null
                     ];
                     $stmt->execute($params_farm);
@@ -132,6 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
 
                 $val_nit = validar_nit_php($nit_eps); if ($val_nit !== true) $errores_validacion[] = $val_nit;
                 $val_nom = validar_nombre_php($nombre_eps, "Nombre EPS"); if ($val_nom !== true) $errores_validacion[] = $val_nom;
+                $val_dir = validar_direccion_php($direc_eps); if ($val_dir !== true) $errores_validacion[] = $val_dir;
                 if (!empty($nom_gerente_eps)) { $val_gerente = validar_nombre_php($nom_gerente_eps, "Nombre Gerente"); if ($val_gerente !== true) $errores_validacion[] = $val_gerente; }
                 if (!empty($telefono_eps)) { $val_tel = validar_telefono_php($telefono_eps); if ($val_tel !== true) $errores_validacion[] = $val_tel; }
                 if (!empty($correo_eps)) { $val_correo = validar_correo_php($correo_eps); if ($val_correo !== true) $errores_validacion[] = $val_correo; }
@@ -141,7 +143,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
                     $stmt = $con->prepare($sql);
                     $params_eps = [
                         ':nit' => $nit_eps, ':nombre' => $nombre_eps,
-                        ':direccion' => $direc_eps ?: null, ':gerente' => $nom_gerente_eps ?: null,
+                        ':direccion' => $direc_eps, ':gerente' => $nom_gerente_eps ?: null,
                         ':telefono' => $telefono_eps ?: null, ':correo' => $correo_eps ?: null
                     ];
                     $stmt->execute($params_eps);
@@ -158,7 +160,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
 
                 $val_nit = validar_nit_php($nit_ips_post); if ($val_nit !== true) $errores_validacion[] = $val_nit;
                 $val_nom = validar_nombre_php($nom_ips_post, "Nombre IPS"); if ($val_nom !== true) $errores_validacion[] = $val_nom;
-                if (empty($ubicacion_mun_ips)) $errores_validacion[] = "La ubicación (municipio) es obligatoria para IPS.";
+                $val_dir = validar_direccion_php($direc_ips_post, "Dirección (Detalle)"); if ($val_dir !== true) $errores_validacion[] = $val_dir;
+                if (empty($ubicacion_mun_ips)) $errores_validacion[] = "El municipio de ubicación es obligatorio para IPS.";
                 else if(!ctype_digit($ubicacion_mun_ips)) $errores_validacion[] = "El valor del municipio no es válido.";
                 if (!empty($nom_gerente_ips_post)) { $val_gerente = validar_nombre_php($nom_gerente_ips_post, "Nombre Gerente"); if ($val_gerente !== true) $errores_validacion[] = $val_gerente; }
                 if (!empty($tel_ips_post)) { $val_tel = validar_telefono_php($tel_ips_post); if ($val_tel !== true) $errores_validacion[] = $val_tel; }
@@ -169,7 +172,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
                     $stmt = $con->prepare($sql);
                     $params_ips = [
                         ':nit_param' => $nit_ips_post, ':nombre_param' => $nom_ips_post,
-                        ':direccion_param' => $direc_ips_post ?: null, ':gerente_param' => $nom_gerente_ips_post ?: null,
+                        ':direccion_param' => $direc_ips_post, ':gerente_param' => $nom_gerente_ips_post ?: null,
                         ':telefono_param' => $tel_ips_post ?: null, ':correo_param' => $correo_ips_post ?: null,
                         ':municipio_param' => $ubicacion_mun_ips
                     ];
@@ -214,6 +217,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
 <html lang="es">
 <head>
     <title>Crear Nueva Entidad - Administración</title>
+    <link rel="stylesheet" href="../css/styles_admin.css">
 </head>
 <body>
     <?php include '../include/menu.php'; ?>
@@ -221,21 +225,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
              <div class="form-container-entidad mx-auto d-flex flex-column flex-grow-1">
                 <h3 class="text-center">Crear Nueva Entidad</h3>
-                <?php
-                    if (!empty($php_error_message)) { echo $php_error_message; }
-                    if (!empty($php_success_message)) { echo $php_success_message; }
-                ?>
+                <div id="global-messages-container">
+                    <?php
+                        if (!empty($php_error_message)) { echo $php_error_message; }
+                        if (!empty($php_success_message)) { echo $php_success_message; }
+                    ?>
+                </div>
                 <form id="formCrearEntidad" action="crear_entidad.php" method="POST" novalidate class="d-flex flex-column flex-grow-1">
                     <div>
                         <div class="row">
                             <div class="col-md-12 mb-3">
-                                <label for="tipo_entidad_selector" class="form-label">Seleccione un tipo de entidad:</label>
+                                <label for="tipo_entidad_selector" class="form-label">Seleccione un tipo de entidad:<span class="text-danger">*</span></label>
                                 <select id="tipo_entidad_selector" name="tipo_entidad_selector" class="form-select">
                                     <option value="">-- Seleccione un tipo --</option>
                                     <option value="farmacia" <?php echo ($tipo_entidad_sel == 'farmacia') ? 'selected' : ''; ?>>Farmacias</option>
                                     <option value="eps" <?php echo ($tipo_entidad_sel == 'eps') ? 'selected' : ''; ?>>EPS (Aseguradoras)</option>
                                     <option value="ips" <?php echo ($tipo_entidad_sel == 'ips') ? 'selected' : ''; ?>>IPS (Clínicas/Hospitales)</option>
                                 </select>
+                                <div class="invalid-feedback" id="feedback-tipo_entidad_selector"></div>
                             </div>
                         </div>
                     </div>
@@ -244,43 +251,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
                         <div id="form_farmacia" class="form-section" style="<?php echo ($tipo_entidad_sel == 'farmacia') ? 'display:block;' : 'display:none;'; ?>">
                             <h4>Datos de la Farmacia</h4>
                             <div class="row g-3">
-                                <div class="col-md-4"><label for="nit_farm" class="form-label">NIT:</label><input type="text" id="nit_farm" name="nit_farm" class="form-control" value="<?php echo htmlspecialchars($nit_farm_val); ?>"></div>
-                                <div class="col-md-8"><label for="nom_farm" class="form-label">Nombre Farmacia:</label><input type="text" id="nom_farm" name="nom_farm" class="form-control" value="<?php echo htmlspecialchars($nom_farm_val); ?>"></div>
-                                <div class="col-md-12"><label for="direc_farm" class="form-label">Dirección:</label><input type="text" id="direc_farm" name="direc_farm" class="form-control" value="<?php echo htmlspecialchars($direc_farm_val); ?>"></div>
-                                <div class="col-md-5"><label for="nom_gerente_farm" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_farm" name="nom_gerente_farm" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_farm_val); ?>"></div>
-                                <div class="col-md-3"><label for="tel_farm" class="form-label">Teléfono:</label><input type="text" id="tel_farm" name="tel_farm" class="form-control" value="<?php echo htmlspecialchars($tel_farm_val); ?>"></div>
-                                <div class="col-md-4"><label for="correo_farm" class="form-label">Correo:</label><input type="email" id="correo_farm" name="correo_farm" class="form-control" value="<?php echo htmlspecialchars($correo_farm_val); ?>"></div>
+                                <div class="col-md-4"><label for="nit_farm" class="form-label">NIT:<span class="text-danger">*</span></label><input type="text" id="nit_farm" name="nit_farm" class="form-control" value="<?php echo htmlspecialchars($nit_farm_val); ?>"><div class="invalid-feedback" id="feedback-nit_farm"></div></div>
+                                <div class="col-md-8"><label for="nom_farm" class="form-label">Nombre Farmacia:<span class="text-danger">*</span></label><input type="text" id="nom_farm" name="nom_farm" class="form-control" value="<?php echo htmlspecialchars($nom_farm_val); ?>"><div class="invalid-feedback" id="feedback-nom_farm"></div></div>
+                                <div class="col-md-12"><label for="direc_farm" class="form-label">Dirección:<span class="text-danger">*</span></label><input type="text" id="direc_farm" name="direc_farm" class="form-control" value="<?php echo htmlspecialchars($direc_farm_val); ?>"><div class="invalid-feedback" id="feedback-direc_farm"></div></div>
+                                <div class="col-md-5"><label for="nom_gerente_farm" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_farm" name="nom_gerente_farm" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_farm_val); ?>"><div class="invalid-feedback" id="feedback-nom_gerente_farm"></div></div>
+                                <div class="col-md-3"><label for="tel_farm" class="form-label">Teléfono:</label><input type="text" id="tel_farm" name="tel_farm" class="form-control" value="<?php echo htmlspecialchars($tel_farm_val); ?>"><div class="invalid-feedback" id="feedback-tel_farm"></div></div>
+                                <div class="col-md-4"><label for="correo_farm" class="form-label">Correo:</label><input type="email" id="correo_farm" name="correo_farm" class="form-control" value="<?php echo htmlspecialchars($correo_farm_val); ?>"><div class="invalid-feedback" id="feedback-correo_farm"></div></div>
                             </div>
                         </div>
 
                         <div id="form_eps" class="form-section" style="<?php echo ($tipo_entidad_sel == 'eps') ? 'display:block;' : 'display:none;'; ?>">
                             <h4>Datos de la EPS</h4>
                              <div class="row g-3">
-                                <div class="col-md-4"><label for="nit_eps" class="form-label">NIT:</label><input type="text" id="nit_eps" name="nit_eps" class="form-control" value="<?php echo htmlspecialchars($nit_eps_val); ?>"></div>
-                                <div class="col-md-8"><label for="nombre_eps" class="form-label">Nombre EPS:</label><input type="text" id="nombre_eps" name="nombre_eps" class="form-control" value="<?php echo htmlspecialchars($nombre_eps_val); ?>"></div>
-                                <div class="col-md-12"><label for="direc_eps" class="form-label">Dirección:</label><input type="text" id="direc_eps" name="direc_eps" class="form-control" value="<?php echo htmlspecialchars($direc_eps_val); ?>"></div>
-                                 <div class="col-md-5"><label for="nom_gerente_eps" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_eps" name="nom_gerente_eps" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_eps_val); ?>"></div>
-                                <div class="col-md-3"><label for="telefono_eps" class="form-label">Teléfono:</label><input type="text" id="telefono_eps" name="telefono_eps" class="form-control" value="<?php echo htmlspecialchars($telefono_eps_val); ?>"></div>
-                                <div class="col-md-4"><label for="correo_eps" class="form-label">Correo:</label><input type="email" id="correo_eps" name="correo_eps" class="form-control" value="<?php echo htmlspecialchars($correo_eps_val); ?>"></div>
+                                <div class="col-md-4"><label for="nit_eps" class="form-label">NIT:<span class="text-danger">*</span></label><input type="text" id="nit_eps" name="nit_eps" class="form-control" value="<?php echo htmlspecialchars($nit_eps_val); ?>"><div class="invalid-feedback" id="feedback-nit_eps"></div></div>
+                                <div class="col-md-8"><label for="nombre_eps" class="form-label">Nombre EPS:<span class="text-danger">*</span></label><input type="text" id="nombre_eps" name="nombre_eps" class="form-control" value="<?php echo htmlspecialchars($nombre_eps_val); ?>"><div class="invalid-feedback" id="feedback-nombre_eps"></div></div>
+                                <div class="col-md-12"><label for="direc_eps" class="form-label">Dirección:<span class="text-danger">*</span></label><input type="text" id="direc_eps" name="direc_eps" class="form-control" value="<?php echo htmlspecialchars($direc_eps_val); ?>"><div class="invalid-feedback" id="feedback-direc_eps"></div></div>
+                                 <div class="col-md-5"><label for="nom_gerente_eps" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_eps" name="nom_gerente_eps" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_eps_val); ?>"><div class="invalid-feedback" id="feedback-nom_gerente_eps"></div></div>
+                                <div class="col-md-3"><label for="telefono_eps" class="form-label">Teléfono:</label><input type="text" id="telefono_eps" name="telefono_eps" class="form-control" value="<?php echo htmlspecialchars($telefono_eps_val); ?>"><div class="invalid-feedback" id="feedback-telefono_eps"></div></div>
+                                <div class="col-md-4"><label for="correo_eps" class="form-label">Correo:</label><input type="email" id="correo_eps" name="correo_eps" class="form-control" value="<?php echo htmlspecialchars($correo_eps_val); ?>"><div class="invalid-feedback" id="feedback-correo_eps"></div></div>
                             </div>
                         </div>
 
                         <div id="form_ips" class="form-section" style="<?php echo ($tipo_entidad_sel == 'ips') ? 'display:block;' : 'display:none;'; ?>">
                             <h4>Datos de la IPS</h4>
                             <div class="row g-3">
-                                <div class="col-md-4"><label for="nit_ips" class="form-label">NIT:</label><input type="text" id="nit_ips" name="nit_ips" class="form-control" value="<?php echo htmlspecialchars($nit_ips_val); ?>"></div>
-                                <div class="col-md-8"><label for="nom_ips" class="form-label">Nombre IPS:</label><input type="text" id="nom_ips" name="nom_ips" class="form-control" value="<?php echo htmlspecialchars($nom_ips_val); ?>"></div>
+                                <div class="col-md-4"><label for="nit_ips" class="form-label">NIT:<span class="text-danger">*</span></label><input type="text" id="nit_ips" name="nit_ips" class="form-control" value="<?php echo htmlspecialchars($nit_ips_val); ?>"><div class="invalid-feedback" id="feedback-nit_ips"></div></div>
+                                <div class="col-md-8"><label for="nom_ips" class="form-label">Nombre IPS:<span class="text-danger">*</span></label><input type="text" id="nom_ips" name="nom_ips" class="form-control" value="<?php echo htmlspecialchars($nom_ips_val); ?>"><div class="invalid-feedback" id="feedback-nom_ips"></div></div>
                                <div class="col-md-4">
-                                    <label for="id_dep_ips" class="form-label">Departamento Ubicación:</label>
+                                    <label for="id_dep_ips" class="form-label">Departamento Ubicación:<span class="text-danger">*</span></label>
                                     <select id="id_dep_ips" name="id_dep_ips" class="form-select">
                                         <option value="">Seleccione Departamento...</option>
                                         <?php foreach ($departamentos as $dep) : ?>
                                             <option value="<?php echo htmlspecialchars($dep['id_dep']); ?>" <?php echo ($id_dep_ips_val == $dep['id_dep']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($dep['nom_dep']); ?></option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <div class="invalid-feedback" id="feedback-id_dep_ips"></div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="ubicacion_mun_ips" class="form-label">Municipio Ubicación:</label>
+                                    <label for="ubicacion_mun_ips" class="form-label">Municipio Ubicación:<span class="text-danger">*</span></label>
                                     <select id="ubicacion_mun_ips" name="ubicacion_mun_ips" class="form-select">
                                         <option value="">Seleccione Departamento primero...</option>
                                         <?php
@@ -299,11 +307,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
                                         }
                                         ?>
                                     </select>
+                                    <div class="invalid-feedback" id="feedback-ubicacion_mun_ips"></div>
                                 </div>
-                                 <div class="col-md-4"><label for="direc_ips" class="form-label">Dirección (Detalle):</label><input type="text" id="direc_ips" name="direc_ips" class="form-control" value="<?php echo htmlspecialchars($direc_ips_val); ?>"></div>
-                                 <div class="col-md-5"><label for="nom_gerente_ips" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_ips" name="nom_gerente_ips" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_ips_val); ?>"></div>
-                                <div class="col-md-3"><label for="tel_ips" class="form-label">Teléfono:</label><input type="text" id="tel_ips" name="tel_ips" class="form-control" value="<?php echo htmlspecialchars($tel_ips_val); ?>"></div>
-                                <div class="col-md-4"><label for="correo_ips" class="form-label">Correo:</label><input type="email" id="correo_ips" name="correo_ips" class="form-control" value="<?php echo htmlspecialchars($correo_ips_val); ?>"></div>
+                                 <div class="col-md-4"><label for="direc_ips" class="form-label">Dirección (Detalle):<span class="text-danger">*</span></label><input type="text" id="direc_ips" name="direc_ips" class="form-control" value="<?php echo htmlspecialchars($direc_ips_val); ?>"><div class="invalid-feedback" id="feedback-direc_ips"></div></div>
+                                 <div class="col-md-5"><label for="nom_gerente_ips" class="form-label">Nombre Gerente:</label><input type="text" id="nom_gerente_ips" name="nom_gerente_ips" class="form-control" value="<?php echo htmlspecialchars($nom_gerente_ips_val); ?>"><div class="invalid-feedback" id="feedback-nom_gerente_ips"></div></div>
+                                <div class="col-md-3"><label for="tel_ips" class="form-label">Teléfono:</label><input type="text" id="tel_ips" name="tel_ips" class="form-control" value="<?php echo htmlspecialchars($tel_ips_val); ?>"><div class="invalid-feedback" id="feedback-tel_ips"></div></div>
+                                <div class="col-md-4"><label for="correo_ips" class="form-label">Correo:</label><input type="email" id="correo_ips" name="correo_ips" class="form-control" value="<?php echo htmlspecialchars($correo_ips_val); ?>"><div class="invalid-feedback" id="feedback-correo_ips"></div></div>
                             </div>
                         </div>
                     </div>
@@ -322,98 +331,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_entidad'])) {
         </div>
     </main>
     <?php include '../include/footer.php'; ?>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const tipoEntidadSelector = document.getElementById('tipo_entidad_selector');
-            const formFarmacia = document.getElementById('form_farmacia');
-            const formEps = document.getElementById('form_eps');
-            const formIps = document.getElementById('form_ips');
-            const depIpsSelect = document.getElementById('id_dep_ips');
-            const munIpsSelect = document.getElementById('ubicacion_mun_ips');
-            const submitButton = document.querySelector('button[name="guardar_entidad"]');
-
-            function setFieldsDisabled(formElement, isDisabled) {
-                if (!formElement) return;
-                formElement.querySelectorAll('input, select').forEach(input => {
-                    input.disabled = isDisabled;
-                });
-            }
-
-            function toggleForms() {
-                const selectedType = tipoEntidadSelector.value;
-                
-                setFieldsDisabled(formFarmacia, true);
-                setFieldsDisabled(formEps, true);
-                setFieldsDisabled(formIps, true);
-
-                if (formFarmacia) formFarmacia.style.display = 'none';
-                if (formEps) formEps.style.display = 'none';
-                if (formIps) formIps.style.display = 'none';
-                
-                if (submitButton) submitButton.disabled = true;
-
-                if (selectedType === 'farmacia' && formFarmacia) {
-                    formFarmacia.style.display = 'block';
-                    setFieldsDisabled(formFarmacia, false);
-                    if (submitButton) submitButton.disabled = false;
-                } else if (selectedType === 'eps' && formEps) {
-                    formEps.style.display = 'block';
-                    setFieldsDisabled(formEps, false);
-                    if (submitButton) submitButton.disabled = false;
-                } else if (selectedType === 'ips' && formIps) {
-                    formIps.style.display = 'block';
-                    setFieldsDisabled(formIps, false);
-                    if(depIpsSelect) depIpsSelect.disabled = false;
-                    if(munIpsSelect && !depIpsSelect.value) munIpsSelect.disabled = true; 
-                    else if(munIpsSelect) munIpsSelect.disabled = false;
-                    if (submitButton) submitButton.disabled = false;
-                }
-            }
-
-            if (tipoEntidadSelector) {
-                tipoEntidadSelector.addEventListener('change', toggleForms);
-                toggleForms(); 
-            }
-
-            if (depIpsSelect) {
-                depIpsSelect.addEventListener('change', function() {
-                    const idDep = this.value;
-                    munIpsSelect.innerHTML = '<option value="">Cargando municipios...</option>';
-                    munIpsSelect.disabled = true;
-
-                    if (idDep) {
-                        fetch(`../ajax/get_municipios.php?id_dep=${encodeURIComponent(idDep)}`)
-                            .then(response => {
-                                if (!response.ok) throw new Error('Error en la respuesta de red');
-                                return response.json();
-                            })
-                            .then(data => {
-                                munIpsSelect.innerHTML = '<option value="">Seleccione Municipio...</option>';
-                                if (data && data.length > 0) {
-                                    data.forEach(mun => {
-                                        const option = document.createElement('option');
-                                        option.value = mun.id;
-                                        option.textContent = mun.nombre;
-                                        munIpsSelect.appendChild(option);
-                                    });
-                                    munIpsSelect.disabled = false;
-                                } else {
-                                    munIpsSelect.innerHTML = '<option value="">No hay municipios</option>';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error cargando municipios:', error);
-                                munIpsSelect.innerHTML = '<option value="">Error al cargar</option>';
-                            });
-                    } else {
-                        munIpsSelect.innerHTML = '<option value="">Seleccione Departamento primero...</option>';
-                    }
-                });
-                if (depIpsSelect.value && munIpsSelect.options.length <= 1) {
-                    depIpsSelect.dispatchEvent(new Event('change'));
-                }
-            }
-        });
-    </script>
+    <script src="../js/crear_entidad.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
