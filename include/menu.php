@@ -20,6 +20,7 @@ $path_to_js_folder_php_context = "../js/";
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
     <link rel="icon" type="image/png" href="<?php echo $path_to_img_folder_php_context; ?>loguito.png">
     <?php
@@ -106,38 +107,47 @@ $path_to_js_folder_php_context = "../js/";
                     <ul class="navbar-nav ms-auto align-items-center">
                         <?php if ($rol_usuario == 1): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_usu.php' || $currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownUsuarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Usuarios
-                                </a>
-                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownUsuarios">
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_usu.php">Ver Usuarios</a></li>
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_usu.php">Crear Usuario</a></li>
-                                </ul>
-                            </li>
+                            <li><a class="dropdown-item <?php echo ($currentPage === 'crear_usu.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_usu.php">Crear Usuario</a></li>
+                           
 
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_entidades.php' || $currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownEntidades" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Entidades
+                                    Gestion Entidades
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownEntidades">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_entidades.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_entidades.php">Ver Entidades</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_entidad.php">Crear Entidad</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Crear Alianza</a></li>
+                                </ul>
+                            </li>
+                             <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_horarios.php' || $currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownHorarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Gestion Pacientes
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownHorarios">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'lista_pacientes.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>lista_pacientes.php">Lista Pacientes</a></li>
                                 </ul>
                             </li>
 
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_horarios.php' || $currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownHorarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Horarios Medico
+                                    Gestion Farmaceutas
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownHorarios">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'lista_farmaceutas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>lista_farmaceutas.php">Lista Farmaceutas</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo ($currentPage === 'ver_horarios.php' || $currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="#" id="navbarDropdownHorarios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Gestion Medicos
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownHorarios">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>ver_horarios.php">Ver Horarios</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_horario.php">Crear Horario</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'lista_medicos.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>lista_medicos.php">Lista Medicos</a></li>
                                 </ul>
                             </li>
-                            
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>crear_alianza.php">Alianzas</a></li>
                         <?php elseif ($rol_usuario == 2): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php">Citas Médicas</a></li>
