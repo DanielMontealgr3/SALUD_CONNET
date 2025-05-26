@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoEntidadSelector = document.getElementById('tipo_entidad_selector');
     const formCrearEntidad = document.getElementById('formCrearEntidad');
     const submitButton = formCrearEntidad.querySelector('button[type="submit"]');
+    const globalMessagesContainer = document.getElementById('global-messages-container');
 
     const formFarmacia = document.getElementById('form_farmacia');
     const formEps = document.getElementById('form_eps');
@@ -10,12 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const nitFarm = document.getElementById('nit_farm');
     const nomFarm = document.getElementById('nom_farm');
+    const direcFarm = document.getElementById('direc_farm');
     const nomGerenteFarm = document.getElementById('nom_gerente_farm');
     const telFarm = document.getElementById('tel_farm');
     const correoFarm = document.getElementById('correo_farm');
 
     const nitEps = document.getElementById('nit_eps');
     const nomEps = document.getElementById('nombre_eps');
+    const direcEps = document.getElementById('direc_eps');
     const nomGerenteEps = document.getElementById('nom_gerente_eps');
     const telEps = document.getElementById('telefono_eps');
     const correoEps = document.getElementById('correo_eps');
@@ -24,39 +27,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const nomIps = document.getElementById('nom_ips');
     const depIpsSelect = document.getElementById('id_dep_ips');
     const munIpsSelect = document.getElementById('ubicacion_mun_ips');
+    const direcIps = document.getElementById('direc_ips');
     const nomGerenteIps = document.getElementById('nom_gerente_ips');
     const telIps = document.getElementById('tel_ips');
     const correoIps = document.getElementById('correo_ips');
 
     const setError = (element, message) => {
         if (!element) return;
-        const errorSpan = document.getElementById(`error-${element.id}`);
-        element.classList.add('input-error');
-        element.classList.remove('input-success');
-        if (errorSpan) {
-            errorSpan.textContent = message;
-            errorSpan.classList.add('visible');
+        element.classList.add('is-invalid');
+        element.classList.remove('is-valid');
+        const feedbackElement = document.getElementById(`feedback-${element.id}`);
+        if (feedbackElement) {
+            feedbackElement.textContent = message;
         }
     };
 
     const setSuccess = (element) => {
         if (!element) return;
-        const errorSpan = document.getElementById(`error-${element.id}`);
-        element.classList.remove('input-error');
-        element.classList.add('input-success');
-        if (errorSpan) {
-            errorSpan.textContent = '';
-            errorSpan.classList.remove('visible');
+        element.classList.remove('is-invalid');
+        element.classList.add('is-valid');
+        const feedbackElement = document.getElementById(`feedback-${element.id}`);
+        if (feedbackElement) {
+            feedbackElement.textContent = '';
         }
     };
     
     const clearValidation = (element) => {
         if (!element) return;
-        const errorSpan = document.getElementById(`error-${element.id}`);
-        element.classList.remove('input-error', 'input-success');
-        if (errorSpan) {
-            errorSpan.textContent = '';
-            errorSpan.classList.remove('visible');
+        element.classList.remove('is-invalid', 'is-valid');
+        const feedbackElement = document.getElementById(`feedback-${element.id}`);
+        if (feedbackElement) {
+            feedbackElement.textContent = '';
         }
     };
 
@@ -65,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = field.value.trim();
         if (value === "") { setError(field, 'El NIT es obligatorio.'); return false; }
         if (!/^\d+$/.test(value)) { setError(field, 'El NIT solo debe contener números.'); return false; }
+        if (value.length < 7) { setError(field, 'El NIT debe tener al menos 7 dígitos.'); return false; }
         setSuccess(field); return true;
     }
 
@@ -72,11 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!field || field.disabled) return true;
         const value = field.value.trim();
         if (value === "") { setError(field, `El ${fieldName} es obligatorio.`); return false; }
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u.test(value)) { setError(field, `El ${fieldName} solo debe contener letras y espacios.`); return false; }
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.]+$/u.test(value)) { setError(field, `El ${fieldName} solo debe contener letras, puntos y espacios.`); return false; }
         setSuccess(field); return true;
     }
     
-    function validateOptionalNameField(field, fieldName = "Nombre") {
+    function validateOptionalNameField(field, fieldName = "Nombre Gerente") {
         if (!field || field.disabled) return true;
         const value = field.value.trim();
         if (value !== "" && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u.test(value)) {
@@ -84,6 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if(value === "") clearValidation(field); else setSuccess(field);
         return true;
+    }
+
+    function validateAddress(field, fieldName = "Dirección") {
+        if (!field || field.disabled) return true;
+        const value = field.value.trim();
+        if (value === "") { setError(field, `La ${fieldName} es obligatoria.`); return false;}
+        setSuccess(field); return true;
     }
 
     function validatePhone(field) {
@@ -111,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setFieldStatus(formElement, isDisabled) {
+        if (!formElement) return;
         formElement.querySelectorAll('input, select').forEach(input => {
             input.disabled = isDisabled;
             if (isDisabled) clearValidation(input);
@@ -138,17 +148,18 @@ document.addEventListener('DOMContentLoaded', () => {
             setFieldStatus(activeForm, false);
             if(selectedType === 'ips' && munIpsSelect && depIpsSelect){ 
                 depIpsSelect.disabled = false;
-                if(depIpsSelect.value) { // Si hay un valor precargado para departamento
-                    depIpsSelect.dispatchEvent(new Event('change')); // Disparar change para cargar municipios
-                } else {
+                if(depIpsSelect.value && munIpsSelect.options.length <= 1 && munIpsSelect.dataset.currentValue) { 
+                    depIpsSelect.dispatchEvent(new Event('change')); 
+                } else if(!depIpsSelect.value) {
                      munIpsSelect.disabled = true; 
                      munIpsSelect.innerHTML = '<option value="">Seleccione Departamento primero...</option>';
+                     clearValidation(munIpsSelect); 
                 }
             }
             if (submitButton) submitButton.disabled = false;
             if (selectedType !== "") setSuccess(tipoEntidadSelector); else clearValidation(tipoEntidadSelector);
         } else {
-            if(selectedType === "") {
+            if(selectedType === "" && tipoEntidadSelector.name === "tipo_entidad_selector") { // Solo mostrar error si es el selector principal
                 setError(tipoEntidadSelector, "Debe seleccionar un tipo de entidad.");
             } else {
                 clearValidation(tipoEntidadSelector);
@@ -158,16 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tipoEntidadSelector) {
         tipoEntidadSelector.addEventListener('change', showSelectedForm);
-        showSelectedForm(); // Para manejar estado inicial si hay POST data (ej. error de validación PHP)
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            showSelectedForm();
+        } else {
+            document.addEventListener("DOMContentLoaded", showSelectedForm);
+        }
     }
 
     if (depIpsSelect) {
         depIpsSelect.addEventListener('change', function() {
             const idDep = this.value;
+            const currentMunValue = munIpsSelect.dataset.currentValue || "";
             munIpsSelect.innerHTML = '<option value="">Cargando municipios...</option>';
             munIpsSelect.disabled = true;
+            clearValidation(munIpsSelect); 
             
-            // Validar el select de departamento al cambiar
             if(this.value === "" && !this.disabled) { 
                 setError(this, "Debe seleccionar un Departamento.");
             } else if (!this.disabled) {
@@ -181,26 +197,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         return response.json();
                     })
                     .then(data => {
-                        const currentMunValue = munIpsSelect.dataset.currentValue || ""; 
                         munIpsSelect.innerHTML = '<option value="">Seleccione Municipio...</option>';
                         if (data && data.length > 0) {
                             data.forEach(mun => {
                                 const option = document.createElement('option');
                                 option.value = mun.id;
                                 option.textContent = mun.nombre;
-                                if(mun.id === currentMunValue) option.selected = true; // Repoblar si es necesario
+                                if(mun.id === currentMunValue) option.selected = true;
                                 munIpsSelect.appendChild(option);
                             });
                             munIpsSelect.disabled = false;
+                            if(munIpsSelect.value) setSuccess(munIpsSelect); else setError(munIpsSelect, "Debe seleccionar un Municipio.");
+
                         } else {
                             munIpsSelect.innerHTML = '<option value="">No hay municipios</option>';
+                            setError(munIpsSelect, "No hay municipios para este departamento.");
                         }
-                        // Validar el select de municipio después de cargar/actualizar
-                        if(munIpsSelect.value === "" && !munIpsSelect.disabled) {
-                            setError(munIpsSelect, "Debe seleccionar un Municipio.");
-                        } else if (!munIpsSelect.disabled) {
-                             setSuccess(munIpsSelect);
-                        }
+                        if(currentMunValue && munIpsSelect.value === currentMunValue) setSuccess(munIpsSelect); // Re-validar si se repobló
                     })
                     .catch(error => {
                         console.error('Error cargando municipios:', error);
@@ -212,27 +225,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!munIpsSelect.disabled) setError(munIpsSelect, "Debe seleccionar un Municipio (después del Departamento).");
             }
         });
-        // Si hay un valor en el select de municipio al cargar la página (ej. por POST),
-        // guardarlo en dataset para poder repoblarlo si el departamento cambia y luego vuelve.
         if(munIpsSelect.value) munIpsSelect.dataset.currentValue = munIpsSelect.value;
+        if (depIpsSelect.value && munIpsSelect.options.length <= 1 && tipoEntidadSelector.value === 'ips') {
+             depIpsSelect.dispatchEvent(new Event('change'));
+        }
     }
     
-    // Listeners para validaciones en tiempo real
     if(nitFarm) nitFarm.addEventListener('input', () => validateNit(nitFarm));
     if(nomFarm) nomFarm.addEventListener('input', () => validateNameField(nomFarm, "Nombre Farmacia"));
+    if(direcFarm) direcFarm.addEventListener('input', () => validateAddress(direcFarm));
     if(nomGerenteFarm) nomGerenteFarm.addEventListener('input', () => validateOptionalNameField(nomGerenteFarm, "Nombre Gerente"));
     if(telFarm) telFarm.addEventListener('input', () => validatePhone(telFarm));
     if(correoFarm) correoFarm.addEventListener('input', () => validateEmail(correoFarm));
 
     if(nitEps) nitEps.addEventListener('input', () => validateNit(nitEps));
     if(nomEps) nomEps.addEventListener('input', () => validateNameField(nomEps, "Nombre EPS"));
+    if(direcEps) direcEps.addEventListener('input', () => validateAddress(direcEps));
     if(nomGerenteEps) nomGerenteEps.addEventListener('input', () => validateOptionalNameField(nomGerenteEps, "Nombre Gerente"));
     if(telEps) telEps.addEventListener('input', () => validatePhone(telEps));
     if(correoEps) correoEps.addEventListener('input', () => validateEmail(correoEps));
     
     if(nitIps) nitIps.addEventListener('input', () => validateNit(nitIps));
     if(nomIps) nomIps.addEventListener('input', () => validateNameField(nomIps, "Nombre IPS"));
-    if(depIpsSelect) depIpsSelect.addEventListener('change', () => validateSelect(depIpsSelect, 'Departamento')); // Ya tiene un listener más específico, pero esto no daña
+    if(direcIps) direcIps.addEventListener('input', () => validateAddress(direcIps, "Dirección (Detalle)"));
+    if(depIpsSelect) depIpsSelect.addEventListener('change', () => validateSelect(depIpsSelect, 'Departamento'));
     if(munIpsSelect) munIpsSelect.addEventListener('change', () => validateSelect(munIpsSelect, 'Municipio'));
     if(nomGerenteIps) nomGerenteIps.addEventListener('input', () => validateOptionalNameField(nomGerenteIps, "Nombre Gerente"));
     if(telIps) telIps.addEventListener('input', () => validatePhone(telIps));
@@ -242,24 +258,29 @@ document.addEventListener('DOMContentLoaded', () => {
         formCrearEntidad.addEventListener('submit', function(e) {
             let isValid = true;
             const selectedType = tipoEntidadSelector.value;
+            
+            if (globalMessagesContainer) globalMessagesContainer.innerHTML = '';
 
             if (!validateSelect(tipoEntidadSelector, "Tipo de entidad")) isValid = false;
 
             if (selectedType === 'farmacia') {
                 if (!validateNit(nitFarm)) isValid = false;
                 if (!validateNameField(nomFarm, "Nombre Farmacia")) isValid = false;
+                if (!validateAddress(direcFarm)) isValid = false;
                 if (!validateOptionalNameField(nomGerenteFarm, "Nombre Gerente")) isValid = false;
                 if (!validatePhone(telFarm)) isValid = false;
                 if (!validateEmail(correoFarm)) isValid = false;
             } else if (selectedType === 'eps') {
                 if (!validateNit(nitEps)) isValid = false;
                 if (!validateNameField(nomEps, "Nombre EPS")) isValid = false;
+                if (!validateAddress(direcEps)) isValid = false;
                 if (!validateOptionalNameField(nomGerenteEps, "Nombre Gerente")) isValid = false;
                 if (!validatePhone(telEps)) isValid = false;
                 if (!validateEmail(correoEps)) isValid = false;
             } else if (selectedType === 'ips') {
                 if (!validateNit(nitIps)) isValid = false;
                 if (!validateNameField(nomIps, "Nombre IPS")) isValid = false;
+                if (!validateAddress(direcIps, "Dirección (Detalle)")) isValid = false;
                 if (!validateSelect(depIpsSelect, "Departamento Ubicación")) isValid = false;
                 if (!validateSelect(munIpsSelect, "Municipio Ubicación")) isValid = false;
                 if (!validateOptionalNameField(nomGerenteIps, "Nombre Gerente")) isValid = false;
@@ -269,7 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!isValid) {
                 e.preventDefault();
-                const primerError = formCrearEntidad.querySelector('.input-error:not([disabled])');
+                if (globalMessagesContainer) {
+                    globalMessagesContainer.innerHTML = '<div class="alert alert-danger">Por favor, corrija los campos marcados en rojo.</div>';
+                }
+                const primerError = formCrearEntidad.querySelector('.is-invalid:not([disabled])');
                 if (primerError) {
                     primerError.focus();
                      setTimeout(() => {
