@@ -8,10 +8,6 @@ $usuario_data = null; $error_message = null; $departamentos = [];
 $municipios_del_depto_actual = []; $barrios_del_mun_actual = []; $generos = [];
 
 $path_prefix_for_html_src = ''; 
-// Si este modal se incluye desde una página en una subcarpeta (ej: /SALUDCONNECT/pages/ver_usuario.php), 
-// y el modal necesita acceder a imágenes o scripts en la raíz o en img/, usa '../'
-// Ejemplo: $path_prefix_for_html_src = '../'; 
-
 $default_avatar_relative_path = 'img/perfiles/default_avatar.png';
 $default_avatar_display_path = $path_prefix_for_html_src . $default_avatar_relative_path;
 
