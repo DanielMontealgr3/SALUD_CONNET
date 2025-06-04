@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
-require_once __DIR__ . '/../include/conexion.php';
+require_once __DIR__ . '/../../include/conexion.php';
 
 $usuario_data = null; $error_message = null; $departamentos = [];
 $municipios_del_depto_actual = []; $barrios_del_mun_actual = [];

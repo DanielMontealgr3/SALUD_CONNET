@@ -1,7 +1,12 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once '../../include/conexion.php';
+
+if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
+    $db = new database();
+    $con = $db->conectar();
+}
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -10,13 +15,10 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_
     exit;
 }
 
-$conex_db = new database();
-$con = $conex_db->conectar();
-
 $ID_ROL_MEDICO_PHP = 4;
-$ID_ESPECIALIDAD_NO_APLICA_PHP = 46;
+$ID_ESPECIALIDAD_NO_APLICA_PHP = 46; 
 $ID_ESTADO_AFILIADO_ACTIVO = 1;
-$ID_ESTADO_AFILIADO_INACTIVO = 2; // Asumiendo que 2 es Inactivo
+$ID_ESTADO_AFILIADO_INACTIVO = 2; 
 
 $tipos_doc = []; $departamentos = []; $municipios_pre = []; $barrios_pre = [];
 $generos = []; $estados_usuarios = []; $especialidades = []; $roles = [];
@@ -29,6 +31,8 @@ $id_especialidad_sel_form = ''; $id_rol_sel_form = '';
 $php_error_message = '';
 $php_success_message_registro = '';
 $php_warning_message_afiliacion_link = '';
+$php_info_message_correo = '';
+
 
 if (isset($_SESSION['form_data_crear_usu'])) {
     $form_data = $_SESSION['form_data_crear_usu'];
@@ -49,6 +53,19 @@ if (isset($_SESSION['form_data_crear_usu'])) {
     $id_rol_sel_form = filter_var($form_data['id_rol'] ?? $id_rol_sel_form, FILTER_VALIDATE_INT);
     unset($_SESSION['form_data_crear_usu']);
 }
+
+if(isset($_GET['correo_status'])) {
+    $nombre_usuario_creado = htmlspecialchars($_GET['nombre'] ?? 'el usuario');
+    if ($_GET['correo_status'] === 'enviado_activo') {
+        $php_info_message_correo = "<div class='alert alert-info'>Cuenta para <strong>$nombre_usuario_creado</strong> creada y activada. Correo de bienvenida enviado a ".htmlspecialchars($_GET['email'] ?? '').".</div>";
+    } elseif ($_GET['correo_status'] === 'enviado_inactivo') {
+         $php_info_message_correo = "<div class='alert alert-info'>Cuenta para <strong>$nombre_usuario_creado</strong> creada como inactiva. Correo de bienvenida enviado a ".htmlspecialchars($_GET['email'] ?? '').". Espere correo de activación.</div>";
+    } elseif ($_GET['correo_status'] === 'error') {
+        $php_error_message .= "<div class='alert alert-danger'>Usuario registrado, pero hubo un error al enviar el correo de creación de cuenta.</div>";
+    }
+    $doc_usu_form = ''; $id_tipo_doc_sel_form = ''; $nom_usu_form = ''; $fecha_nac_form = ''; $tel_usu_form = ''; $correo_usu_form = ''; $id_dep_sel_form = ''; $id_mun_sel_form = ''; $id_barrio_sel_form = ''; $direccion_usu_form = ''; $id_gen_sel_form = ''; $id_est_sel_usuario_form = 1; $id_especialidad_sel_form = ''; $id_rol_sel_form = ''; $municipios_pre = []; $barrios_pre = [];
+}
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $doc_usu_post = trim($_POST['doc_usu'] ?? '');
@@ -158,8 +175,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
                 if ($stmt_insert_usuario->execute($params_insert_usuario)) {
                     $registro_usuario_exitoso = true;
                     unset($_SESSION['form_data_crear_usu']);
-                    $nombre_usuario_msg_reg = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
-                    $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_reg . "</strong> registrado exitosamente.</div>";
+                    
+                    // Obtener nombre del rol para el correo
+                    $nombre_rol_creado = 'Usuario'; // Valor por defecto
+                    $stmt_rol = $con->prepare("SELECT nombre_rol FROM rol WHERE id_rol = :id_rol");
+                    $stmt_rol->bindParam(':id_rol', $id_rol_sel_post, PDO::PARAM_INT);
+                    $stmt_rol->execute();
+                    $rol_info = $stmt_rol->fetch(PDO::FETCH_ASSOC);
+                    if($rol_info) {
+                        $nombre_rol_creado = $rol_info['nombre_rol'];
+                    }
+
+                    $_SESSION['correo_nuevo_usuario_info'] = [
+                        'correo' => $correo_usu_post_form,
+                        'nombre' => $nom_usu_post,
+                        'documento' => $doc_usu_post,
+                        'contrasena_plain' => $contra_nueva_post,
+                        'estado_inicial' => $id_est_sel_usuario_post,
+                        'nombre_rol' => $nombre_rol_creado 
+                    ];
+                    $_SESSION['ultimo_tipo_doc_creado'] = $id_tipo_doc_sel_post;
+                    
                 } else {
                     $errorInfo = $stmt_insert_usuario->errorInfo();
                     $php_error_message = "<div class='alert alert-danger'>Error SQL al Insertar Usuario: " . htmlspecialchars($errorInfo[2] ?? 'Desconocido') . "</div>";
@@ -183,39 +219,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     }
 
     if ($registro_usuario_exitoso && empty($php_error_message)) {
-        $url_afiliacion_pagina = 'afiliacion.php?doc_usu=' . urlencode($doc_usu_post) . '&id_tipo_doc=' . urlencode($id_tipo_doc_sel_post ?? '');
-        $nombre_usuario_msg_afi = !empty($nom_usu_post) ? htmlspecialchars($nom_usu_post) : "El usuario";
-
-        try {
-            $stmt_afiliado = $con->prepare("SELECT id_estado FROM afiliados WHERE doc_afiliado = :doc_usu_param");
-            $stmt_afiliado->bindParam(':doc_usu_param', $doc_usu_post, PDO::PARAM_STR);
-            $stmt_afiliado->execute();
-            $afiliado_data = $stmt_afiliado->fetch(PDO::FETCH_ASSOC);
-
-            if ($afiliado_data) { // El documento existe en la tabla afiliados
-                if ($afiliado_data['id_estado'] == $ID_ESTADO_AFILIADO_ACTIVO) {
-                    // Ya se mostró el mensaje de registro exitoso, ahora se actualiza para incluir afiliación
-                     $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_afi . "</strong> registrado y afiliado exitosamente.</div>";
-                    $php_warning_message_afiliacion_link = ''; // No mostrar advertencia
-                    // Limpiar campos del formulario ya que todo fue exitoso
-                    $doc_usu_form = ''; $id_tipo_doc_sel_form = ''; $nom_usu_form = ''; $fecha_nac_form = ''; $tel_usu_form = ''; $correo_usu_form = ''; $id_dep_sel_form = ''; $id_mun_sel_form = ''; $id_barrio_sel_form = ''; $direccion_usu_form = ''; $id_gen_sel_form = ''; $id_est_sel_usuario_form = 1; $id_especialidad_sel_form = ''; $id_rol_sel_form = ''; $municipios_pre = []; $barrios_pre = [];
-                } else { // Afiliado pero no activo (ej. estado 2 u otro)
-                    $php_warning_message_afiliacion_link = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
-                                           "El usuario <strong>" . $nombre_usuario_msg_afi . "</strong> no tiene afiliaciones activas. " .
-                                           "<a href='" . $url_afiliacion_pagina . "' class='btn btn-info btn-sm ms-2'>Gestionar Afiliación</a>" .
-                                           "</div>";
-                }
-            } else { // El documento NO existe en la tabla afiliados
-                $php_warning_message_afiliacion_link = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
-                                       "El usuario <strong>" . $nombre_usuario_msg_afi . "</strong> no se encuentra afiliado. " .
-                                       "<a href='" . $url_afiliacion_pagina . "' class='btn btn-success btn-sm ms-2'>Afiliar Usuario</a>" .
-                                       "</div>";
-            }
-        } catch (PDOException $e) {
-             $php_warning_message_afiliacion_link = "<div class='alert alert-danger'>Se registró el usuario, pero hubo un error al verificar su estado de afiliación: " . htmlspecialchars($e->getMessage()) . ". Por favor, verifique manualmente. <a href='" . $url_afiliacion_pagina . "' class='btn btn-info btn-sm mt-2'>Intentar Afiliar</a></div>";
-        }
+        header('Location: correo_creacion.php');
+        exit;
     }
 }
+
 
 if ($con) {
     try {
@@ -253,20 +261,58 @@ if ($con) {
     } catch (PDOException $e) {
         if (empty($php_error_message)) { $php_error_message = "<div class='alert alert-danger'>PDOException (carga inicial de selects): " . htmlspecialchars($e->getMessage()) . "</div>"; }
     }
-} elseif (empty($php_error_message) && empty($php_warning_message_afiliacion_link) && empty($php_success_message_registro)) {
+} elseif (empty($php_error_message) && empty($php_info_message_correo) ) {
     $php_error_message = "<div class='alert alert-danger'>Error: No se pudo conectar a la base de datos para carga inicial de selects.</div>";
 }
+
+if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_GET['doc_creado']) && empty($php_error_message) && empty($php_info_message_correo)) {
+    $doc_creado_get = trim($_GET['doc_creado']);
+    $nom_creado_get = trim($_GET['nom_creado'] ?? 'El usuario');
+    $tipo_doc_creado_get = trim($_GET['tipo_doc_creado'] ?? '');
+
+    $url_afiliacion_pagina_get = 'afiliacion.php?doc_usu=' . urlencode($doc_creado_get) . '&id_tipo_doc=' . urlencode($tipo_doc_creado_get);
+    $nombre_usuario_msg_afi_get = htmlspecialchars($nom_creado_get);
+    
+    if ($con) {
+        try {
+            $stmt_afiliado_get = $con->prepare("SELECT id_estado FROM afiliados WHERE doc_afiliado = :doc_usu_param_get");
+            $stmt_afiliado_get->bindParam(':doc_usu_param_get', $doc_creado_get, PDO::PARAM_STR);
+            $stmt_afiliado_get->execute();
+            $afiliado_data_get = $stmt_afiliado_get->fetch(PDO::FETCH_ASSOC);
+
+            if ($afiliado_data_get) { 
+                if ($afiliado_data_get['id_estado'] == $ID_ESTADO_AFILIADO_ACTIVO) {
+                    $php_success_message_registro = "<div class='alert alert-success'>Usuario <strong>" . $nombre_usuario_msg_afi_get . "</strong> registrado y afiliado exitosamente.</div>";
+                    $php_warning_message_afiliacion_link = ''; 
+                } else { 
+                    $php_warning_message_afiliacion_link = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
+                                           "El usuario <strong>" . $nombre_usuario_msg_afi_get . "</strong> no tiene afiliaciones activas. " .
+                                           "<a href='" . $url_afiliacion_pagina_get . "' class='btn btn-info btn-sm ms-2'>Gestionar Afiliación</a>" .
+                                           "</div>";
+                }
+            } else { 
+                $php_warning_message_afiliacion_link = "<div class='alert alert-warning mensaje-afiliacion-pendiente'>" .
+                                       "El usuario <strong>" . $nombre_usuario_msg_afi_get . "</strong> no se encuentra afiliado. " .
+                                       "<a href='" . $url_afiliacion_pagina_get . "' class='btn btn-success btn-sm ms-2'>Afiliar Usuario</a>" .
+                                       "</div>";
+            }
+        } catch (PDOException $e) {
+             $php_warning_message_afiliacion_link = "<div class='alert alert-danger'>Hubo un error al verificar el estado de afiliación del usuario " . $nombre_usuario_msg_afi_get . ": " . htmlspecialchars($e->getMessage()) . ". Por favor, verifique manualmente. <a href='" . $url_afiliacion_pagina_get . "' class='btn btn-info btn-sm mt-2'>Intentar Afiliar</a></div>";
+        }
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Crear Nuevo Usuario</title>
+    <title>Crear Nuevo Usuario - Salud Connected</title>
     <link rel="icon" type="image/png" href="../img/loguito.png">
 </head>
-<body>
-    <?php include '../include/menu.php'; ?>
-    <main id="contenido-principal">
-        <div class="container-fluid mt-3">
+<body class="d-flex flex-column min-vh-100">
+    <?php include '../../include/menu.php'; ?>
+    <main id="contenido-principal" class="flex-grow-1">
+        <div class="container-fluid mt-4">
              <div class="form-container mx-auto" style="max-width: 900px;">
                 <h3 class="text-center mb-4">Crear Nuevo Usuario</h3>
                 
@@ -274,13 +320,15 @@ if ($con) {
                     <?php
                         if (!empty($php_error_message)) {
                             echo $php_error_message;
-                        } else { 
-                            if (!empty($php_success_message_registro)) {
-                                echo $php_success_message_registro;
-                            }
-                            if (!empty($php_warning_message_afiliacion_link)) {
-                                echo $php_warning_message_afiliacion_link;
-                            }
+                        }
+                        if (!empty($php_success_message_registro) && empty($php_info_message_correo) ) {
+                             echo $php_success_message_registro;
+                        }
+                        if (!empty($php_warning_message_afiliacion_link) && empty($php_info_message_correo)) {
+                            echo $php_warning_message_afiliacion_link;
+                        }
+                         if (!empty($php_info_message_correo)) {
+                            echo $php_info_message_correo;
                         }
                     ?>
                 </div>
@@ -456,7 +504,7 @@ if ($con) {
             </div>
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
-    <script src="../js/crear_usu.js"></script>
+    <?php include '../../include/footer.php'; ?>
+    <script src="../js/crear_usu.js"></script> 
 </body>
 </html>

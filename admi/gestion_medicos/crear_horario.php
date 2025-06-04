@@ -3,9 +3,9 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -170,13 +170,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_horario'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../img/loguito.png">
     <title>Crear Horario Médico - Administración</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="../css/styles_admin.css">
     <style>
         #mensaje_medico_error { display: none; color: red; font-size: 0.875em; margin-top: .25rem; }
         #contenedor_bloques_hora .form-check-inline { margin-right: .8rem; margin-bottom: .5rem;}
@@ -327,10 +322,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_horario'])) {
             </div>
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
-    
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+    <?php include '../../include/footer.php'; ?>
     <script src="../js/crear_horario_admin.js"></script> 
 </body>
 </html>

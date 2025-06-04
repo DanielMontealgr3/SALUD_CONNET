@@ -7,8 +7,8 @@ error_reporting(E_ALL);
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-require_once '../include/validar_sesion.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once('../../include/conexion.php');
 
 // Valida que el usuario sea administrador y esté logueado
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {

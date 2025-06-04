@@ -1,8 +1,8 @@
 <?php
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-require_once '../include/validar_sesion.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once('../../include/conexion.php');
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {
     echo '<div class="alert alert-danger m-3">Acceso no autorizado.</div>';

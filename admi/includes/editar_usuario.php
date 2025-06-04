@@ -3,8 +3,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
-require_once __DIR__ . '/../include/conexion.php';
-require_once __DIR__ . '/../include/validar_sesion.php';
+require_once __DIR__ . '/../../include/conexion.php';
+require_once __DIR__ . '/../../include/validar_sesion.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1) {
