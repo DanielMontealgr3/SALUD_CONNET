@@ -8,7 +8,10 @@ $usuario_data = null; $error_message = null; $departamentos = [];
 $municipios_del_depto_actual = []; $barrios_del_mun_actual = []; $generos = [];
 
 $path_prefix_for_html_src = ''; 
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 $default_avatar_relative_path = 'img/perfiles/default_avatar.png';
 $default_avatar_display_path = $path_prefix_for_html_src . $default_avatar_relative_path;
 
