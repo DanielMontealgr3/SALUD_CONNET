@@ -32,14 +32,14 @@ if ($depth_in_project === 0) {
 
 $path_to_img_folder_href = $base_href_to_project_root . "img/";
 $path_to_js_folder_href = $base_href_to_project_root . "js/";
-$path_to_include_folder_href = $base_href_to_project_root . "include/";
+$path_to_include_folder_href = $base_href_to_project_root . "includes/";
 
 $filesystem_project_root = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') . $project_uri_base;
 
-$paginas_gestion_entidades = ['ver_entidades.php', 'crear_entidad.php', 'crear_alianza.php', 'lista_alianzas.php'];
+$paginas_gestion_entidades = ['ver_entidades.php', 'crear_entidad.php', 'editar_entidad.php', 'crear_alianza.php', 'lista_alianzas.php'];
 $paginas_gestion_pacientes = ['lista_pacientes.php'];
-$paginas_gestion_farmaceutas = ['lista_farmaceutas.php'];
-$paginas_gestion_medicos = ['ver_horarios.php', 'crear_horario.php', 'lista_medicos.php'];
+$paginas_gestion_farmaceutas = ['lista_farmaceutas.php', 'asignar_farmaceuta.php'];
+$paginas_gestion_medicos = ['ver_horarios.php', 'crear_horario.php', 'lista_medicos.php', 'asignar_ips_medico.php'];
 
 ?>
 <head>
@@ -113,6 +113,7 @@ $paginas_gestion_medicos = ['ver_horarios.php', 'crear_horario.php', 'lista_medi
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownEntidades">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_entidades.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/ver_entidades.php">Ver Entidades</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/crear_entidad.php">Crear Entidad</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'editar_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/editar_entidad.php">Editar Entidad</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/crear_alianza.php">Crear Alianza</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_alianzas.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/lista_alianzas.php">Ver Alianzas</a></li>
                                 </ul>
@@ -127,14 +128,16 @@ $paginas_gestion_medicos = ['ver_horarios.php', 'crear_horario.php', 'lista_medi
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'admi/gestion_farmaceutas') === 0 && in_array($currentPage, $paginas_gestion_farmaceutas)) ? 'active' : ''; ?>" href="#" id="navbarDropdownGestionFarmaceutas" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion Farmaceutas</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownGestionFarmaceutas">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_farmaceutas.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_farmaceutas/lista_farmaceutas.php">Lista Farmaceutas</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'asignar_farmaceuta.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_farmaceutas/asignar_farmaceuta.php">Asignar Farmaceuta</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'admi/gestion_medicos') === 0 && in_array($currentPage, $paginas_gestion_medicos)) ? 'active' : ''; ?>" href="#" id="navbarDropdownGestionMedicos" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion Medicos</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownGestionMedicos">
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/ver_horarios.php">Ver Horarios</a></li>
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/crear_horario.php">Crear Horario</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_medicos.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/lista_medicos.php">Lista Medicos</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/crear_horario.php">Crear Horario</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/ver_horarios.php">Ver Horarios</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'asignar_ips_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/asignar_ips_medico.php">Asignar IPS a Médico</a></li>
                                 </ul>
                             </li>
                         <?php elseif ($rol_usuario == 2): ?>
