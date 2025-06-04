@@ -1,7 +1,7 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();
@@ -108,11 +108,11 @@ if ($con) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>SaludConnect - Lista de Pacientes</title>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">

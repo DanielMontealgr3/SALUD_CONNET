@@ -1,5 +1,5 @@
 <?php
-require_once '../include/conexion.php';
+require_once '../../include/conexion.php';
 
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();

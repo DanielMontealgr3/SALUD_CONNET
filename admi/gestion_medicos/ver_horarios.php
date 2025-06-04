@@ -3,9 +3,9 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -103,7 +103,7 @@ if ($con) {
 <html lang="es">
 <head>
     
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>Horarios de Médicos - Administración</title>
     <style>
         #modalHorariosMedico .modal-content { 
@@ -136,7 +136,7 @@ if ($con) {
     </style>
 </head>
 <body>
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1">
             <div class="vista-datos-container">
@@ -229,7 +229,7 @@ if ($con) {
     </main>
 
     <?php include __DIR__ . '/modal_horario_medico.php'; ?>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     <script src="../js/ver_horarios_admin.js"></script> 
     <script>
     document.addEventListener('DOMContentLoaded', function () {

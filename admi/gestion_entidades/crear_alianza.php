@@ -1,7 +1,7 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once '../../include/conexion.php';
 
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();
@@ -157,7 +157,7 @@ if ($con) {
     <title>Crear Nueva Alianza EPS</title>
     <link rel="icon" type="image/png" href="../img/loguito.png">
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1">
         <div class="container-fluid mt-4">
             <div class="form-container mx-auto" style="max-width: 700px;">
@@ -222,7 +222,7 @@ if ($con) {
             </div>
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     <script src="../js/crear_alianza.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

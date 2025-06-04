@@ -1,7 +1,7 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) { header('Location: ../inicio_sesion.php'); exit; }
@@ -123,7 +123,7 @@ if ($con) {
     <title>Ver Entidades - Administración</title>
 </head>
 <body class="d-flex flex-column">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
@@ -242,7 +242,7 @@ if ($con) {
             </div>
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
 
     <div id="modalEditarEntidadContainer"></div>
     <div class="modal-confirmacion" id="modalConfirmacionEliminar" style="display:none;"><div class="modal-contenido"><h4>Confirmar Eliminación</h4><p id="mensajeConfirmacion">¿Está seguro?</p><div class="modal-botones"><button id="btnConfirmarEliminacion" class="btn btn-danger">Eliminar</button><button id="btnCancelarEliminacion" class="btn btn-secondary">Cancelar</button></div></div></div>

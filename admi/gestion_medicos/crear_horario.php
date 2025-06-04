@@ -3,9 +3,9 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -170,7 +170,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_horario'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>Crear Horario Médico - Administración</title>
     <style>
         #mensaje_medico_error { display: none; color: red; font-size: 0.875em; margin-top: .25rem; }
@@ -243,7 +243,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_horario'])) {
     </style>
 </head>
 <body>
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="form-container mx-auto d-flex flex-column flex-grow-1 p-4 rounded shadow-sm bg-light">
@@ -322,7 +322,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['guardar_horario'])) {
             </div>
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>

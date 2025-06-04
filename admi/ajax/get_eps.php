@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../include/conexion.php';
+require_once __DIR__ . '/../../include/conexion.php';
 
 $eps_list = [];
 $response = ['success' => false, 'data' => [], 'message' => 'Error inicial o no autorizado.'];

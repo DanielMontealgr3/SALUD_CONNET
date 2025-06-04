@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../include/conexion.php';
+require_once __DIR__ . '/../../include/conexion.php';
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
 $tipo_entidad_get = trim($_GET['tipo'] ?? '');

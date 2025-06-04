@@ -1,7 +1,7 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once '../../include/conexion.php';
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -211,7 +211,7 @@ $pagina_anterior_para_volver_script = $_SESSION['pagina_anterior_afiliacion_actu
     <title>Gestionar Afiliación de <?php echo $nombre_afiliado_display_for_title; ?></title>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
 
     <main id="contenido-principal" class="flex-grow-1 py-4">
         <div class="container">
@@ -233,7 +233,7 @@ $pagina_anterior_para_volver_script = $_SESSION['pagina_anterior_afiliacion_actu
         </div>
     </main>
 
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     <script src="../js/afiliacion_modal.js?v=<?php echo time(); ?>"></script>
 
     <?php

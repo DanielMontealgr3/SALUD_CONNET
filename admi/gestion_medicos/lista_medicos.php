@@ -1,7 +1,7 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once('../../include/conexion.php');
 
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();
@@ -112,7 +112,7 @@ if ($con) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>SaludConnect - Lista de Médicos</title>
     <style>
         .btn-group-acciones .btn { margin-right: 3px; margin-bottom: 3px; display: inline-flex; align-items: center; font-size:0.8rem; padding: 0.25rem 0.5rem;}
@@ -279,7 +279,7 @@ if ($con) {
             </div>    
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     
     <div class="modal-confirmacion" id="modalConfirmacionAccion" style="display:none;">
         <div class="modal-contenido">

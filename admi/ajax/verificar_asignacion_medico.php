@@ -1,5 +1,5 @@
 <?php
-require_once '../include/conexion.php';
+require_once '../../include/conexion.php';
 header('Content-Type: application/json');
 
 if (isset($_POST['doc_medico'])) {

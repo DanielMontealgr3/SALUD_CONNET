@@ -1,5 +1,4 @@
 <?php
-// admi/modal_asignacion.php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -7,20 +6,17 @@ error_reporting(E_ALL);
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-require_once '../include/validar_sesion.php';
-require_once('../include/conexion.php');
+require_once '../../include/validar_sesion.php';
+require_once('../../include/conexion.php');
 
-// Valida que el usuario sea administrador y esté logueado
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {
-    // Devuelve un mensaje de error si no está autorizado (este modal se carga vía fetch)
+  
     echo '<div class="alert alert-danger m-3">Acceso no autorizado.</div>';
     exit;
 }
 
-// Obtiene los datos del médico pasados por GET para mostrarlos en el modal
 $doc_medico_modal = $_GET['doc_medico'] ?? '';
 $nom_medico_modal = $_GET['nom_medico'] ?? 'Médico no especificado';
-// Obtiene el token CSRF de la sesión para incluirlo en el formulario del modal
 $csrf_token_modal = $_SESSION['csrf_token'] ?? '';
 
 $conex_db = new database();
@@ -28,23 +24,18 @@ $con = $conex_db->conectar();
 
 $lista_ips_modal = [];
 $lista_estados_asignacion_modal = [];
-$error_carga_modal = ''; // Variable para almacenar mensajes de error durante la carga de datos
+$error_carga_modal = ''; 
 
-// Si la conexión a la BD es exitosa, carga las IPS y los estados
 if ($con) {
     try {
-        // Carga todas las IPS disponibles para el select
         $stmt_ips = $con->prepare("SELECT Nit_IPS, nom_IPS FROM ips ORDER BY nom_IPS ASC");
         $stmt_ips->execute();
         $lista_ips_modal = $stmt_ips->fetchAll(PDO::FETCH_ASSOC);
-
-        // Carga los estados relevantes para la asignación (Activo e Inactivo)
         $stmt_estados = $con->prepare("SELECT id_est, nom_est FROM estado WHERE id_est IN (1, 2) ORDER BY FIELD(id_est, 1, 2)");
         $stmt_estados->execute();
         $lista_estados_asignacion_modal = $stmt_estados->fetchAll(PDO::FETCH_ASSOC);
 
     } catch (PDOException $e) {
-        // Si hay un error en la consulta, lo registra y lo muestra
         $error_carga_modal = "Error al cargar datos para el modal: " . htmlspecialchars($e->getMessage());
         error_log("Error en modal_asignacion.php al cargar datos: " . $e->getMessage());
     }
@@ -68,18 +59,15 @@ if ($con) {
         <?php if (!empty($error_carga_modal)): ?>
             <div class="alert alert-danger"><?php echo $error_carga_modal; ?></div>
         <?php endif; ?>
-        <!-- Contenedores para mensajes de error globales o de éxito del formulario -->
         <div id="modalAsignacionGlobalErrorInterno" class="mb-3"></div>
         <div id="modalAsignacionMessageInterno" class="mb-3"></div>
 
         <form id="formAsignarIPSModalInterno" method="POST" novalidate>
-            <!-- Campos ocultos para enviar datos importantes con el formulario -->
             <input type="hidden" name="doc_medico_asignar" id="doc_medico_asignar_modal" value="<?php echo htmlspecialchars($doc_medico_modal); ?>">
-            <input type="hidden" name="nom_medico_original" value="<?php echo htmlspecialchars($nom_medico_modal); ?>"> <!-- Para mantener el nombre si hay recarga por error PHP -->
+            <input type="hidden" name="nom_medico_original" value="<?php echo htmlspecialchars($nom_medico_modal); ?>"> 
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token_modal); ?>">
-            <input type="hidden" name="accion_guardar_asignacion" value="1"> <!-- Identificador de la acción -->
+            <input type="hidden" name="accion_guardar_asignacion" value="1"> 
             
-            <!-- Sección de información del médico (no editable) -->
             <div class="alert alert-info bg-light border-info p-3 mb-4 rounded">
                 <h6 class="alert-heading">Información del Médico</h6>
                 <div class="row g-2">
@@ -94,7 +82,6 @@ if ($con) {
                 </div>
             </div>
 
-            <!-- Campos del formulario para la asignación -->
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label for="nit_ips_asignar_modal" class="form-label">Seleccione IPS <span class="text-danger">(*)</span></label>

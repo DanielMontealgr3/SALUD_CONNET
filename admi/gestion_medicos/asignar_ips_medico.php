@@ -5,9 +5,9 @@ error_reporting(E_ALL);
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once '../../include/conexion.php';
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {
     header('Location: ../inicio_sesion.php');
@@ -139,10 +139,7 @@ if (empty($doc_medico_page)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asignar IPS a Médico - SaludConnect</title>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../css/styles_admin.css">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <style>
         body { background-color: #e9ecef; }
         #modalContenedorAsignacion .modal-content.modal-content-asignacion-styled { 
@@ -156,7 +153,7 @@ if (empty($doc_medico_page)) {
     </style>
 </head>
 <body class="d-flex flex-column">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
 
     <main id="contenido-principal" class="flex-grow-1 d-flex align-items-center justify-content-center visually-hidden">
         <p>Cargando...</p>
@@ -175,8 +172,7 @@ if (empty($doc_medico_page)) {
         </div>
     </div>
 
-    <?php include '../include/footer.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <?php include '../../include/footer.php'; ?>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const modalContenedorElement = document.getElementById('modalContenedorAsignacion');

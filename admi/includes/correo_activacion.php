@@ -3,9 +3,9 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once '../include/PHPMAILER/PHPMailer.php';
-require_once '../include/PHPMAILER/SMTP.php';
-require_once '../include/PHPMAILER/Exception.php';
+require_once '../../include/PHPMAILER/PHPMailer.php';
+require_once '../../include/PHPMAILER/SMTP.php';
+require_once '../../include/PHPMAILER/Exception.php';
 
 
 use PHPMailer\PHPMailer\PHPMailer;

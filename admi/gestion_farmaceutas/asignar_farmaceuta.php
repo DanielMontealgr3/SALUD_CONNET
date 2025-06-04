@@ -5,9 +5,9 @@ error_reporting(E_ALL);
 
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+require_once '../../include/validar_sesion.php';
+require_once '../../include/inactividad.php';
+require_once '../../include/conexion.php';
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {
     header('Location: ../inicio_sesion.php');
@@ -155,7 +155,7 @@ if (empty($doc_farma_page)) {
     </style>
 </head>
 <body class="d-flex flex-column">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
 
     <main id="contenido-principal" class="flex-grow-1 d-flex align-items-center justify-content-center visually-hidden">
         <p>Cargando...</p>
@@ -174,7 +174,7 @@ if (empty($doc_farma_page)) {
         </div>
     </div>
 
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/asignacion_farmaceuta.js?v=<?php echo time(); ?>"></script>
     <script>
