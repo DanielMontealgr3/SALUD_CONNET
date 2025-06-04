@@ -8,9 +8,6 @@ $usuario_data = null; $error_message = null; $departamentos = [];
 $municipios_del_depto_actual = []; $barrios_del_mun_actual = []; $generos = [];
 
 $path_prefix_for_html_src = ''; 
-// Si este modal se incluye desde una página en una subcarpeta (ej: /SALUDCONNECT/pages/ver_usuario.php), 
-// y el modal necesita acceder a imágenes o scripts en la raíz o en img/, usa '../'
-// Ejemplo: $path_prefix_for_html_src = '../'; 
 
 $default_avatar_relative_path = 'img/perfiles/default_avatar.png';
 $default_avatar_display_path = $path_prefix_for_html_src . $default_avatar_relative_path;
@@ -58,7 +55,7 @@ if (isset($_SESSION['doc_usu'])) {
     finally { if ($pdo) { Database::disconnect(); } }
 } else { $error_message = "Error: Sesión de usuario no encontrada."; }
 ?>
-<style> #userProfileModal .modal-content { background-color: #f0f2f5; border: 3px solid #87CEEB; border-radius: .5rem; } #userProfileModal .modal-header { background-color: #005A9C; color: white; border-bottom: 1px solid #0047AB; } #userProfileModal .modal-header .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); } #userProfileModal .modal-dialog { max-width: 850px; } #userProfileModal .img-thumbnail { border: 1px solid #dee2e6; padding: 0.25rem; background-color: #fff; border-radius: 0.25rem; max-width: 100%; height: auto; } .invalid-feedback { display: block; width: 100%; margin-top: .15rem; font-size: .80em; color: #dc3545; } </style>
+<style> #userProfileModal .modal-content { xCEEB; border-radius: .5rem; } #userProfileModal .modal-header { background-color: #005A9C; color: white; border-bottom: 1px solid #0047AB; } #userProfileModal .modal-header .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); } #userProfileModal .modal-dialog { max-width: 850px; } #userProfileModal .img-thumbnail { border: 1px solid #dee2e6; padding: 0.25rem; background-color: #fff; border-radius: 0.25rem; max-width: 100%; height: auto; } .invalid-feedback { display: block; width: 100%; margin-top: .15rem; font-size: .80em; color: #dc3545; } </style>
 <div class="modal fade" id="userProfileModal" tabindex="-1" aria-labelledby="userProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
