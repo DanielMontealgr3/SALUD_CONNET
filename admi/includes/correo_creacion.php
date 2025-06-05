@@ -95,7 +95,7 @@ HTML;
     }
 }
 
-$redirect_url = 'crear_usu.php'; 
+$redirect_url = '../gestion_crear/crear_usu.php'; 
 
 if (isset($_SESSION['correo_nuevo_usuario_info'])) {
     $datos_correo = $_SESSION['correo_nuevo_usuario_info'];

@@ -16,9 +16,13 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_
 }
 
 $ID_ROL_MEDICO_PHP = 4;
-$ID_ESPECIALIDAD_NO_APLICA_PHP = 46; 
+$ID_ESPECIALIDAD_NO_APLICA_PHP = 46;
 $ID_ESTADO_AFILIADO_ACTIVO = 1;
-$ID_ESTADO_AFILIADO_INACTIVO = 2; 
+$ID_ESTADO_AFILIADO_INACTIVO = 2;
+
+$ID_TIPO_DOC_CEDULA_CIUDADANIA_PHP = 1;
+$ID_TIPO_DOC_TARJETA_IDENTIDAD_PHP = 2;
+$ID_TIPO_DOC_REGISTRO_CIVIL_PHP = 3;
 
 $tipos_doc = []; $departamentos = []; $municipios_pre = []; $barrios_pre = [];
 $generos = []; $estados_usuarios = []; $especialidades = []; $roles = [];
@@ -33,6 +37,10 @@ $php_success_message_registro = '';
 $php_warning_message_afiliacion_link = '';
 $php_info_message_correo = '';
 
+$mostrar_mensajes_get_derivados = true; 
+if (isset($_SESSION['form_data_crear_usu']) || $_SERVER["REQUEST_METHOD"] == "POST") {
+    $mostrar_mensajes_get_derivados = false;
+}
 
 if (isset($_SESSION['form_data_crear_usu'])) {
     $form_data = $_SESSION['form_data_crear_usu'];
@@ -54,7 +62,7 @@ if (isset($_SESSION['form_data_crear_usu'])) {
     unset($_SESSION['form_data_crear_usu']);
 }
 
-if(isset($_GET['correo_status'])) {
+if(isset($_GET['correo_status']) && $mostrar_mensajes_get_derivados) {
     $nombre_usuario_creado = htmlspecialchars($_GET['nombre'] ?? 'el usuario');
     if ($_GET['correo_status'] === 'enviado_activo') {
         $php_info_message_correo = "<div class='alert alert-info'>Cuenta para <strong>$nombre_usuario_creado</strong> creada y activada. Correo de bienvenida enviado a ".htmlspecialchars($_GET['email'] ?? '').".</div>";
@@ -94,16 +102,55 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $registro_usuario_exitoso = false;
     $errores_validacion = [];
 
+    if (empty($id_tipo_doc_sel_post)) $errores_validacion[] = "El tipo de documento es obligatorio.";
+    
     if (empty($doc_usu_post)) $errores_validacion[] = "El documento es obligatorio.";
     elseif (!ctype_digit($doc_usu_post)) $errores_validacion[] = "El documento solo debe contener números.";
     elseif (strlen($doc_usu_post) < 7 || strlen($doc_usu_post) > 11) $errores_validacion[] = "El documento debe tener entre 7 y 11 dígitos.";
-    if (empty($id_tipo_doc_sel_post)) $errores_validacion[] = "El tipo de documento es obligatorio.";
-    if (empty($fecha_nac_post)) $errores_validacion[] = "La fecha de nacimiento es obligatoria.";
-    else {
-        $fecha_dt = DateTime::createFromFormat('Y-m-d', $fecha_nac_post);
-        if (!$fecha_dt || $fecha_dt->format('Y-m-d') !== $fecha_nac_post) $errores_validacion[] = "Formato de fecha de nacimiento inválido.";
-        elseif ($fecha_dt >= new DateTime('today')) $errores_validacion[] = "La fecha de nacimiento debe ser anterior a hoy.";
+    elseif (preg_match('/^0+$/', $doc_usu_post)) $errores_validacion[] = "El documento no puede consistir solo en ceros.";
+    elseif (preg_match('/^(\d)\1+$/', $doc_usu_post)) $errores_validacion[] = "El documento no puede consistir en el mismo dígito repetido.";
+
+    if (empty($fecha_nac_post)) {
+        $errores_validacion[] = "La fecha de nacimiento es obligatoria.";
+    } else {
+        try {
+            $fecha_nac_dt = new DateTimeImmutable($fecha_nac_post);
+            $hoy = new DateTimeImmutable('today');
+            $ayer = $hoy->sub(new DateInterval('P1D'));
+            $min_date_allowed = $hoy->sub(new DateInterval('P120Y'));
+
+            if ($fecha_nac_dt->format('Y-m-d') !== $fecha_nac_post) {
+                $errores_validacion[] = "Formato de fecha de nacimiento inválido.";
+            } elseif ($fecha_nac_dt >= $hoy) {
+                $errores_validacion[] = "La fecha de nacimiento debe ser anterior a hoy.";
+            } elseif ($fecha_nac_dt < $min_date_allowed) {
+                 $errores_validacion[] = "La fecha de nacimiento es demasiado antigua (máx. 120 años).";
+            } elseif ($id_tipo_doc_sel_post) {
+                $fecha_cumple_7 = $fecha_nac_dt->add(new DateInterval('P7Y'));
+                $fecha_cumple_18 = $fecha_nac_dt->add(new DateInterval('P18Y'));
+
+                if ($id_tipo_doc_sel_post == $ID_TIPO_DOC_CEDULA_CIUDADANIA_PHP) {
+                    if ($fecha_cumple_18 > $ayer) {
+                        $errores_validacion[] = "Para Cédula de Ciudadanía, debe tener al menos 18 años cumplidos ayer.";
+                    }
+                } elseif ($id_tipo_doc_sel_post == $ID_TIPO_DOC_TARJETA_IDENTIDAD_PHP) {
+                    if ($fecha_cumple_7 > $ayer) {
+                        $errores_validacion[] = "Para Tarjeta de Identidad, debe tener al menos 7 años cumplidos ayer.";
+                    }
+                    if ($fecha_cumple_18 <= $ayer) {
+                        $errores_validacion[] = "Para Tarjeta de Identidad, debe ser menor de 18 años.";
+                    }
+                } elseif ($id_tipo_doc_sel_post == $ID_TIPO_DOC_REGISTRO_CIVIL_PHP) {
+                    if ($fecha_cumple_7 <= $ayer) {
+                        $errores_validacion[] = "Para Registro Civil, debe ser menor de 7 años.";
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            $errores_validacion[] = "Fecha de nacimiento inválida.";
+        }
     }
+
     if (empty($nom_usu_post)) $errores_validacion[] = "El nombre completo es obligatorio.";
     elseif (!preg_match('/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/u', $nom_usu_post)) $errores_validacion[] = "El nombre completo solo debe contener letras y espacios.";
     elseif (strlen($nom_usu_post) < 5 || strlen($nom_usu_post) > 100) $errores_validacion[] = "El nombre completo debe tener entre 5 y 100 caracteres.";
@@ -143,10 +190,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
         $stmt_check_existencia_correo->execute([':correo' => $correo_usu_post_form]);
 
         if ($stmt_check_existencia_doc->rowCount() > 0) {
-            $php_error_message = "<div class='alert alert-danger'>El número de documento '" . htmlspecialchars($doc_usu_post) . "' ya se encuentra registrado en el sistema.</div>";
+            $php_error_message = "<div class='alert alert-danger error-servidor-especifico' data-campo-error='doc_usu'>El número de documento '" . htmlspecialchars($doc_usu_post) . "' ya se encuentra registrado en el sistema.</div>";
             $_SESSION['form_data_crear_usu'] = $_POST;
         } elseif ($stmt_check_existencia_correo->rowCount() > 0) {
-            $php_error_message = "<div class='alert alert-danger'>El correo electrónico '" . htmlspecialchars($correo_usu_post_form) . "' ya se encuentra en uso.</div>";
+            $php_error_message = "<div class='alert alert-danger error-servidor-especifico' data-campo-error='correo_usu'>El correo electrónico '" . htmlspecialchars($correo_usu_post_form) . "' ya se encuentra en uso.</div>";
             $_SESSION['form_data_crear_usu'] = $_POST;
         } else {
             $hashed_password = password_hash($contra_nueva_post, PASSWORD_DEFAULT);
@@ -176,8 +223,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
                     $registro_usuario_exitoso = true;
                     unset($_SESSION['form_data_crear_usu']);
                     
-                    // Obtener nombre del rol para el correo
-                    $nombre_rol_creado = 'Usuario'; // Valor por defecto
+                    $nombre_rol_creado = 'Usuario'; 
                     $stmt_rol = $con->prepare("SELECT nombre_rol FROM rol WHERE id_rol = :id_rol");
                     $stmt_rol->bindParam(':id_rol', $id_rol_sel_post, PDO::PARAM_INT);
                     $stmt_rol->execute();
@@ -219,7 +265,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     }
 
     if ($registro_usuario_exitoso && empty($php_error_message)) {
-        header('Location: correo_creacion.php');
+        header('Location: ../includes/correo_creacion.php');
         exit;
     }
 }
@@ -265,7 +311,7 @@ if ($con) {
     $php_error_message = "<div class='alert alert-danger'>Error: No se pudo conectar a la base de datos para carga inicial de selects.</div>";
 }
 
-if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_GET['doc_creado']) && empty($php_error_message) && empty($php_info_message_correo)) {
+if ($mostrar_mensajes_get_derivados && isset($_GET['doc_creado']) && empty($php_error_message) && empty($php_info_message_correo)) {
     $doc_creado_get = trim($_GET['doc_creado']);
     $nom_creado_get = trim($_GET['nom_creado'] ?? 'El usuario');
     $tipo_doc_creado_get = trim($_GET['tipo_doc_creado'] ?? '');
@@ -301,13 +347,41 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_GET['doc_creado']) && empty(
         }
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <title>Crear Nuevo Usuario - Salud Connected</title>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <style>
+        .modal-sending {
+            display: none; 
+            position: fixed; 
+            z-index: 1055; 
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.4); 
+        }
+        .modal-sending-content {
+            background-color: #fefefe;
+            margin: 15% auto; 
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; 
+            max-width: 400px;
+            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+        }
+        .modal-sending-content .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include '../../include/menu.php'; ?>
@@ -505,6 +579,17 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_GET['doc_creado']) && empty(
         </div>
     </main>
     <?php include '../../include/footer.php'; ?>
+
+    <div id="modalSendingEmail" class="modal-sending">
+        <div class="modal-sending-content">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <h4>Enviando correo...</h4>
+            <p>Por favor, espere un momento.</p>
+        </div>
+    </div>
+
     <script src="../js/crear_usu.js"></script> 
 </body>
 </html>
