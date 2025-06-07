@@ -11,12 +11,20 @@ if (class_exists('database')) {
     }
 }
 
-
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 || !isset($_SESSION['nombre_usuario'])) {
-    header('Location: ../inicio_sesion.php');
+    header('Location: ../../inicio_sesion.php');
     exit;
+}
+
+$redirect_to_view = false;
+if (isset($_GET['origen'])) {
+    $origen_valido = basename(filter_var($_GET['origen'], FILTER_SANITIZE_URL));
+    if (!empty($origen_valido)) {
+        $_SESSION['redirect_after_create'] = $origen_valido . '.php';
+        $redirect_to_view = true;
+    }
 }
 
 $id_mun_form = '';
@@ -26,6 +34,7 @@ $php_error_message = '';
 $php_success_message = '';
 $departamentos_disponibles = [];
 $formulario_deshabilitado = false;
+$show_js_redirect = false;
 
 if ($con) {
     try {
@@ -73,7 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_municipio']) && 
         $errores_validacion[] = "El ID del municipio es obligatorio.";
     } elseif (!ctype_digit($id_mun_post)) {
         $errores_validacion[] = "El ID del municipio solo debe contener números.";
-    } elseif (strlen($id_mun_post) > 10) { // Asumiendo una longitud máxima similar a id_dep
+    } elseif (strlen($id_mun_post) > 10) { 
         $errores_validacion[] = "El ID del municipio no puede exceder los 10 dígitos.";
     }
 
@@ -107,11 +116,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_municipio']) && 
 
             try {
                 if ($stmt_insert->execute([':id_mun' => $id_mun_post, ':nom_mun' => $nom_mun_post, ':id_dep' => $id_dep_sel_post])) {
-                    $php_success_message = "<div class='alert alert-success'>Municipio '" . htmlspecialchars($nom_mun_post) . "' creado exitosamente.</div>";
+                    
                     unset($_SESSION['form_data_crear_mun']);
                     $id_mun_form = ''; 
                     $nom_mun_form = ''; 
                     $id_dep_sel_form = '';
+
+                    if ($redirect_to_view && isset($_SESSION['redirect_after_create'])) {
+                        $redirect_url = $_SESSION['redirect_after_create'];
+                        unset($_SESSION['redirect_after_create']);
+                        header('Location: ' . $redirect_url . '?mensaje_exito=Municipio \'' . htmlspecialchars($nom_mun_post) . '\' creado exitosamente.');
+                        exit;
+                    } else {
+                        $php_success_message = "<div class='alert alert-success'>Municipio '" . htmlspecialchars($nom_mun_post) . "' creado exitosamente.</div>";
+                        $show_js_redirect = true;
+                    }
+
                 } else {
                     $errorInfo = $stmt_insert->errorInfo();
                     $php_error_message = "<div class='alert alert-danger'>Error SQL al crear municipio: " . htmlspecialchars($errorInfo[2] ?? 'Desconocido') . "</div>";
@@ -140,9 +160,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_municipio']) && 
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="../../../img/loguito.png">
     <title>Insertar Nuevo Municipio - Salud Connected</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../../css/estilos_form.css">
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include '../../../include/menu.php'; ?>
@@ -162,7 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_municipio']) && 
                     ?>
                 </div>
 
-                <form id="formCrearMunicipio" action="crear_municipio.php" method="POST" novalidate>
+                <form id="formCrearMunicipio" action="crear_municipio.php<?php echo $redirect_to_view ? '?origen=' . pathinfo($_SESSION['redirect_after_create'], PATHINFO_FILENAME) : ''; ?>" method="POST" novalidate>
                     <div class="mb-3">
                         <label for="id_dep" class="form-label">Departamento (*):</label>
                         <select id="id_dep" name="id_dep" class="form-select" required <?php echo $formulario_deshabilitado ? 'disabled' : ''; ?>>
@@ -197,5 +221,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_municipio']) && 
     </main>
     <?php include '../../../include/footer.php'; ?>
     <script src="../../js/crear_municipio.js"></script> 
+    <?php if ($show_js_redirect): ?>
+    <script>
+        setTimeout(function() {
+            window.location.href = 'ver_municipios.php?mensaje_exito=Municipio creado exitosamente.';
+        }, 3000); 
+    </script>
+    <?php endif; ?>
 </body>
 </html>

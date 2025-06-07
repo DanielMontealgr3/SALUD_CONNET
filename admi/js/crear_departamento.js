@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('formCrearDepartamento');
-    const btnCrearDepartamento = form.querySelector('button[name="crear_departamento"]');
+    const btnCrearDepartamento = form.querySelector('button[name="crear_departamento"]'); // Asegurado que el name coincida
     const idDepInput = document.getElementById('id_dep');
     const nomDepInput = document.getElementById('nom_dep');
     
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fn: v => {
                 if (v === "") return { isValid: false, message: "ID Departamento es requerido." };
                 if (!/^\d+$/.test(v)) return { isValid: false, message: "ID solo números." };
-                if (v.length > 10) return { isValid: false, message: "ID máx 10 dígitos." };
+                if (v.length > 10) return { isValid: false, message: "ID máx 10 dígitos." }; // Unificado
                 return { isValid: true };
             }, 
             name: "ID Departamento" 
@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     function setFieldValidationUI(el, isValid, message = "", forceShowError = false) {
         const feedbackEl = el.nextElementSibling;
         if (feedbackEl && feedbackEl.classList.contains('invalid-feedback')) {
@@ -82,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (req && val === "") {
             result = { isValid: false, message: `${name} es requerido.` };
-        } else if (fn) { 
-            const fnRes = fn(el.value);
+        } else if (fn && val !== "") { // Asegurar que solo se llame a fn si hay valor
+            const fnRes = fn(el.value); // Pasar el valor completo, no el trim() para fn
             if (typeof fnRes === 'object') {
                 result = fnRes;
             } else {
@@ -105,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (btnCrearDepartamento) {
+        if (btnCrearDepartamento) { // Verifica que el botón exista
             btnCrearDepartamento.disabled = !isFormValid;
             btnCrearDepartamento.classList.toggle('btn-success', isFormValid); 
             btnCrearDepartamento.classList.toggle('btn-primary', !isFormValid); 
