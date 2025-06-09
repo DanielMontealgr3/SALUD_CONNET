@@ -3,7 +3,6 @@ require_once '../include/validar_sesion.php';
 require_once '../include/inactividad.php';
 require_once '../include/conexion.php';
 
-// Asegurar que $con se establece si conexion.php solo define la clase
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();
     $con = $db->conectar();
