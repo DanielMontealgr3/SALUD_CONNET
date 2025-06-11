@@ -4,11 +4,49 @@ document.addEventListener('DOMContentLoaded', function () {
     const contadorPacientesBadge = document.getElementById('contador-pacientes');
     const intervalos = {};
 
-    function iniciarTimer(fila, tiempoInicial) {
-        const idTurno = fila.id.replace('turno-', '');
+    function mostrarNotificacionTurnoVencido(paciente) {
+        const toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) return;
+
+        const toastId = `toast-vencido-${paciente.id_turno_ent}`;
+        if (document.getElementById(toastId)) return;
+
+        const toastHTML = `
+            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-danger text-white">
+                    <i class="bi bi-clock-history me-2"></i>
+                    <strong class="me-auto">Turno Vencido</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    El turno de <strong>${paciente.celdas[2]}</strong> ha pasado su hora programada.
+                    <br>
+                    <small>Turno #${paciente.id_turno_ent}</small>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            this.remove();
+        });
+
+        const toast = new bootstrap.Toast(toastElement, { autohide: false });
+        toast.show();
+    }
+
+    function detenerTimer(idTurno) {
         if (intervalos[idTurno]) {
             clearInterval(intervalos[idTurno]);
+            delete intervalos[idTurno];
         }
+    }
+
+    function iniciarTimer(fila, tiempoInicial) {
+        const idTurno = fila.id.replace('turno-', '');
+        detenerTimer(idTurno);
 
         const contadorSpan = fila.querySelector('.contador-espera');
         if (!contadorSpan) return;
@@ -17,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function actualizarContador() {
             if (tiempo < 0) {
-                clearInterval(intervalos[idTurno]);
+                detenerTimer(idTurno);
                 marcarComoNoAsistido(idTurno);
                 return;
             }
@@ -70,38 +108,59 @@ document.addEventListener('DOMContentLoaded', function () {
                 contadorPacientesBadge.textContent = data.total;
             }
 
-            const idsRecibidos = new Set(data.pacientes.map(p => `turno-${p.id_turno_ent}`));
             const filasActuales = new Map([...cuerpoTabla.querySelectorAll('tr')].map(tr => [tr.id, tr]));
+            const idsRecibidos = new Set();
+            const turnosVencidosValidos = new Set();
 
-            data.pacientes.forEach(paciente => {
+            data.pacientes.forEach((paciente, index) => {
                 const idFila = `turno-${paciente.id_turno_ent}`;
-                let fila = filasActuales.get(idFila);
+                idsRecibidos.add(idFila);
 
+                let fila = filasActuales.get(idFila);
                 if (!fila) {
                     fila = document.createElement('tr');
                     fila.id = idFila;
-                    cuerpoTabla.appendChild(fila);
                 }
                 
-                fila.className = paciente.clase_fila;
-                fila.dataset.estado = paciente.estado_llamado;
-
                 const celdasHTML = paciente.celdas.join('') + 
                     `<td class="acciones-tabla" data-idturno="${paciente.id_turno_ent}">${paciente.acciones_html}</td>`;
-
-                if (fila.innerHTML !== celdasHTML) {
+                
+                if (fila.innerHTML !== celdasHTML || fila.className !== paciente.clase_fila) {
+                    fila.className = paciente.clase_fila;
+                    fila.dataset.estado = paciente.estado_llamado;
                     fila.innerHTML = celdasHTML;
                     asignarListeners(fila);
-                    if (paciente.estado_llamado == 1 && paciente.tiempo_restante > 0) {
-                        iniciarTimer(fila, paciente.tiempo_restante);
-                    }
+                }
+                
+                if (cuerpoTabla.children[index] !== fila) {
+                    cuerpoTabla.insertBefore(fila, cuerpoTabla.children[index] || null);
+                }
+
+                if (paciente.estado_llamado == 1 && paciente.tiempo_restante > 0) {
+                    iniciarTimer(fila, paciente.tiempo_restante);
+                } else {
+                    detenerTimer(paciente.id_turno_ent);
+                }
+                
+                if (paciente.clase_fila === 'table-danger' && paciente.estado_llamado == 0) {
+                    turnosVencidosValidos.add(paciente.id_turno_ent.toString());
+                    mostrarNotificacionTurnoVencido(paciente);
                 }
             });
 
             filasActuales.forEach((fila, id) => {
                 if (!idsRecibidos.has(id)) {
-                    if (intervalos[id.replace('turno-','')]) clearInterval(intervalos[id.replace('turno-','')]);
+                    detenerTimer(id.replace('turno-', ''));
                     fila.remove();
+                }
+            });
+            
+            document.querySelectorAll('.toast-container .toast').forEach(toastEl => {
+                const turnId = toastEl.id.replace('toast-vencido-', '');
+                if (!turnosVencidosValidos.has(turnId)) {
+                    const toastInstance = bootstrap.Toast.getInstance(toastEl);
+                    if (toastInstance) toastInstance.hide();
+                    else toastEl.remove();
                 }
             });
 
@@ -127,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function confirmarLlegada(idTurno) {
+        detenerTimer(idTurno);
         const formData = new FormData();
         formData.append('accion', 'paciente_llego');
         formData.append('id_turno', idTurno);
@@ -159,5 +219,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         setInterval(actualizarTablaEnTiempoReal, 4000);
+        actualizarTablaEnTiempoReal();
     }
 });

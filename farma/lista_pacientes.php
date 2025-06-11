@@ -71,7 +71,7 @@ if (isset($con)) {
                         JOIN medicamentos med ON detalles_histo_clini.id_medicam = med.id_medicamento
                         GROUP BY id_historia
                     ) AS dh ON t.id_historia = dh.id_historia
-                    ORDER BY t.hora_24h ASC, t.nombre_paciente ASC";
+                    ORDER BY CASE WHEN t.estado_llamado = 11 THEN 0 ELSE 1 END ASC, t.hora_24h ASC, t.nombre_paciente ASC";
         
         $stmt_pacientes = $con->prepare($sql_base);
         $stmt_pacientes->execute([':nit_farma' => $nit_farmacia_asignada_actual]);
@@ -95,10 +95,10 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
         $diferencia = $ahora_ts - $hora_llamado_obj->getTimestamp();
         $tiempo_restante_seg = max(0, $tiempo_espera_no_asistio - $diferencia);
         $clase_fila = 'table-info';
-    } elseif ($esta_vencido) {
-        $clase_fila = 'table-danger';
     } elseif ($estado_llamado == 11) {
         $clase_fila = 'table-success';
+    } elseif ($esta_vencido) {
+        $clase_fila = 'table-danger';
     }
 
     $se_puede_llamar = ($hora_programada_ts - $ahora_ts) <= 300;
@@ -152,10 +152,8 @@ if (isset($_GET['json'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <!-- RUTA CSS CORREGIDA -->
     <link rel="stylesheet" href="../css/estilos.css?v=<?php echo time(); ?>">
 </head>
 <body class="d-flex flex-column min-vh-100">

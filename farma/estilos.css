@@ -75,7 +75,7 @@ h3.titulo-lista-tabla {
     margin-bottom: 1.5rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid #e0e6ed;
-    text-align: center;
+    text-align: left;
     font-size: 1.5rem;
 }
 
@@ -124,7 +124,7 @@ h3.titulo-lista-tabla {
     font-size: 0.85rem;
     margin-top: 1rem;
     border: 1px solid #e2e8f0;
-    table-layout: fixed; /* Ayuda a mantener la consistencia del ancho de las columnas */
+    table-layout: fixed; /* Mantiene la consistencia del ancho de las columnas en escritorio */
 }
 .tabla-admin-mejorada thead th {
     background-color: #f1f5f9;
@@ -154,7 +154,7 @@ h3.titulo-lista-tabla {
     width: 160px;
     min-width: 160px;
     box-sizing: border-box;
-    text-align: center !important;
+    text-align: left;
     white-space: nowrap;
 }
 .tabla-admin-mejorada td.acciones-tabla .btn {
@@ -165,11 +165,6 @@ h3.titulo-lista-tabla {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-}
-.btn-scanner {
-    font-size: 1.2rem;
-    padding: 0.3rem 0.6rem;
-    line-height: 1;
 }
 
 /* === PAGINACIÓN === */
@@ -195,7 +190,7 @@ h3.titulo-lista-tabla {
 
 /* === ESTILOS RESPONSIVOS === */
 @media (max-width: 991.98px) {
-    .tabla-admin-mejorada { table-layout: auto; } /* Vuelve a auto en pantallas pequeñas */
+    .tabla-admin-mejorada { table-layout: auto; } /* Vuelve a auto en pantallas pequeñas para que se ajuste */
     #contenido-principal { padding: 15px; }
     .vista-datos-container { padding: 15px; }
     h3.titulo-lista-tabla { font-size: 1.3rem; }
