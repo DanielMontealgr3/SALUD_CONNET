@@ -113,7 +113,7 @@ if (isset($_GET['ajax_search'])) {
 
 $total_registros = 0;
 $filas_html = generarFilasInventario($con, $nit_farmacia_actual, $total_registros);
-$registros_por_pagina = 4;
+$registros_por_pagina = 15;
 $total_paginas = ceil($total_registros / $registros_por_pagina);
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
@@ -134,14 +134,17 @@ $medicamentos_agotados = $stmt_agotados->fetchAll(PDO::FETCH_ASSOC);
 $stmt_tipos = $con->prepare("SELECT id_tip_medic, nom_tipo_medi FROM tipo_de_medicamento ORDER BY nom_tipo_medi ASC");
 $stmt_tipos->execute();
 $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt_tipos_mov = $con->query("SELECT id_tipo_mov, nom_mov FROM tipo_movimiento ORDER BY nom_mov");
+$tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
     <style>
         .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: inline-block; }
-        .filtros-tabla-container .form-label i { margin-right: 0.5rem; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -153,7 +156,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                     <h3 class="titulo-lista-tabla m-0">Inventario de: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></h3>
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgotados"><i class="bi bi-exclamation-triangle-fill"></i> Ver Stock Crítico (<?php echo count($medicamentos_agotados); ?>)</button>
-                        <button class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel-fill"></i> Generar Reporte</button>
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalReportes"><i class="bi bi-file-earmark-excel-fill"></i> Generar Reporte</button>
                     </div>
                 </div>
                 
@@ -236,6 +239,50 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </main>
+    <div class="modal fade" id="modalReportes" tabindex="-1" aria-labelledby="modalReportesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="generar_reporte_excel.php" method="POST" target="_blank">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalReportesLabel"><i class="bi bi-gear-fill me-2"></i>Configurar Reporte de Movimientos</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="reporte_fecha_inicio" class="form-label">Fecha de Inicio:</label>
+                            <input type="date" class="form-control" id="reporte_fecha_inicio" name="fecha_inicio" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reporte_fecha_fin" class="form-label">Fecha de Fin:</label>
+                            <input type="date" class="form-control" id="reporte_fecha_fin" name="fecha_fin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reporte_tipo_movimiento" class="form-label">Tipo de Movimiento:</label>
+                            <select class="form-select" id="reporte_tipo_movimiento" name="tipo_movimiento">
+                                <option value="todos" selected>Todos</option>
+                                <?php foreach ($tipos_movimiento as $mov): ?>
+                                <option value="<?php echo $mov['id_tipo_mov']; ?>"><?php echo htmlspecialchars($mov['nom_mov']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reporte_tipo_medicamento" class="form-label">Tipo de Medicamento:</label>
+                            <select class="form-select" id="reporte_tipo_medicamento" name="tipo_medicamento">
+                                <option value="todos" selected>Todos</option>
+                                <?php foreach ($tipos_medicamento as $tipo): ?>
+                                <option value="<?php echo $tipo['id_tip_medic']; ?>"><?php echo htmlspecialchars($tipo['nom_tipo_medi']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-download me-2"></i>Descargar Excel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <div class="modal fade" id="modalAgotados" tabindex="-1" aria-labelledby="modalAgotadosLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -319,7 +366,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
     </div>
     
     <?php include '../../include/footer.php'; ?>
-    <script src="../includes_farm/JsBarcode.all.min.js"></script>
     <script src="../js/gestion_inventario.js?v=<?php echo time(); ?>"></script>
+    <script src="../includes_farm/JsBarcode.all.min.js"></script>
 </body>
 </html>

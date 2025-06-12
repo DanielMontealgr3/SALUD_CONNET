@@ -154,7 +154,6 @@ if (isset($_GET['json'])) {
 <head>
     <link rel="icon" type="image/png" href="../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <link rel="stylesheet" href="../css/estilos.css?v=<?php echo time(); ?>">
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include '../include/menu.php'; ?>
