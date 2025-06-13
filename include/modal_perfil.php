@@ -7,81 +7,61 @@ require_once 'conexion.php';
 $usuario_data = null; $error_message = null; $departamentos = [];
 $municipios_del_depto_actual = []; $barrios_del_mun_actual = []; $generos = [];
 
-$path_prefix_for_html_src = ''; 
-
-$default_avatar_relative_path = 'img/perfiles/default_avatar.png';
-$default_avatar_display_path = $path_prefix_for_html_src . $default_avatar_relative_path;
+$project_base_url = '/SALUDCONNECT/';
+$default_avatar_path = 'img/perfiles/foto_por_defecto.webp';
 
 if (isset($_SESSION['doc_usu'])) {
     $doc_usuario_actual = $_SESSION['doc_usu']; $pdo = null;
     try {
-        $pdo = Database::connect();
-        if ($pdo) {
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $sql_usuario = "SELECT u.*, ti.nom_doc AS tipo_documento_nombre, b.id_barrio AS id_barrio_actual, b.nom_barrio AS barrio_nombre_actual, m.id_mun AS id_municipio_actual, m.nom_mun AS municipio_nombre_actual, d.id_dep AS id_departamento_actual, d.nom_dep AS departamento_nombre_actual, g.nom_gen AS genero_nombre_actual, e.nom_est AS estado_nombre_actual, e.id_est AS id_estado_actual, esp.id_espe AS id_especialidad, esp.nom_espe AS especialidad_nombre, r.nombre_rol AS rol_nombre
-                    FROM usuarios u
-                    LEFT JOIN tipo_identificacion ti ON u.id_tipo_doc = ti.id_tipo_doc
-                    LEFT JOIN barrio b ON u.id_barrio = b.id_barrio
-                    LEFT JOIN municipio m ON b.id_mun = m.id_mun 
-                    LEFT JOIN departamento d ON m.id_dep = d.id_dep
-                    LEFT JOIN genero g ON u.id_gen = g.id_gen
-                    LEFT JOIN estado e ON u.id_est = e.id_est
-                    LEFT JOIN rol r ON u.id_rol = r.id_rol
-                    LEFT JOIN especialidad esp ON u.id_especialidad = esp.id_espe
-                    WHERE u.doc_usu = :doc_usu";
-            $q_usuario = $pdo->prepare($sql_usuario);
-            $q_usuario->bindParam(':doc_usu', $doc_usuario_actual);
-            $q_usuario->execute();
-            $usuario_data = $q_usuario->fetch(PDO::FETCH_ASSOC);
-            if (!$usuario_data) { $error_message = "No se encontraron datos para el usuario."; } 
-            else {
-                $sql_departamentos = "SELECT id_dep, nom_dep FROM departamento ORDER BY nom_dep"; $departamentos = $pdo->query($sql_departamentos)->fetchAll();
-                if (!empty($usuario_data['id_departamento_actual'])) {
-                    $sql_municipios = "SELECT id_mun, nom_mun FROM municipio WHERE id_dep = :id_dep ORDER BY nom_mun";
-                    $q_municipios = $pdo->prepare($sql_municipios); $q_municipios->bindParam(':id_dep', $usuario_data['id_departamento_actual']); $q_municipios->execute(); $municipios_del_depto_actual = $q_municipios->fetchAll();
-                }
-                if (!empty($usuario_data['id_municipio_actual'])) {
-                     $sql_barrios = "SELECT id_barrio, nom_barrio FROM barrio WHERE id_mun = :id_mun ORDER BY nom_barrio";
-                     $q_barrios = $pdo->prepare($sql_barrios); $q_barrios->bindParam(':id_mun', $usuario_data['id_municipio_actual']); $q_barrios->execute(); $barrios_del_mun_actual = $q_barrios->fetchAll();
-                }
-                $sql_generos = "SELECT id_gen, nom_gen FROM genero ORDER BY nom_gen"; $generos = $pdo->query($sql_generos)->fetchAll();
-                $estado_display = "N/A";
-                if (isset($usuario_data['id_estado_actual'])) { if ($usuario_data['id_estado_actual'] == 1) { $estado_display = "Activo"; } elseif ($usuario_data['id_estado_actual'] == 2) { $estado_display = "Inactivo"; } }
-                $usuario_data['estado_a_mostrar'] = $estado_display;
+        $pdo = new database();
+        $con = $pdo->conectar();
+        $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $sql_usuario = "SELECT u.*, ti.id_tipo_doc AS id_tipo_documento, ti.nom_doc AS tipo_documento_nombre, b.id_barrio AS id_barrio_actual, b.nom_barrio AS barrio_nombre_actual, m.id_mun AS id_municipio_actual, m.nom_mun AS municipio_nombre_actual, d.id_dep AS id_departamento_actual, d.nom_dep AS departamento_nombre_actual, g.nom_gen AS genero_nombre_actual, e.nom_est AS estado_nombre_actual, e.id_est AS id_estado_actual, esp.id_espe AS id_especialidad, esp.nom_espe AS especialidad_nombre, r.nombre_rol AS rol_nombre FROM usuarios u LEFT JOIN tipo_identificacion ti ON u.id_tipo_doc = ti.id_tipo_doc LEFT JOIN barrio b ON u.id_barrio = b.id_barrio LEFT JOIN municipio m ON b.id_mun = m.id_mun LEFT JOIN departamento d ON m.id_dep = d.id_dep LEFT JOIN genero g ON u.id_gen = g.id_gen LEFT JOIN estado e ON u.id_est = e.id_est LEFT JOIN rol r ON u.id_rol = r.id_rol LEFT JOIN especialidad esp ON u.id_especialidad = esp.id_espe WHERE u.doc_usu = :doc_usu";
+        $q_usuario = $con->prepare($sql_usuario);
+        $q_usuario->execute([':doc_usu' => $doc_usuario_actual]);
+        $usuario_data = $q_usuario->fetch(PDO::FETCH_ASSOC);
+        
+        if ($usuario_data) {
+            $departamentos = $con->query("SELECT id_dep, nom_dep FROM departamento ORDER BY nom_dep")->fetchAll();
+            if (!empty($usuario_data['id_departamento_actual'])) {
+                $q_municipios = $con->prepare("SELECT id_mun, nom_mun FROM municipio WHERE id_dep = :id_dep ORDER BY nom_mun");
+                $q_municipios->execute([':id_dep' => $usuario_data['id_departamento_actual']]);
+                $municipios_del_depto_actual = $q_municipios->fetchAll();
             }
-        } else { $error_message = "Error: No se pudo conectar a la base de datos."; }
-    } catch (PDOException $e) { error_log("Error PDO modal_perfil: " . $e->getMessage()); $error_message = "Error al consultar datos: " . $e->getMessage(); }
-    catch (Error $e) { error_log("Error general modal_perfil: " . $e->getMessage()); $error_message = "Error interno: " . $e->getMessage(); }
-    finally { if ($pdo) { Database::disconnect(); } }
-} else { $error_message = "Error: Sesión de usuario no encontrada."; }
+            if (!empty($usuario_data['id_municipio_actual'])) {
+                $q_barrios = $con->prepare("SELECT id_barrio, nom_barrio FROM barrio WHERE id_mun = :id_mun ORDER BY nom_barrio");
+                $q_barrios->execute([':id_mun' => $usuario_data['id_municipio_actual']]);
+                $barrios_del_mun_actual = $q_barrios->fetchAll();
+            }
+            $generos = $con->query("SELECT id_gen, nom_gen FROM genero ORDER BY nom_gen")->fetchAll();
+            $usuario_data['estado_a_mostrar'] = ($usuario_data['id_estado_actual'] == 1) ? "Activo" : "Inactivo";
+        } else { $error_message = "No se encontraron datos para el usuario."; }
+
+    } catch (PDOException $e) { $error_message = "Error de base de datos."; error_log("Error PDO en modal_perfil: " . $e->getMessage()); }
+    finally { if ($con) { $con = null; } }
+} else { $error_message = "Sesión de usuario no encontrada."; }
+
+$foto_relativa = isset($usuario_data['foto_usu']) && !empty($usuario_data['foto_usu']) ? $usuario_data['foto_usu'] : $default_avatar_path;
+$foto_final_url = $project_base_url . $foto_relativa;
 ?>
-<style> #userProfileModal .modal-content { background-color: #f0f2f5; border: 3px solid #87CEEB; border-radius: .5rem; } #userProfileModal .modal-header { background-color: #005A9C; color: white; border-bottom: 1px solid #0047AB; } #userProfileModal .modal-header .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); } #userProfileModal .modal-dialog { max-width: 850px; } #userProfileModal .img-thumbnail { border: 1px solid #dee2e6; padding: 0.25rem; background-color: #fff; border-radius: 0.25rem; max-width: 100%; height: auto; } .invalid-feedback { display: block; width: 100%; margin-top: .15rem; font-size: .80em; color: #dc3545; } </style>
+<style>#userProfileModal .modal-content{background-color:#f0f2f5;border:3px solid #87CEEB;border-radius:.5rem}#userProfileModal .modal-header{background-color:#005A9C;color:white;border-bottom:1px solid #0047AB}#userProfileModal .modal-header .btn-close-white{filter:invert(1) grayscale(100%) brightness(200%)}#userProfileModal .modal-dialog{max-width:850px}.profile-photo-container{position:relative;width:150px;height:150px;margin:0 auto 1.5rem auto}#imagePreviewModal{width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}#upload-photo-label{position:absolute;bottom:5px;right:5px;width:40px;height:40px;background-color:#0d6efd;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;border:2px solid white;transition:background-color .2s ease-in-out}#upload-photo-label:hover{background-color:#0b5ed7}#foto_usu_modal{display:none}.invalid-feedback{display:block;width:100%;margin-top:.15rem;font-size:.80em;color:#dc3545}.form-control.is-valid,.form-select.is-valid{border-color:#198754!important;background-image:none!important;box-shadow:0 0 0 .25rem rgba(25,135,84,.25)!important}</style>
 <div class="modal fade" id="userProfileModal" tabindex="-1" aria-labelledby="userProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header"> <h5 class="modal-title" id="userProfileModalLabel">Mi Perfil</h5> <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button> </div>
             <div class="modal-body">
                 <?php if ($error_message): ?> <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($error_message); ?></div>
-                <?php elseif ($usuario_data): 
-                    $foto_src_from_db = $usuario_data['foto_usu'] ?? '';
-                    $foto_a_mostrar = $default_avatar_display_path; 
-
-                    if (!empty($foto_src_from_db)) {
-                        if (filter_var($foto_src_from_db, FILTER_VALIDATE_URL)) {
-                            $foto_a_mostrar = htmlspecialchars($foto_src_from_db);
-                        } elseif ($foto_src_from_db === $default_avatar_relative_path) {
-                             $foto_a_mostrar = $default_avatar_display_path;
-                        } else {
-                            $foto_a_mostrar = $path_prefix_for_html_src . htmlspecialchars($foto_src_from_db);
-                        }
-                    }
-                ?>
-                    <form id="profileFormModalActual" method="POST" enctype="multipart/form-data" novalidate>
-                         <input type="hidden" name="id_est_modal_hidden" value="<?php echo htmlspecialchars($usuario_data['id_est'] ?? ''); ?>"> 
+                <?php elseif ($usuario_data): ?>
+                    <form id="profileFormModalActual" method="POST" action="/SALUDCONNECT/include/mi_perfil.php" enctype="multipart/form-data" novalidate>
+                        <input type="hidden" id="tipo_doc_id_hidden" value="<?php echo htmlspecialchars($usuario_data['id_tipo_documento'] ?? ''); ?>">
                         <div class="row">
                             <div class="col-md-4 text-center">
-                                <img src="<?php echo $foto_a_mostrar; ?>" alt="Foto" id="imagePreviewModal" class="img-thumbnail mb-3" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null; this.src='<?php echo $default_avatar_display_path; ?>';">
-                                <div class="mb-3"> <label for="foto_usu_modal" class="form-label">Cambiar Foto</label> <input class="form-control form-control-sm" type="file" id="foto_usu_modal" name="foto_usu_modal" accept="image/*"> <div class="invalid-feedback"></div> </div>
+                                <div class="profile-photo-container">
+                                    <img src="<?php echo htmlspecialchars($foto_final_url); ?>" alt="Foto de Perfil" id="imagePreviewModal" onerror="this.onerror=null; this.src='<?php echo $project_base_url . $default_avatar_path; ?>';">
+                                    <input type="file" id="foto_usu_modal" name="foto_usu_modal" accept="image/*">
+                                    <label for="foto_usu_modal" id="upload-photo-label" title="Cambiar foto"><i class="bi bi-camera-fill"></i></label>
+                                </div>
+                                <div class="invalid-feedback foto-feedback" style="text-align: center; margin-top: -1rem; margin-bottom: 1rem;"></div>
                                 <hr>
                                 <div class="mb-3"><label class="form-label">Documento:</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($usuario_data['doc_usu']); ?>" disabled></div>
                                 <div class="mb-3"><label class="form-label">Tipo Doc.:</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($usuario_data['tipo_documento_nombre'] ?? 'N/A'); ?>" disabled></div>

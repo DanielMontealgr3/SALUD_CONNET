@@ -32,7 +32,7 @@ if ($depth_in_project === 0) {
 
 $path_to_img_folder_href = $base_href_to_project_root . "img/";
 $path_to_js_folder_href = $base_href_to_project_root . "js/";
-$path_to_include_folder_href = $base_href_to_project_root . "includes/";
+$path_to_include_folder_href = $base_href_to_project_root . "include/";
 
 $filesystem_project_root = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') . $project_uri_base;
 
@@ -52,6 +52,9 @@ $paginas_gestion_enfermedades_todas = array_merge($paginas_gestion_enfermedades_
 $paginas_gestion_roles_crear = ['crear_rol.php'];
 $paginas_gestion_roles_ver = ['ver_roles.php'];
 $paginas_gestion_roles_todas = array_merge($paginas_gestion_roles_crear, $paginas_gestion_roles_ver);
+
+$paginas_farma_gestion_medicamentos = ['crear_tipo_medi.php', 'crear_medicamento.php', 'ver_tipo_medi.php', 'ver_medicamento.php'];
+$paginas_farma_gestion_inventario = ['inventario.php', 'insertar_inventario.php'];
 
 $es_pagina_gestion_sistema_activa = false;
 if (strpos($path_inside_project_trimmed, 'admi/gestion_crear') === 0 &&
@@ -78,6 +81,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="icon" type="image/png" href="<?php echo $path_to_img_folder_href; ?>loguito.png">
     <?php
     $estilo_rol_path_href = "";
@@ -197,7 +201,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                         <ul class="dropdown-menu-submenu" aria-labelledby="configGeoSubmenuToggle">
                                             <li><a class="dropdown-item <?php echo ($currentPage === 'crear_departamento.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/crear_departamento.php">Insertar Departamento</a></li>
                                             <li><a class="dropdown-item <?php echo ($currentPage === 'crear_municipio.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/crear_municipio.php">Insertar Municipio</a></li>
-                                            <li><a class="dropdown-item <?php echo ($currentPage === 'crear_barrio.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/crear_barrio.php">Insertar Barrio</a></li>
+                                            <li><a class="dropdown-item <?php echo ($currentPage === 'crear_barrios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/crear_barrios.php">Insertar Barrio</a></li>
                                             <li><hr class="dropdown-divider"></li>
                                             <li><a class="dropdown-item <?php echo ($currentPage === 'ver_departamentos.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/ver_departamentos.php">Ver Departamentos</a></li>
                                             <li><a class="dropdown-item <?php echo ($currentPage === 'ver_municipios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/geografica/ver_municipios.php">Ver Municipios</a></li>
@@ -231,14 +235,33 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_citas.php' && $path_inside_project_trimmed === 'paci') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/mis_citas.php">Mis Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_medicamentos.php' && $path_inside_project_trimmed === 'paci') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/mis_medicamentos.php">Mis Medicamentos</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'mis_pedidos.php' && $path_inside_project_trimmed === 'paci') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/mis_pedidos.php">Mis pedidos</a></li>
+                        
                         <?php elseif ($rol_usuario == 3): ?>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === '') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>inicio.php">Inicio</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_pacientes.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/lista_pacientes.php">Lista pacientes</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inventario.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario.php">Inventario</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'insertar_medicamentos.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/insertar_medicamentos.php">Insertar medicamentos</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'vista_tv.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/vista_tv.php">Vista tv</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'entregas_pendientes.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/entregas_pendientes.php">Entregas pendientes</a></li>
+                            
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'farma/inventario') === 0 && in_array($currentPage, $paginas_farma_gestion_inventario)) ? 'active' : ''; ?>" href="#" id="navbarDropdownInventario" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestión Inventario</a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownInventario">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/inventario.php">Ver Inventario</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'insertar_inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/insertar_inventario.php">Insertar en Inventario</a></li>
+                                </ul>
+                            </li>
+                            
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'farma/crear') === 0 && in_array($currentPage, $paginas_farma_gestion_medicamentos)) ? 'active' : ''; ?>" href="#" id="navbarDropdownMedicamentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestión Medicamentos</a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownMedicamentos">
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_medicamento.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/crear/crear_medicamento.php">Crear Medicamento</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_medicamento.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/crear/ver_medicamento.php">Ver Medicamentos</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'crear_tipo_medi.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/crear/crear_tipo_medi.php">Crear Tipo Medicamento</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'ver_tipo_medi.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/crear/ver_tipo_medi.php">Ver Tipos de Medicamento</a></li>
+                                </ul>
+                            </li>
+
                         <?php elseif ($rol_usuario == 4): ?>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === '') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>inicio.php">Inicio</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_medi.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_medi.php">Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/crear_orden.php">Crear ordenes</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/ver_ordenes.php">Ver ordenes</a></li>
@@ -442,12 +465,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
             if (element.type && element.type.toLowerCase() === 'password') {
                 element.setAttribute('autocomplete', 'new-password');
             } else {
-                // Para otros campos, un valor aleatorio a veces es más efectivo que 'off'
                 element.setAttribute('autocomplete', 'nope-' + Math.random().toString(36).substring(2, 15));
-            }
-            // A veces, envolver en un div con autocomplete="off" puede ayudar
-            if (element.parentNode && element.parentNode.tagName !== 'FORM' && !element.parentNode.hasAttribute('autocomplete')) {
-                 // No haremos esto aquí para no reestructurar el DOM de forma invasiva desde un script global
             }
         }
 
@@ -505,11 +523,9 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
-
-        // Adicionalmente, para inputs que podrían estar presentes antes de que el DOM esté completamente listo
-        // o para los que el observer no actúe inmediatamente.
-        setTimeout(disableAllAutocomplete, 500); // Un pequeño retraso
-        setTimeout(disableAllAutocomplete, 1500); // Otro por si acaso
+        
+        setTimeout(disableAllAutocomplete, 500);
+        setTimeout(disableAllAutocomplete, 1500);
 
     });
     </script>
