@@ -30,45 +30,58 @@ $asignacion_activa = false;
 $nombre_farmacia_asignada = "";
 $nit_farmacia_asignada = "";
 
+// Inicializamos los contadores
+$count_entregas_pendientes = 0;
+$count_stock_bajo = 0;
+$count_por_vencer = 0;
+$count_vencidos = 0;
+
 if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
-    $sql_asignacion = "SELECT f.nom_farm, af.nit_farma, af.id_estado
-                       FROM asignacion_farmaceuta af
-                       JOIN farmacias f ON af.nit_farma = f.nit_farm
-                       WHERE af.doc_farma = :doc_farma
-                       LIMIT 1";
-    try {
-        $stmt_asignacion = $con->prepare($sql_asignacion);
-        $stmt_asignacion->bindParam(':doc_farma', $documento_farmaceuta, PDO::PARAM_STR);
-        $stmt_asignacion->execute();
-        $fila_asignacion = $stmt_asignacion->fetch(PDO::FETCH_ASSOC);
+    // Consulta de asignación
+    $sql_asignacion = "SELECT f.nom_farm, af.nit_farma, af.id_estado FROM asignacion_farmaceuta af JOIN farmacias f ON af.nit_farma = f.nit_farm WHERE af.doc_farma = :doc_farma AND af.id_estado = 1 LIMIT 1";
+    $stmt_asignacion = $con->prepare($sql_asignacion);
+    $stmt_asignacion->bindParam(':doc_farma', $documento_farmaceuta, PDO::PARAM_STR);
+    $stmt_asignacion->execute();
+    $fila_asignacion = $stmt_asignacion->fetch(PDO::FETCH_ASSOC);
 
-        if ($fila_asignacion) {
-            if ($fila_asignacion['id_estado'] == 1) {
-                $asignacion_activa = true;
-                $nombre_farmacia_asignada = $fila_asignacion['nom_farm'];
-                $nit_farmacia_asignada = $fila_asignacion['nit_farma'];
-            } else {
-                $asignacion_activa = false;
-                error_log("Farmaceuta $documento_farmaceuta: Asignación encontrada (NIT: " . ($fila_asignacion['nit_farma'] ?? 'N/A') . ") pero con id_estado = " . ($fila_asignacion['id_estado'] ?? 'N/A'));
-            }
-        } else {
-            $asignacion_activa = false;
-            error_log("Farmaceuta $documento_farmaceuta: No se encontró ninguna asignación.");
-        }
-    } catch (PDOException $e) {
-        $asignacion_activa = false;
-        error_log("Error en consulta de asignación farmaceuta para $documento_farmaceuta: " . $e->getMessage());
+    if ($fila_asignacion) {
+        $asignacion_activa = true;
+        $nombre_farmacia_asignada = $fila_asignacion['nom_farm'];
+        $nit_farmacia_asignada = $fila_asignacion['nit_farma'];
+        $_SESSION['nit_farma'] = $nit_farmacia_asignada;
+
+        // --- INICIO DE CONSULTAS PARA EL DASHBOARD ---
+
+        // 1. Entregas Pendientes
+        $sql_entregas = "SELECT COUNT(ep.id_entrega_pendiente) FROM entrega_pendiente ep JOIN asignacion_farmaceuta af ON ep.id_farmaceuta_genera = af.doc_farma WHERE af.nit_farma = :nit AND ep.id_estado = 10";
+        $stmt_entregas = $con->prepare($sql_entregas);
+        $stmt_entregas->execute(['nit' => $nit_farmacia_asignada]);
+        $count_entregas_pendientes = $stmt_entregas->fetchColumn();
+
+        // 2. Stock Bajo
+        $umbral_stock_bajo = 10;
+        $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= :umbral";
+        $stmt_stock = $con->prepare($sql_stock);
+        $stmt_stock->execute(['nit' => $nit_farmacia_asignada, 'umbral' => $umbral_stock_bajo]);
+        $count_stock_bajo = $stmt_stock->fetchColumn();
+
+        // Subconsulta para calcular stock real por lote
+        $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov = 1 THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
+
+        // 3. Productos por Vencer
+        $dias_aviso = 30;
+        $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :dias_aviso DAY) AND $stock_por_lote_sql > 0";
+        $stmt_por_vencer = $con->prepare($sql_por_vencer);
+        $stmt_por_vencer->execute(['nit' => $nit_farmacia_asignada, 'dias_aviso' => $dias_aviso]);
+        $count_por_vencer = $stmt_por_vencer->fetchColumn();
+        
+        // 4. Productos Vencidos
+        $sql_vencidos = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento < CURDATE() AND $stock_por_lote_sql > 0";
+        $stmt_vencidos = $con->prepare($sql_vencidos);
+        $stmt_vencidos->execute(['nit' => $nit_farmacia_asignada]);
+        $count_vencidos = $stmt_vencidos->fetchColumn();
     }
-} else {
-    if (!$documento_farmaceuta) {
-        error_log("Error: Documento del farmaceuta no disponible en sesión para consulta de asignación.");
-    }
-    if (!(isset($con) && $con instanceof PDO)) {
-        error_log("Error: La conexión PDO (\$con) no está disponible para consulta de asignación en farma/inicio.php.");
-    }
-    $asignacion_activa = false;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -80,74 +93,110 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
 
     <?php include '../include/menu.php'; ?>
 
-    <main id="contenido-principal-inicio" class="flex-grow-1 d-flex align-items-center justify-content-center">
-        <div class="container">
-            <div class="contenedor-bienvenida text-center">
-                <?php if ($asignacion_activa) : ?>
-                    <h1 class="mensaje-bienvenida-admin display-5 mb-3">
-                        Bienvenido Farmaceuta, <strong class="nombre-admin-bienvenida"><?php echo htmlspecialchars($nombre_usuario); ?></strong>
-                    </h1>
-                    <p class="submensaje-bienvenida-admin lead mb-4">
-                        Acá podrás gestionar la farmacia: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong>.
-                    </p>
-                    <div class="contenedor-imagen-rol mb-4">
-                        <img src="../img/bodyadmi.png" alt="Imagen Farmaceuta" class="imagen-rol img-fluid rounded" style="max-width: 400px; height: auto;">
+    <main id="contenido-principal" class="flex-grow-1">
+        <div class="container-fluid">
+            <?php if ($asignacion_activa) : ?>
+                <!-- BLOQUE DE BIENVENIDA CON IMAGEN -->
+                <div class="welcome-container">
+                    <div class="welcome-text-content">
+                        <h1 class="welcome-title">Bienvenido de nuevo, <strong><?php echo htmlspecialchars($nombre_usuario); ?></strong></h1>
+                        <p class="pharmacy-info"><i class="fas fa-clinic-medical"></i>Gestionando Farmacia: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></p>
                     </div>
-                <?php else : ?>
-                    <h1 class="mensaje-bienvenida-admin display-5 mb-3 text-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Atención
-                    </h1>
+                    <div class="welcome-image-container">
+                        <img src="../img/bodyfarma.png" alt="Imagen Farmaceuta" class="welcome-image">
+                    </div>
+                </div>
+
+                <div class="alerts-grid">
+                    <!-- Card Entregas Pendientes -->
+                    <div class="alert-card position-relative">
+                        <div class="alert-card-icon icon-deliveries"><i class="fas fa-file-prescription"></i></div>
+                        <div class="alert-card-info">
+                            <h5>Entregas Pendientes</h5>
+                            <p>Pacientes esperando medicamentos.</p>
+                        </div>
+                        <div class="alert-card-count"><?php echo $count_entregas_pendientes; ?></div>
+                        <a href="entregar/entregas_pendientes.php" class="stretched-link"></a>
+                    </div>
+
+                    <!-- Card Stock Bajo -->
+                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="stock-bajo">
+                        <div class="alert-card-icon icon-stock"><i class="fas fa-cubes"></i></div>
+                        <div class="alert-card-info">
+                            <h5>Stock Bajo</h5>
+                            <p>Medicamentos que necesitan reposición.</p>
+                        </div>
+                        <div class="alert-card-count"><?php echo $count_stock_bajo; ?></div>
+                    </div>
+
+                    <!-- Card Próximos a Vencer -->
+                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="por-vencer">
+                        <div class="alert-card-icon icon-expiring"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="alert-card-info">
+                            <h5>Próximos a Vencer</h5>
+                            <p>En los siguientes 30 días.</p>
+                        </div>
+                        <div class="alert-card-count"><?php echo $count_por_vencer; ?></div>
+                    </div>
+
+                    <!-- Card Vencidos -->
+                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="vencidos">
+                        <div class="alert-card-icon icon-expired"><i class="fas fa-calendar-times"></i></div>
+                        <div class="alert-card-info">
+                            <h5>Productos Vencidos</h5>
+                            <p>Retirar de inventario urgentemente.</p>
+                        </div>
+                        <div class="alert-card-count"><?php echo $count_vencidos; ?></div>
+                    </div>
+                </div>
+
+            <?php else : ?>
+                <div class="contenedor-bienvenida text-center mt-5">
+                    <h1 class="mensaje-bienvenida-admin display-5 mb-3 text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Atención</h1>
                     <p class="submensaje-bienvenida-admin lead mb-4">
                         Estimado/a <strong><?php echo htmlspecialchars($nombre_usuario); ?></strong>, actualmente no tiene una farmacia activa asignada.
                         <br>Para acceder a las funcionalidades, por favor, comuníquese con el administrador del sistema.
                     </p>
                     <img src="../img/bloqueo_acceso.png" alt="Acceso Restringido" class="imagen-rol img-fluid rounded mb-3" style="max-width: 200px; height: auto; border:none;">
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php endif; ?>
         </div>
     </main>
+    
+    <!-- Modal Genérico para Alertas -->
+    <div class="modal fade" id="alertasModal" tabindex="-1" aria-labelledby="alertasModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertasModalLabel">Detalles de la Alerta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="alertasModalBody"></div>
+                <div class="modal-footer" id="alertasModalFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <?php include '../include/footer.php'; ?>
 
+    <script src="js/alertas_dashboard.js?v=<?php echo time(); ?>"></script>
 
     <?php if (!$asignacion_activa) : ?>
     <script>
-        // Script para deshabilitar el menú si la asignación no está activa
         document.addEventListener('DOMContentLoaded', function () {
             const userMenuToggleId = 'navbarDropdownUserMenu';
-            const userMenuDropdown = document.querySelector('.dropdown-menu[aria-labelledby="' + userMenuToggleId + '"]');
-
             const allNavLinksAndItems = document.querySelectorAll('.navbar-nav .nav-link, .navbar-nav .dropdown-item');
-            const allDropdownToggles = document.querySelectorAll('.navbar-nav > .nav-item > .dropdown-toggle');
-
-
+            
             allNavLinksAndItems.forEach(link => {
-                let partOfUserMenu = false;
-                if (link.id === userMenuToggleId) {
-                    partOfUserMenu = true;
-                } else if (userMenuDropdown && userMenuDropdown.contains(link)) {
-                    partOfUserMenu = true;
-                }
-
-                if (!partOfUserMenu) {
+                const userMenuDropdown = link.closest('.dropdown-menu[aria-labelledby="' + userMenuToggleId + '"]');
+                if (link.id !== userMenuToggleId && !userMenuDropdown) {
                     link.classList.add('disabled');
                     link.setAttribute('aria-disabled', 'true');
-                    link.setAttribute('tabindex', '-1');
                     link.style.pointerEvents = 'none';
                     if (link.hasAttribute('data-bs-toggle')) {
                          link.removeAttribute('data-bs-toggle');
-                    }
-                }
-            });
-
-            allDropdownToggles.forEach(toggle => {
-                if (toggle.id !== userMenuToggleId) {
-                    toggle.classList.add('disabled');
-                    toggle.setAttribute('aria-disabled', 'true');
-                    toggle.setAttribute('tabindex', '-1');
-                    toggle.style.pointerEvents = 'none';
-                    if (toggle.hasAttribute('data-bs-toggle')) {
-                        toggle.removeAttribute('data-bs-toggle');
                     }
                 }
             });
