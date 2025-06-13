@@ -14,7 +14,6 @@ try {
     $db = new database();
     $con = $db->conectar();
     
-    // Consulta simplificada que no depende del inventario
     $sql = "SELECT 
                 m.nom_medicamento, 
                 m.descripcion, 
@@ -34,7 +33,6 @@ try {
         echo json_encode(['success' => false, 'message' => 'No se encontró el medicamento.']);
     }
 } catch (PDOException $e) {
-    error_log("Error al obtener detalles de medicamento (versión crear): " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error en la base de datos.']);
 }
 ?>

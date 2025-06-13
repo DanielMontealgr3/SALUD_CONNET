@@ -86,13 +86,50 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         });
 
+        // --- INICIO DE LA MODIFICACIÓN ---
         elemento.querySelectorAll('.btn-entregar-medicamentos').forEach(btn => {
             btn.onclick = function(e) {
                  e.preventDefault();
+                 const fila = this.closest('tr');
                  const idTurno = this.closest('td').dataset.idturno;
-                 window.location.href = `detalles_medicamento.php?id_turno=${idTurno}`;
+                 const idHistoria = fila.dataset.idhistoria;
+
+                 if (!idHistoria) {
+                     Swal.fire('Error', 'No se pudo obtener la información del paciente para la entrega.', 'error');
+                     return;
+                 }
+                 
+                 const placeholder = document.getElementById('modal-entrega-placeholder');
+                 if (!placeholder) {
+                     console.error("El contenedor 'modal-entrega-placeholder' no existe.");
+                     return;
+                 }
+
+                 placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+                 
+                 // RUTA CORREGIDA: Desde la página en /farma/, se accede a /farma/entregar/
+                 fetch(`entregar/modal_entrega.php?id_historia=${idHistoria}&id_turno=${idTurno}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        placeholder.innerHTML = html;
+                        const modalElement = document.getElementById('modalRealizarEntrega');
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        
+                        if (typeof inicializarLogicaEntrega === 'function') {
+                            inicializarLogicaEntrega(modalElement);
+                        } else {
+                            console.error("Error: inicializarLogicaEntrega() no está definida.");
+                        }
+                    })
+                    .catch(error => {
+                        placeholder.innerHTML = '';
+                        console.error('Error al cargar el modal de entrega:', error);
+                        Swal.fire('Error', 'No se pudo cargar la interfaz de entrega.', 'error');
+                    });
             };
         });
+        // --- FIN DE LA MODIFICACIÓN ---
     }
     
     async function actualizarTablaEnTiempoReal() {
@@ -125,9 +162,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const celdasHTML = paciente.celdas.join('') + 
                     `<td class="acciones-tabla" data-idturno="${paciente.id_turno_ent}">${paciente.acciones_html}</td>`;
                 
-                if (fila.innerHTML !== celdasHTML || fila.className !== paciente.clase_fila) {
+                const idHistoriaActual = paciente.id_historia.toString();
+                if (fila.innerHTML !== celdasHTML || fila.className !== paciente.clase_fila || fila.dataset.idhistoria !== idHistoriaActual) {
                     fila.className = paciente.clase_fila;
                     fila.dataset.estado = paciente.estado_llamado;
+                    fila.dataset.idhistoria = idHistoriaActual;
                     fila.innerHTML = celdasHTML;
                     asignarListeners(fila);
                 }
@@ -181,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'llamar_paciente');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
             .then(() => actualizarTablaEnTiempoReal());
     }
@@ -191,6 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'paciente_llego');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
             .then(() => actualizarTablaEnTiempoReal());
     }
@@ -200,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'marcar_no_asistido');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {

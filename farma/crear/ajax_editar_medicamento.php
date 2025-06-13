@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
     $codigo_barras = empty($codigo_barras) ? null : $codigo_barras;
 
     if (!$id || empty($nombre) || !$id_tipo || empty($descripcion)) {
-        $response['message'] = 'Todos los campos son obligatorios.';
+        $response['message'] = 'Todos los campos obligatorios deben ser completados.';
         echo json_encode($response);
         exit;
     }

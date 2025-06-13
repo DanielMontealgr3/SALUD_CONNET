@@ -19,7 +19,7 @@ if ($nit_farmacia_actual) {
 
 function renderizar_tabla_y_paginacion($con)
 {
-    $registros_por_pagina = 5;
+    $registros_por_pagina = 3;
     $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
     if ($pagina_actual < 1) $pagina_actual = 1;
 
@@ -32,19 +32,23 @@ function renderizar_tabla_y_paginacion($con)
     $params = [];
 
     if (!empty($searchTerm)) {
-        $sql_where_conditions[] = "(m.nom_medicamento LIKE :searchTerm OR m.codigo_barras LIKE :searchTerm)";
-        $params[':searchTerm'] = "%" . $searchTerm . "%";
+        $sql_where_conditions[] = "(m.nom_medicamento LIKE :searchTerm1 OR m.codigo_barras LIKE :searchTerm2)";
+        $searchValue = "%" . $searchTerm . "%";
+        $params[':searchTerm1'] = $searchValue;
+        $params[':searchTerm2'] = $searchValue;
     }
+
     if ($filtro_tipo !== 'todos') {
         $sql_where_conditions[] = "m.id_tipo_medic = :tipo_id";
         $params[':tipo_id'] = $filtro_tipo;
     }
     
+    $sql_con_where = $sql_base;
     if (!empty($sql_where_conditions)) {
-        $sql_base .= " WHERE " . implode(' AND ', $sql_where_conditions);
+        $sql_con_where .= " WHERE " . implode(' AND ', $sql_where_conditions);
     }
 
-    $stmt_total = $con->prepare("SELECT COUNT(*) " . $sql_base);
+    $stmt_total = $con->prepare("SELECT COUNT(*) " . $sql_con_where);
     $stmt_total->execute($params);
     $total_registros = (int)$stmt_total->fetchColumn();
 
@@ -55,7 +59,7 @@ function renderizar_tabla_y_paginacion($con)
     $offset = ($pagina_actual - 1) * $registros_por_pagina;
 
     $order_by = ($filtro_orden === 'desc') ? "m.nom_medicamento DESC" : "m.nom_medicamento ASC";
-    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.descripcion, m.codigo_barras " . $sql_base . " ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset";
+    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.descripcion, m.codigo_barras " . $sql_con_where . " ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset";
     
     $stmt = $con->prepare($sql_final);
 
@@ -131,8 +135,13 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
 <!DOCTYPE html>
 <html lang="es">
 <head>
+     <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <style> .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: block; } </style>
+    <style>
+        .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: block; }
+        .barcode-detail { width: 100%; max-width: 300px; height: auto; }
+        .filtros-tabla-container .form-label { font-size: 0.8rem; margin-bottom: 0.2rem; }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include '../../include/menu.php'; ?>
@@ -146,12 +155,12 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                 
                 <form id="formFiltros" class="mb-4 filtros-tabla-container">
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-4">
-                            <label for="q" class="form-label"><i class="bi bi-search"></i> Buscar por Nombre o Código:</label>
-                            <input type="search" class="form-control form-control-sm" id="searchInput" name="q" placeholder="Escriba o escanee...">
+                        <div class="col-md">
+                            <label for="searchInput" class="form-label"><i class="bi bi-search"></i> Buscar</label>
+                            <input type="search" class="form-control form-control-sm" id="searchInput" name="q" placeholder="Nombre o Código...">
                         </div>
-                        <div class="col-md-4">
-                            <label for="filtro_tipo" class="form-label"><i class="bi bi-tag"></i> Filtrar por Tipo:</label>
+                        <div class="col-md">
+                            <label for="filtro_tipo" class="form-label"><i class="bi bi-tag"></i> Tipo</label>
                             <select id="filtro_tipo" name="filtro_tipo" class="form-select form-select-sm">
                                 <option value="todos">Todos</option>
                                 <?php foreach ($tipos_medicamento as $tipo): ?>
@@ -159,12 +168,15 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="filtro_orden" class="form-label"><i class="bi bi-sort-alpha-down"></i> Ordenar por Nombre:</label>
+                        <div class="col-md">
+                            <label for="filtro_orden" class="form-label"><i class="bi bi-sort-alpha-down"></i> Ordenar</label>
                             <select name="filtro_orden" id="filtro_orden" class="form-select form-select-sm">
                                 <option value="asc">A - Z</option>
                                 <option value="desc">Z - A</option>
                             </select>
+                        </div>
+                        <div class="col-md-auto">
+                           <button class="btn btn-outline-secondary btn-sm" type="button" id="btnLimpiarFiltros">Limpiar</button>
                         </div>
                     </div>
                 </form>
@@ -175,8 +187,43 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </main>
-    <div class="modal fade" id="modalDetallesMedicamento" tabindex="-1"></div>
-    <div class="modal fade" id="modalEditarMedicamento" tabindex="-1"></div>
+
+    <div class="modal fade" id="modalDetallesMedicamento" tabindex="-1" aria-labelledby="modalDetallesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetallesLabel">Detalles del Medicamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="cuerpoModalDetalles">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarMedicamento" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="formEditarMedicamento" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalEditarLabel">Editar Medicamento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="cuerpoModalEditar">
+                    </div>
+                    <div class="modal-footer">
+                        <input type="hidden" name="id_medicamento" id="edit-id-medicamento">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarCambios" disabled>Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <?php include '../../include/footer.php'; ?>
     <script src="../includes_farm/JsBarcode.all.min.js"></script>
     <script src="../js/gestion_medicamentos.js?v=<?php echo time(); ?>"></script>

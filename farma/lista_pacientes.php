@@ -124,6 +124,7 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
     
     return [
         'id_turno_ent' => $paciente['id_turno_ent'],
+        'id_historia' => $paciente['id_historia'],
         'clase_fila' => $clase_fila,
         'estado_llamado' => $estado_llamado,
         'tiempo_restante' => $tiempo_restante_seg,
@@ -178,7 +179,7 @@ if (isset($_GET['json'])) {
                                 } else {
                                     foreach ($pacientes_pendientes as $paciente) {
                                         $data = render_fila_paciente_data($paciente, $doc_farmaceuta_logueado);
-                                        echo "<tr class=\"{$data['clase_fila']}\" id=\"turno-{$data['id_turno_ent']}\" data-estado=\"{$data['estado_llamado']}\">";
+                                        echo "<tr class=\"{$data['clase_fila']}\" id=\"turno-{$data['id_turno_ent']}\" data-estado=\"{$data['estado_llamado']}\" data-idhistoria=\"{$paciente['id_historia']}\">";
                                         echo implode('', $data['celdas']);
                                         echo "<td class=\"acciones-tabla\" data-idturno=\"{$data['id_turno_ent']}\" data-tiempo-restante=\"{$data['tiempo_restante']}\">";
                                         echo $data['acciones_html'];
@@ -192,6 +193,9 @@ if (isset($_GET['json'])) {
             </div>
         </div>
     </main>
+
+    <div id="modal-entrega-placeholder"></div>
+
     <div class="modal fade" id="modalNoAsistio" tabindex="-1" aria-labelledby="modalNoAsistioLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -203,6 +207,7 @@ if (isset($_GET['json'])) {
     </div>
     <script> const csrfTokenListaPacientesGlobal = '<?php echo $csrf_token; ?>'; const docFarmaceutaLogueado = '<?php echo $doc_farmaceuta_logueado; ?>';</script>
     <script src="js/gestion_pacientes_auto.js?v=<?php echo time(); ?>"></script>
+    <script src="js/gestion_entrega.js?v=<?php echo time(); ?>"></script>
 </body>
 <?php include_once '../include/footer.php'; ?>
 </html>

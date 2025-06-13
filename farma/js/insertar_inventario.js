@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 esValido = new Date(valor) >= hoy;
                 break;
         }
-
         input.classList.toggle('is-valid', esValido);
         input.classList.toggle('is-invalid', !esValido);
         return esValido;
@@ -95,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => {
-                console.error('Error en fetch:', error);
                 errorBusqueda.textContent = 'Error de conexión al buscar el medicamento.';
                 mostrarAreaRegistro(false);
             });
@@ -120,27 +118,44 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST', 
             body: formData 
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
-            }
-            return response.clone().json().catch(() => response.text());
-        })
+        .then(response => response.json())
         .then(data => {
-            if (typeof data === 'string') {
-                console.error("La respuesta del servidor no es un JSON válido:", data);
-                Swal.fire('Error Inesperado', 'El servidor devolvió una respuesta incorrecta. Revise la consola (F12).', 'error');
-                return;
-            }
-
             if (data.success) {
+                let timerInterval;
                 Swal.fire({
                     title: '¡Éxito!',
                     text: data.message,
                     icon: 'success',
-                    timer: 2500,
-                    showConfirmButton: false
+                    timer: 2000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    willClose: () => {
+                        clearInterval(timerInterval);
+                    }
                 });
+
+                if (data.pendientes_cubiertos && data.pendientes_cubiertos.length > 0) {
+                    let listaHtml = '<ul class="list-group">';
+                    data.pendientes_cubiertos.forEach(p => {
+                        listaHtml += `<li class="list-group-item">Paciente <strong>${p.nom_usu}</strong> necesita <strong>${p.can_medica}</strong> unidades.</li>`;
+                    });
+                    listaHtml += '</ul>';
+
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: 'info',
+                            title: '¡Pendientes por Entregar!',
+                            html: `<p>Se ha detectado que ya hay stock para cubrir los siguientes pendientes:</p>${listaHtml}`,
+                            confirmButtonText: '<i class="bi bi-arrow-right-circle-fill me-2"></i>Ir a Entregas Pendientes',
+                            confirmButtonColor: '#28a745'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = '../entregar/entregas_pendientes.php';
+                            }
+                        });
+                    }, 2100);
+                }
+                
                 formRegistro.reset();
                 inputCodigo.value = '';
                 mostrarAreaRegistro(false);
@@ -150,7 +165,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .catch(error => {
-            console.error('Error en la solicitud fetch:', error);
             Swal.fire('Error de Conexión', 'No se pudo completar la solicitud.', 'error');
         })
         .finally(() => {

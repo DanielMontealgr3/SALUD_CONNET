@@ -2,9 +2,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const formFiltros = document.getElementById('formFiltros');
     const searchInput = document.getElementById('searchInput');
     const tablaContenedor = document.getElementById('contenedor-tabla');
+    const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
     let debounceTimer;
     let scanBuffer = '';
     let lastKeyTime = Date.now();
+
+    const modalDetallesElement = document.getElementById('modalDetallesMedicamento');
+    const modalDetalles = new bootstrap.Modal(modalDetallesElement);
+    const modalBodyDetalles = document.getElementById('cuerpoModalDetalles');
+
+    const modalEditarElement = document.getElementById('modalEditarMedicamento');
+    const modalEditar = new bootstrap.Modal(modalEditarElement);
+    const formEditar = document.getElementById('formEditarMedicamento');
+    const modalBodyEditar = document.getElementById('cuerpoModalEditar');
+    const inputId = document.getElementById('edit-id-medicamento');
+    const btnGuardar = document.getElementById('btnGuardarCambios');
+    let originalData = {};
 
     function inicializarCodigosDeBarras() {
         try {
@@ -39,6 +52,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cargarContenido(1);
         }, 350);
     });
+    
+    btnLimpiarFiltros.addEventListener('click', function() {
+        formFiltros.reset();
+        cargarContenido(1);
+    });
 
     document.addEventListener('keypress', function(e) {
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') {
@@ -59,18 +77,6 @@ document.addEventListener('DOMContentLoaded', function() {
             scanBuffer += e.key;
         }
     });
-
-    const modalDetallesElement = document.getElementById('modalDetallesMedicamento');
-    const modalDetalles = new bootstrap.Modal(modalDetallesElement);
-    const modalBodyDetalles = document.getElementById('cuerpoModalDetalles');
-
-    const modalEditarElement = document.getElementById('modalEditarMedicamento');
-    const modalEditar = new bootstrap.Modal(modalEditarElement);
-    const formEditar = document.getElementById('formEditarMedicamento');
-    const modalBodyEditar = document.getElementById('cuerpoModalEditar');
-    const inputId = document.getElementById('edit-id-medicamento');
-    const btnGuardar = document.getElementById('btnGuardarCambios');
-    let originalData = {};
 
     function validarYChequearCambios(inputEspecifico = null) {
         if (!modalBodyEditar.querySelector('#edit_nom_medicamento')) return;
@@ -117,19 +123,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     tablaContenedor.addEventListener('click', function(e) {
-        const targetElement = e.target;
-        
-        if (targetElement.closest('.page-link')) {
+        const targetElement = e.target.closest('a, button');
+        if (!targetElement) return;
+
+        if (targetElement.matches('.page-link')) {
             e.preventDefault();
-            const page = targetElement.closest('.page-link').dataset.page;
+            const page = targetElement.dataset.page;
             if (page) {
                 cargarContenido(page);
             }
         }
 
-        if (targetElement.closest('.btn-ver')) {
-            const btnVer = targetElement.closest('.btn-ver');
-            const id = btnVer.dataset.id;
+        if (targetElement.matches('.btn-ver')) {
+            const id = targetElement.dataset.id;
             modalBodyDetalles.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
             modalDetalles.show();
             
@@ -141,9 +147,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         let barcodeHTML = med.codigo_barras ? `<svg class="barcode-detail" jsbarcode-value="${med.codigo_barras}"></svg>` : 'No disponible';
                         const contenidoHTML = `
                             <dl class="row">
-                                <dt class="col-sm-4">Nombre del Medicamento</dt>
+                                <dt class="col-sm-4">Nombre</dt>
                                 <dd class="col-sm-8">${med.nom_medicamento || 'N/A'}</dd>
-                                <dt class="col-sm-4">Tipo de Medicamento</dt>
+                                <dt class="col-sm-4">Tipo</dt>
                                 <dd class="col-sm-8">${med.nom_tipo_medi || 'N/A'}</dd>
                                 <dt class="col-sm-4">Descripción</dt>
                                 <dd class="col-sm-8">${med.descripcion || 'Sin descripción.'}</dd>
@@ -158,9 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
         
-        const btnEditar = targetElement.closest('.btn-editar');
-        if (btnEditar) {
-            const id = btnEditar.dataset.id;
+        if (targetElement.matches('.btn-editar')) {
+            const id = targetElement.dataset.id;
             inputId.value = id;
             modalBodyEditar.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
             btnGuardar.disabled = true;
@@ -182,10 +187,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
 
-        const btnEliminar = targetElement.closest('.btn-eliminar');
-        if (btnEliminar) {
-            const id = btnEliminar.dataset.id;
-            const nombre = btnEliminar.dataset.nombre;
+        if (targetElement.matches('.btn-eliminar')) {
+            const id = targetElement.dataset.id;
+            const nombre = targetElement.dataset.nombre;
             Swal.fire({
                 title: '¿Está seguro?',
                 text: `Realmente desea eliminar "${nombre}"? Esta acción no se puede deshacer.`,
@@ -228,10 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST', 
             body: formData 
         })
-        .then(response => {
-            if (!response.ok) throw new Error('Error en la respuesta del servidor.');
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 modalEditar.hide();
@@ -260,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error en fetch:', error);
             Swal.fire('Error de Conexión', 'No se pudo completar la solicitud.', 'error');
         })
         .finally(() => {

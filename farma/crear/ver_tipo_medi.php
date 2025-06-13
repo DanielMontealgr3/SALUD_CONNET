@@ -107,6 +107,7 @@ $pageTitle = "Gestionar Tipos de Medicamento";
 <!DOCTYPE html>
 <html lang="es">
 <head>
+     <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
 </head>
 <body class="d-flex flex-column min-vh-100">
