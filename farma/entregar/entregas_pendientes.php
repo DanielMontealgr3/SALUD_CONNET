@@ -17,7 +17,7 @@ function generarFilasPendientes($con, $nit_farmacia_actual, &$pagina_actual_ref,
     $filtro_radicado = trim($_GET['q_radicado'] ?? '');
     $filtro_documento = trim($_GET['q_documento'] ?? '');
     $filtro_orden = trim($_GET['orden'] ?? 'desc');
-    $registros_por_pagina = 4;
+    $registros_por_pagina = 10;
     
     $pagina_actual_ref = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
     if ($pagina_actual_ref < 1) $pagina_actual_ref = 1;
@@ -62,7 +62,7 @@ function generarFilasPendientes($con, $nit_farmacia_actual, &$pagina_actual_ref,
     ob_start();
     if (!empty($pendientes)):
         foreach ($pendientes as $p): ?>
-            <tr data-id-historia="<?php echo $p['id_historia']; ?>" data-id-detalle="<?php echo $p['id_detalle']; ?>">
+            <tr>
                 <td><span class="badge bg-warning text-dark"><?php echo htmlspecialchars($p['radicado_pendiente']); ?></span></td>
                 <td><?php echo htmlspecialchars($p['nombre_paciente']); ?></td>
                 <td><?php echo htmlspecialchars($p['nom_medicamento']); ?></td>
@@ -70,7 +70,12 @@ function generarFilasPendientes($con, $nit_farmacia_actual, &$pagina_actual_ref,
                 <td><?php echo htmlspecialchars(date('d/m/Y h:i A', strtotime($p['fecha_generacion']))); ?></td>
                 <td class="acciones-tabla">
                     <button type="button" class="btn btn-info btn-sm btn-ver-pendiente" data-id-pendiente="<?php echo $p['id_entrega_pendiente']; ?>"><i class="bi bi-eye-fill"></i> Ver</button>
-                    <button type="button" class="btn btn-success btn-sm btn-entregar-pendiente" data-id-pendiente="<?php echo $p['id_entrega_pendiente']; ?>"><i class="bi bi-check-circle-fill"></i> Entregar</button>
+                    <button type="button" class="btn btn-success btn-sm btn-entregar-pendiente" 
+                            data-id-entrega-pendiente="<?php echo $p['id_entrega_pendiente']; ?>"
+                            data-id-historia="<?php echo $p['id_historia']; ?>"
+                            data-id-detalle="<?php echo $p['id_detalle']; ?>">
+                        <i class="bi bi-check-circle-fill"></i> Entregar
+                    </button>
                 </td>
             </tr>
         <?php endforeach;
@@ -92,8 +97,6 @@ if (isset($_GET['ajax'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
 </head>

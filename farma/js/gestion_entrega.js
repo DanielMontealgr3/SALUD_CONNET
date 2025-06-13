@@ -3,8 +3,9 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
     const btnFinalizar = modalElement.querySelector('#btn-finalizar-entrega-completa');
     const btnCancelar = modalElement.querySelector('#btn-cancelar-entrega');
     const btnCerrarModal = modalElement.querySelector('.modal-header .btn-close');
+    const btnGenerarPendientesLote = modalElement.querySelector('#btn-generar-pendientes-lote');
 
-    if (contexto === 'pendiente') {
+    if (contexto === 'entregar_pendiente') {
         btnFinalizar.textContent = 'Finalizar Entrega Pendiente';
     }
 
@@ -14,21 +15,31 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
         modalElement.setAttribute('data-bs-keyboard', 'false');
         modalElement.setAttribute('data-bs-backdrop', 'static');
     };
+    
+    const actualizarBotonPendientesLote = () => {
+        const filasParaPendiente = cuerpoTabla.querySelectorAll('tr[data-accion-pendiente="true"]').length;
+        if (filasParaPendiente > 1) {
+            btnGenerarPendientesLote.style.display = 'inline-block';
+        } else {
+            btnGenerarPendientesLote.style.display = 'none';
+        }
+    };
 
     const verificarSiFinalizo = () => {
         const totalFilas = cuerpoTabla.querySelectorAll('tr').length;
         const filasProcesadas = cuerpoTabla.querySelectorAll('tr[data-estado="procesado"]').length;
         if (totalFilas > 0 && totalFilas === filasProcesadas) {
             btnFinalizar.disabled = false;
+            btnGenerarPendientesLote.style.display = 'none';
         }
     };
 
     const procesarEntregaFinal = async (fila) => {
         deshabilitarCierreModal();
         const celdaAccion = fila.querySelector('.celda-accion');
-        celdaAccion.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div>';
+        celdaAccion.innerHTML = '<div class="d-flex justify-content-center align-items-center"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
         
-        const accion_a_realizar = (contexto === 'pendiente') ? 'entregar_pendiente' : 'validar_y_entregar';
+        const accion_a_realizar = (contexto === 'entregar_pendiente') ? 'entregar_pendiente' : 'validar_y_entregar';
         const formData = new FormData();
         formData.append('accion', accion_a_realizar);
         formData.append('id_detalle', fila.dataset.idDetalle);
@@ -38,12 +49,13 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
             const data = await response.json();
             if (data.success) {
                 fila.dataset.estado = "procesado";
+                fila.classList.remove('fila-pendiente-lista');
                 fila.classList.add('fila-procesada');
                 fila.querySelector('.estado-verificacion i').className = 'bi bi-check-all text-success fs-4';
                 
                 let resumenHTML = '';
                 if (data.entregas && data.entregas.length > 0) {
-                    resumenHTML += '<ul class="list-unstyled mb-0 small text-start">';
+                    resumenHTML += '<ul class="list-unstyled mb-0 small">';
                     data.entregas.forEach(e => {
                         resumenHTML += `<li><i class="bi bi-check text-success"></i> ${e.cantidad} de Lote <strong>${e.lote}</strong></li>`;
                     });
@@ -71,17 +83,17 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                 verificarSiFinalizo();
             } else {
                 Swal.fire('Error', data.message, 'error');
+                celdaAccion.innerHTML = '<button class="btn btn-danger btn-sm">Reintentar</button>';
             }
         } catch (error) {
             Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+            celdaAccion.innerHTML = '<button class="btn btn-danger btn-sm">Reintentar</button>';
         }
     };
     
     cuerpoTabla.querySelectorAll('tr').forEach(fila => {
         const btnVerificarCodigo = fila.querySelector('.btn-verificar-codigo');
-        const btnConfirmarLote = fila.querySelector('.btn-confirmar-lote');
         const inputCodigo = fila.querySelector('input[name="codigo_barras_verif"]');
-        const inputLote = fila.querySelector('input[name="lote_manual"]');
         const celdaLotes = fila.querySelector('.celda-lotes');
         const celdaAccion = fila.querySelector('.celda-accion');
         
@@ -134,8 +146,13 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                 } else {
                     fila.dataset.stockTotal = 0;
                     if (contexto === 'turno') {
-                         await Swal.fire({ title: 'Sin Stock', text: 'No hay unidades disponibles. Se debe generar un pendiente.', icon: 'error', confirmButtonText: 'Entendido'});
-                         celdaAccion.innerHTML = `<button class="btn btn-warning btn-sm btn-confirmar-accion"><i class="bi bi-file-earmark-plus"></i> Generar Pendiente</button>`;
+                        await Swal.fire({ title: 'Sin Stock', text: 'No hay unidades disponibles. Se debe generar un pendiente.', icon: 'error', confirmButtonText: 'Entendido'});
+                        
+                        fila.dataset.accionPendiente = 'true';
+                        fila.classList.add('fila-pendiente-lista');
+                        celdaAccion.innerHTML = `<button class="btn btn-warning btn-sm btn-confirmar-accion"><i class="bi bi-file-earmark-plus"></i> Generar Pendiente</button>`;
+                        celdaLotes.innerHTML = `<div class="text-center text-muted small">Sin Stock.</div>`;
+                        actualizarBotonPendientesLote();
                     } else {
                         Swal.fire({ title: 'Sin Stock', text: 'No hay unidades disponibles para entregar este pendiente.', icon: 'error'});
                     }
@@ -190,22 +207,30 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
     btnFinalizar.addEventListener('click', async function(){
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Finalizando...';
-        const primeraFila = cuerpoTabla.querySelector('tr');
-        const idTurno = primeraFila.dataset.idTurno;
+        
         const formData = new FormData();
-        formData.append('accion', 'finalizar_turno');
-        formData.append('id_turno', idTurno);
-        formData.append('contexto', contexto);
+        let accionFinalizar = '';
+        
+        if (contexto === 'entregar_pendiente') {
+            const idEntregaPendiente = modalElement.dataset.idEntregaPendiente;
+            accionFinalizar = 'finalizar_entrega_pendiente';
+            formData.append('accion', accionFinalizar);
+            formData.append('id_entrega_pendiente', idEntregaPendiente);
+        } else {
+            const primeraFila = cuerpoTabla.querySelector('tr');
+            const idTurno = primeraFila ? primeraFila.dataset.idTurno : null;
+            accionFinalizar = 'finalizar_turno';
+            formData.append('accion', accionFinalizar);
+            formData.append('id_turno', idTurno);
+        }
         
         try {
             const response = await fetch('/SALUDCONNECT/farma/entregar/ajax_procesar_entrega.php', { method: 'POST', body: formData });
             const data = await response.json();
             if (data.success) {
-                Swal.fire('¡Proceso Finalizado!', data.message, 'success').then(() => {
-                    const modal = bootstrap.Modal.getInstance(modalElement);
-                    if(modal) modal.hide();
-                    location.reload();
-                });
+                await Swal.fire('¡Proceso Finalizado!', data.message, 'success');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if(modal) modal.hide();
             } else {
                 Swal.fire('Error', data.message, 'error');
                 this.disabled = false;

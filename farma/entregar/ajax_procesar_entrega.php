@@ -15,7 +15,43 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($accion) || !$doc_farmaceuta 
     exit;
 }
 
-if ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
+if ($accion === 'verificar_stock_pendiente') {
+    $id_detalle = filter_input(INPUT_POST, 'id_detalle', FILTER_VALIDATE_INT);
+    if (!$id_detalle) {
+        echo json_encode(['success' => false, 'message' => 'ID de detalle no válido.']);
+        exit;
+    }
+    
+    try {
+        $stmt_detalle = $con->prepare("SELECT id_medicam, can_medica FROM detalles_histo_clini WHERE id_detalle = :id_detalle");
+        $stmt_detalle->execute([':id_detalle' => $id_detalle]);
+        $detalle = $stmt_detalle->fetch(PDO::FETCH_ASSOC);
+
+        if (!$detalle) { throw new Exception("Detalle de medicamento no encontrado."); }
+
+        $stmt_stock = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm");
+        $stmt_stock->execute([':id_medicamento' => $detalle['id_medicam'], ':nit_farm' => $nit_farmacia]);
+        $stock_actual = (int)$stmt_stock->fetchColumn();
+
+        $stmt_pendiente_info = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = :id_detalle_histo AND id_estado = 10");
+        $stmt_pendiente_info->execute([':id_detalle_histo' => $id_detalle]);
+        $cantidad_requerida_pendiente = (int)$stmt_pendiente_info->fetchColumn();
+
+        if ($cantidad_requerida_pendiente <= 0) {
+             throw new Exception("No se encontró una cantidad válida para este pendiente.");
+        }
+
+        if ($stock_actual < $cantidad_requerida_pendiente) {
+            throw new Exception("Stock insuficiente. Requeridas: {$cantidad_requerida_pendiente}, Disponible: {$stock_actual}.");
+        }
+        
+        $response = ['success' => true, 'message' => 'Stock suficiente.'];
+
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+
+} elseif ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
     $id_detalle = filter_input(INPUT_POST, 'id_detalle', FILTER_VALIDATE_INT);
     if (!$id_detalle) {
         echo json_encode(['success' => false, 'message' => 'ID de detalle no válido.']);
@@ -30,8 +66,10 @@ if ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
         if (!$detalle_medicamento) { throw new Exception("Detalle de medicamento no encontrado."); }
         
         $id_medicamento = $detalle_medicamento['id_medicam'];
-        $cantidad_necesaria = (int)$detalle_medicamento['can_medica'];
-        
+        $cantidad_necesaria = ($accion === 'entregar_pendiente') 
+            ? (int)$con->query("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = $id_detalle AND id_estado = 10")->fetchColumn() 
+            : (int)$detalle_medicamento['can_medica'];
+
         $stmt_stock_total = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm");
         $stmt_stock_total->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
         $stock_total_actual = (int)$stmt_stock_total->fetchColumn();
@@ -65,28 +103,40 @@ if ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
         
         if ($accion !== 'entregar_pendiente' && $cantidad_a_dejar_pendiente > 0) {
             $radicado = 'PEND-' . strtoupper(substr(uniqid(), -8));
-            $sql_pendiente = "INSERT INTO entrega_pendiente (id_detalle_histo, radicado_pendiente, id_farmaceuta_genera, id_estado) VALUES (:id_detalle, :radicado, :doc_farma, 10)";
+            $sql_pendiente = "INSERT INTO entrega_pendiente (id_detalle_histo, radicado_pendiente, id_farmaceuta_genera, cantidad_pendiente, id_estado) VALUES (:id_detalle_histo, :radicado, :doc_farma, :cantidad_pendiente, 10)";
             $stmt_pendiente = $con->prepare($sql_pendiente);
-            $stmt_pendiente->execute([':id_detalle' => $id_detalle, ':radicado' => $radicado, ':doc_farma' => $doc_farmaceuta]);
+            $stmt_pendiente->execute([
+                ':id_detalle_histo' => $id_detalle,
+                ':radicado' => $radicado,
+                ':doc_farma' => $doc_farmaceuta,
+                ':cantidad_pendiente' => $cantidad_a_dejar_pendiente
+            ]);
         }
         
-        if ($accion === 'entregar_pendiente') {
-            $stmt_update_pendiente = $con->prepare("UPDATE entrega_pendiente SET id_estado = 9 WHERE id_detalle_histo = :id_detalle AND id_estado = 10");
-            $stmt_update_pendiente->execute([':id_detalle' => $id_detalle]);
-        }
-
         $con->commit();
         $response = ['success' => true, 'message' => 'Proceso completado.', 'entregas' => $entregas_realizadas, 'pendiente' => $cantidad_a_dejar_pendiente, 'radicado' => $radicado ?? null];
     } catch (Exception $e) {
         $con->rollBack();
         $response['message'] = 'Error al procesar: ' . $e->getMessage();
     }
-    
+
+} elseif ($accion === 'finalizar_entrega_pendiente') {
+    $id_entrega_pendiente = filter_input(INPUT_POST, 'id_entrega_pendiente', FILTER_VALIDATE_INT);
+    if ($id_entrega_pendiente) {
+        try {
+            $stmt = $con->prepare("UPDATE entrega_pendiente SET id_estado = 9 WHERE id_entrega_pendiente = :id_entrega_pendiente AND id_estado = 10");
+            $stmt->execute([':id_entrega_pendiente' => $id_entrega_pendiente]);
+            $response = ['success' => true, 'message' => 'Entrega de pendiente finalizada y estado actualizado.'];
+        } catch (PDOException $e) {
+            $response['message'] = 'Error al actualizar el estado del pendiente: ' . $e->getMessage();
+        }
+    } else {
+        $response['message'] = 'ID de pendiente para actualizar no fue proporcionado.';
+    }
+
 } elseif ($accion === 'finalizar_turno') {
     $id_turno = filter_input(INPUT_POST, 'id_turno', FILTER_VALIDATE_INT);
-    $contexto = $_POST['contexto'] ?? 'turno';
-
-    if ($id_turno && $contexto === 'turno') {
+    if ($id_turno) {
         try {
             $con->beginTransaction();
             $stmt_get_horario = $con->prepare("SELECT hora_entreg FROM turno_ent_medic WHERE id_turno_ent = :id_turno");
@@ -107,7 +157,7 @@ if ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
             $response['message'] = 'Error al finalizar el turno: ' . $e->getMessage();
         }
     } else {
-        $response = ['success' => true, 'message' => 'Entrega de pendiente finalizada.'];
+        $response = ['success' => false, 'message' => 'ID de turno no proporcionado.'];
     }
 }
 

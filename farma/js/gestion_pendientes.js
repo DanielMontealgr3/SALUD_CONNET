@@ -80,25 +80,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if(btnEntregar) {
             e.preventDefault();
-            const fila = btnEntregar.closest('tr');
-            const idHistoria = fila.dataset.idHistoria;
-            const idPendiente = btnEntregar.dataset.idPendiente;
-            const idDetalle = fila.dataset.idDetalle;
-            
-            const placeholder = document.getElementById('modal-entrega-placeholder');
-            placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+            btnEntregar.disabled = true;
+            btnEntregar.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-            fetch(`modal_entrega.php?id_historia=${idHistoria}&id_turno=${idPendiente}&id_detalle_unico=${idDetalle}`)
-                .then(response => response.text())
-                .then(html => {
-                    placeholder.innerHTML = html;
-                    const modalElement = document.getElementById('modalRealizarEntrega');
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                    if (typeof inicializarLogicaEntrega === 'function') {
-                        inicializarLogicaEntrega(modalElement, 'entregar_pendiente');
-                    }
-                });
+            const idHistoria = btnEntregar.dataset.idHistoria;
+            const idDetalle = btnEntregar.dataset.idDetalle;
+            const idEntregaPendiente = btnEntregar.dataset.idEntregaPendiente;
+            
+            const formData = new FormData();
+            formData.append('accion', 'verificar_stock_pendiente');
+            formData.append('id_detalle', idDetalle);
+
+            fetch('ajax_procesar_entrega.php', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const placeholder = document.getElementById('modal-entrega-placeholder');
+                    placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+
+                    fetch(`modal_entrega.php?id_historia=${idHistoria}&id_turno=${idEntregaPendiente}&id_detalle_unico=${idDetalle}&id_entrega_pendiente=${idEntregaPendiente}`)
+                        .then(response => response.text())
+                        .then(html => {
+                            placeholder.innerHTML = html;
+                            const modalElement = document.getElementById('modalRealizarEntrega');
+                            const modal = new bootstrap.Modal(modalElement);
+                            
+                            modalElement.addEventListener('hidden.bs.modal', function () {
+                                cargarPendientes(1); 
+                            }, { once: true });
+
+                            modal.show();
+                            if (typeof inicializarLogicaEntrega === 'function') {
+                                inicializarLogicaEntrega(modalElement, 'entregar_pendiente');
+                            }
+                        });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'No se puede entregar', text: data.message });
+                }
+            })
+            .catch(error => {
+                Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo verificar el stock del pendiente.' });
+            })
+            .finally(() => {
+                btnEntregar.disabled = false;
+                btnEntregar.innerHTML = '<i class="bi bi-check-circle-fill"></i> Entregar';
+            });
         }
     });
 });

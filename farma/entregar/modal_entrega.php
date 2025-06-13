@@ -9,6 +9,7 @@ if (!isset($_GET['id_historia']) || !isset($_GET['id_turno'])) {
 $id_historia = filter_var($_GET['id_historia'], FILTER_VALIDATE_INT);
 $id_turno = filter_var($_GET['id_turno'], FILTER_VALIDATE_INT);
 $id_detalle_unico = filter_input(INPUT_GET, 'id_detalle_unico', FILTER_VALIDATE_INT);
+$id_entrega_pendiente = filter_input(INPUT_GET, 'id_entrega_pendiente', FILTER_VALIDATE_INT);
 
 try {
     $db = new database(); $con = $db->conectar();
@@ -36,9 +37,11 @@ try {
 <style>
     .fila-procesada { background-color: #f8f9fa !important; }
     .fila-procesada .form-control { background-color: #e9ecef; border-color: #ced4da; }
+    .fila-pendiente-lista { background-color: #fffbe6 !important; }
+    .celda-accion { text-align: left !important; }
 </style>
 
-<div class="modal fade" id="modalRealizarEntrega" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal fade" id="modalRealizarEntrega" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" data-id-entrega-pendiente="<?php echo htmlspecialchars($id_entrega_pendiente ?? ''); ?>">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
@@ -88,7 +91,7 @@ try {
                             </td>
                             <td class="celda-lotes">
                             </td>
-                            <td class="celda-accion text-center">
+                            <td class="celda-accion">
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -96,6 +99,9 @@ try {
                 </table>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="btn-generar-pendientes-lote" style="display: none;">
+                    <i class="bi bi-file-earmark-plus-fill me-2"></i> Generar Todos los Pendientes
+                </button>
                 <button type="button" class="btn btn-secondary" id="btn-cancelar-entrega" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="btn-finalizar-entrega-completa" disabled>
                     <i class="bi bi-truck me-2"></i> Finalizar
