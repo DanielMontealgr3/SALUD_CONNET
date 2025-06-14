@@ -12,10 +12,12 @@ if (!$nit_farmacia) {
     exit;
 }
 
-$stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov = 1 THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
+$stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
 
 $sql = "SELECT 
-            med.nom_medicamento, -- CORREGIDO
+            mi.id_medicamento,
+            med.nom_medicamento,
+            med.codigo_barras,
             mi.lote, 
             mi.fecha_vencimiento,
             $stock_por_lote_sql AS stock_lote

@@ -30,14 +30,12 @@ $asignacion_activa = false;
 $nombre_farmacia_asignada = "";
 $nit_farmacia_asignada = "";
 
-// Inicializamos los contadores
 $count_entregas_pendientes = 0;
 $count_stock_bajo = 0;
 $count_por_vencer = 0;
 $count_vencidos = 0;
 
 if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
-    // Consulta de asignación
     $sql_asignacion = "SELECT f.nom_farm, af.nit_farma, af.id_estado FROM asignacion_farmaceuta af JOIN farmacias f ON af.nit_farma = f.nit_farm WHERE af.doc_farma = :doc_farma AND af.id_estado = 1 LIMIT 1";
     $stmt_asignacion = $con->prepare($sql_asignacion);
     $stmt_asignacion->bindParam(':doc_farma', $documento_farmaceuta, PDO::PARAM_STR);
@@ -49,33 +47,25 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
         $nombre_farmacia_asignada = $fila_asignacion['nom_farm'];
         $nit_farmacia_asignada = $fila_asignacion['nit_farma'];
         $_SESSION['nit_farma'] = $nit_farmacia_asignada;
+        $_SESSION['nit_farmacia_asignada_actual'] = $nit_farmacia_asignada;
 
-        // --- INICIO DE CONSULTAS PARA EL DASHBOARD ---
-
-        // 1. Entregas Pendientes
-        $sql_entregas = "SELECT COUNT(ep.id_entrega_pendiente) FROM entrega_pendiente ep JOIN asignacion_farmaceuta af ON ep.id_farmaceuta_genera = af.doc_farma WHERE af.nit_farma = :nit AND ep.id_estado = 10";
+        $sql_entregas = "SELECT COUNT(ep.id_entrega_pendiente) FROM entrega_pendiente ep JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle JOIN historia_clinica hc ON dh.id_historia = hc.id_historia JOIN citas ci ON hc.id_cita = ci.id_cita JOIN usuarios u ON ci.doc_pac = u.doc_usu JOIN afiliados a ON u.doc_usu = a.doc_afiliado JOIN detalle_eps_farm def ON a.id_eps = def.nit_eps WHERE def.nit_farm = :nit AND ep.id_estado = 10";
         $stmt_entregas = $con->prepare($sql_entregas);
         $stmt_entregas->execute(['nit' => $nit_farmacia_asignada]);
         $count_entregas_pendientes = $stmt_entregas->fetchColumn();
 
-        // 2. Stock Bajo
-        $umbral_stock_bajo = 10;
-        $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= :umbral";
+        $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= 10";
         $stmt_stock = $con->prepare($sql_stock);
-        $stmt_stock->execute(['nit' => $nit_farmacia_asignada, 'umbral' => $umbral_stock_bajo]);
+        $stmt_stock->execute(['nit' => $nit_farmacia_asignada]);
         $count_stock_bajo = $stmt_stock->fetchColumn();
 
-        // Subconsulta para calcular stock real por lote
-        $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov = 1 THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
+        $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
 
-        // 3. Productos por Vencer
-        $dias_aviso = 30;
-        $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :dias_aviso DAY) AND $stock_por_lote_sql > 0";
+        $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND $stock_por_lote_sql > 0";
         $stmt_por_vencer = $con->prepare($sql_por_vencer);
-        $stmt_por_vencer->execute(['nit' => $nit_farmacia_asignada, 'dias_aviso' => $dias_aviso]);
+        $stmt_por_vencer->execute(['nit' => $nit_farmacia_asignada]);
         $count_por_vencer = $stmt_por_vencer->fetchColumn();
         
-        // 4. Productos Vencidos
         $sql_vencidos = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento < CURDATE() AND $stock_por_lote_sql > 0";
         $stmt_vencidos = $con->prepare($sql_vencidos);
         $stmt_vencidos->execute(['nit' => $nit_farmacia_asignada]);
@@ -96,7 +86,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
     <main id="contenido-principal" class="flex-grow-1">
         <div class="container-fluid">
             <?php if ($asignacion_activa) : ?>
-                <!-- BLOQUE DE BIENVENIDA CON IMAGEN -->
                 <div class="welcome-container">
                     <div class="welcome-text-content">
                         <h1 class="welcome-title">Bienvenido de nuevo, <strong><?php echo htmlspecialchars($nombre_usuario); ?></strong></h1>
@@ -108,7 +97,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                 </div>
 
                 <div class="alerts-grid">
-                    <!-- Card Entregas Pendientes -->
                     <div class="alert-card position-relative">
                         <div class="alert-card-icon icon-deliveries"><i class="fas fa-file-prescription"></i></div>
                         <div class="alert-card-info">
@@ -119,7 +107,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <a href="entregar/entregas_pendientes.php" class="stretched-link"></a>
                     </div>
 
-                    <!-- Card Stock Bajo -->
                     <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="stock-bajo">
                         <div class="alert-card-icon icon-stock"><i class="fas fa-cubes"></i></div>
                         <div class="alert-card-info">
@@ -129,7 +116,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <div class="alert-card-count"><?php echo $count_stock_bajo; ?></div>
                     </div>
 
-                    <!-- Card Próximos a Vencer -->
                     <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="por-vencer">
                         <div class="alert-card-icon icon-expiring"><i class="fas fa-hourglass-half"></i></div>
                         <div class="alert-card-info">
@@ -139,7 +125,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <div class="alert-card-count"><?php echo $count_por_vencer; ?></div>
                     </div>
 
-                    <!-- Card Vencidos -->
                     <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="vencidos">
                         <div class="alert-card-icon icon-expired"><i class="fas fa-calendar-times"></i></div>
                         <div class="alert-card-info">
@@ -163,7 +148,6 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
         </div>
     </main>
     
-    <!-- Modal Genérico para Alertas -->
     <div class="modal fade" id="alertasModal" tabindex="-1" aria-labelledby="alertasModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -178,6 +162,8 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
             </div>
         </div>
     </div>
+    
+    <div id="modal-secundario-placeholder"></div>
 
     <?php include '../include/footer.php'; ?>
 
