@@ -86,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         });
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         elemento.querySelectorAll('.btn-entregar-medicamentos').forEach(btn => {
             btn.onclick = function(e) {
                  e.preventDefault();
@@ -107,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                  placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
                  
-                 // RUTA CORREGIDA: Desde la página en /farma/, se accede a /farma/entregar/
                  fetch(`entregar/modal_entrega.php?id_historia=${idHistoria}&id_turno=${idTurno}`)
                     .then(response => response.text())
                     .then(html => {
@@ -129,7 +127,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
             };
         });
-        // --- FIN DE LA MODIFICACIÓN ---
     }
     
     async function actualizarTablaEnTiempoReal() {
@@ -220,7 +217,6 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'llamar_paciente');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
-        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
             .then(() => actualizarTablaEnTiempoReal());
     }
@@ -231,7 +227,6 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'paciente_llego');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
-        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
             .then(() => actualizarTablaEnTiempoReal());
     }
@@ -241,7 +236,6 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('accion', 'marcar_no_asistido');
         formData.append('id_turno', idTurno);
         formData.append('csrf_token', csrfTokenListaPacientesGlobal);
-        // RUTA CORREGIDA: Asumiendo que ajax_gestion_turnos está en /farma/
         fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {

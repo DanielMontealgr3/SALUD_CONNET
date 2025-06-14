@@ -53,12 +53,19 @@ if ($accion === 'llamar_paciente' && isset($_POST['id_turno'])) {
     if ($id_turno) {
         try {
             $pdo->beginTransaction();
-            $info_query = "SELECT u.correo_usu, u.nom_usu, hf.horario, m.periodo, vt.hora_llamado FROM turno_ent_medic tem JOIN historia_clinica hc ON tem.id_historia = hc.id_historia JOIN citas ci ON hc.id_cita = ci.id_cita JOIN usuarios u ON ci.doc_pac = u.doc_usu JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm LEFT JOIN meridiano m ON hf.meridiano = m.id_periodo LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno WHERE tem.id_turno_ent = ?";
+            $info_query = "SELECT u.correo_usu, u.nom_usu, hf.horario, m.periodo, vt.hora_llamado, tem.hora_entreg FROM turno_ent_medic tem JOIN historia_clinica hc ON tem.id_historia = hc.id_historia JOIN citas ci ON hc.id_cita = ci.id_cita JOIN usuarios u ON ci.doc_pac = u.doc_usu JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm LEFT JOIN meridiano m ON hf.meridiano = m.id_periodo LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno WHERE tem.id_turno_ent = ?";
             $stmt_info = $pdo->prepare($info_query);
             $stmt_info->execute([$id_turno]);
+            
             if ($paciente_info = $stmt_info->fetch(PDO::FETCH_ASSOC)) {
                 $pdo->prepare("UPDATE turno_ent_medic SET id_est = 8 WHERE id_turno_ent = ?")->execute([$id_turno]);
                 $pdo->prepare("DELETE FROM vista_televisor WHERE id_turno = ?")->execute([$id_turno]);
+                
+                $id_horario_a_liberar = $paciente_info['hora_entreg'];
+                if ($id_horario_a_liberar) {
+                    $pdo->prepare("UPDATE horario_farm SET id_estado = 4 WHERE id_horario_farm = ?")->execute([$id_horario_a_liberar]);
+                }
+                
                 $hora_programada_str = date("h:i A", strtotime($paciente_info['horario']));
                 $hora_llamado_str = date("h:i A", strtotime($paciente_info['hora_llamado']));
                 enviarCorreoNoAsistio($paciente_info['correo_usu'], $paciente_info['nom_usu'], $id_turno, $hora_programada_str, $hora_llamado_str);
