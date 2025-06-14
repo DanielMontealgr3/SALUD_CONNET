@@ -55,26 +55,24 @@ $pageTitle = "Registrar Entrada de Inventario";
                     <div class="col-md-7">
                         <form id="formRegistrarEntrada">
                             <input type="hidden" id="id_medicamento_encontrado" name="id_medicamento">
+                            <input type="hidden" name="notas" value="Ingreso de productos por pedido a proveedor.">
+                            
                             <div class="mb-3">
                                 <label for="cantidad_entrada" class="form-label"><strong>Cantidad a Ingresar:</strong></label>
-                                <input type="number" class="form-control" id="cantidad_entrada" name="cantidad" required min="1">
-                                <div class="invalid-feedback">Debe ser > 0.</div>
+                                <input type="text" inputmode="numeric" class="form-control" id="cantidad_entrada" name="cantidad" required>
+                                <div class="invalid-feedback">Solo se permiten números enteros positivos.</div>
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-sm-6">
                                     <label for="lote" class="form-label">Lote:</label>
                                     <input type="text" class="form-control" id="lote" name="lote" required>
-                                    <div class="invalid-feedback">Obligatorio.</div>
+                                    <div class="invalid-feedback">Debe tener al menos 5 caracteres.</div>
                                 </div>
                                 <div class="col-sm-6">
                                     <label for="fecha_vencimiento" class="form-label">Vencimiento:</label>
                                     <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" required>
-                                    <div class="invalid-feedback">Fecha no válida.</div>
+                                    <div class="invalid-feedback">La fecha debe ser de al menos 3 meses en el futuro.</div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="notas" class="form-label">Notas (Opcional):</label>
-                                <textarea class="form-control" id="notas" name="notas" rows="1"></textarea>
                             </div>
                             <div class="text-end mt-4">
                                 <button type="submit" id="btnGuardarEntrada" class="btn btn-success" disabled><i class="bi bi-check-circle-fill me-2"></i>Registrar Entrada</button>

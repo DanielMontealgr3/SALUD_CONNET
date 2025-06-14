@@ -31,18 +31,28 @@ document.addEventListener('DOMContentLoaded', function () {
     function validarCampo(input) {
         let esValido = false;
         const valor = input.value.trim();
+        const feedback = input.nextElementSibling;
         
         switch(input.id) {
             case 'cantidad_entrada':
-                esValido = parseInt(valor, 10) > 0;
+                if (/^[1-9]\d*$/.test(valor)) {
+                    esValido = true;
+                } else {
+                    esValido = false;
+                    input.value = valor.replace(/[^0-9]/g, ''); 
+                }
                 break;
             case 'lote':
-                esValido = valor.length > 0;
+                esValido = valor.length >= 5;
                 break;
             case 'fecha_vencimiento':
-                const hoy = new Date();
-                hoy.setHours(0, 0, 0, 0);
-                esValido = new Date(valor) >= hoy;
+                if (valor) {
+                    const fechaSeleccionada = new Date(valor + "T00:00:00"); 
+                    const fechaMinima = new Date();
+                    fechaMinima.setHours(0, 0, 0, 0);
+                    fechaMinima.setMonth(fechaMinima.getMonth() + 3);
+                    esValido = fechaSeleccionada >= fechaMinima;
+                }
                 break;
         }
         input.classList.toggle('is-valid', esValido);
@@ -80,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     infoStock.textContent = med.stock_actual;
                     inputIdMedicamento.value = med.id_medicamento;
                     
+                    formRegistro.reset();
                     mostrarAreaRegistro(true);
 
                     document.getElementById('cantidad_entrada').focus();
