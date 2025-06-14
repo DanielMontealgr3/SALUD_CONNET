@@ -36,11 +36,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
             $stmt_stock = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = ? AND nit_farm = ?");
             $stmt_stock->execute([$id_medicamento, $nit_farm]);
             $stock_actual = (int)$stmt_stock->fetchColumn();
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Se selecciona `ep.cantidad_pendiente` y se compara `ep.cantidad_pendiente` con el stock.
+            // Se añade el filtro por nit_farma para asegurar que solo notifique pendientes de la farmacia actual.
+            $sql_pendientes = "SELECT u.nom_usu, ep.cantidad_pendiente AS can_medica
+                               FROM entrega_pendiente ep
+                               JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle
+                               JOIN historia_clinica hc ON dh.id_historia = hc.id_historia
+                               JOIN citas c ON hc.id_cita = c.id_cita
+                               JOIN usuarios u ON c.doc_pac = u.doc_usu
+                               JOIN usuarios fg ON ep.id_farmaceuta_genera = fg.doc_usu
+                               JOIN asignacion_farmaceuta af ON fg.doc_usu = af.doc_farma
+                               WHERE dh.id_medicam = ?
+                               AND af.nit_farma = ?
+                               AND ep.id_estado = 10
+                               AND ep.cantidad_pendiente <= ?";
 
-            $sql_pendientes = "SELECT u.nom_usu, dh.can_medica FROM entrega_pendiente ep JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle JOIN historia_clinica hc ON dh.id_historia = hc.id_historia JOIN citas c ON hc.id_cita = c.id_cita JOIN usuarios u ON c.doc_pac = u.doc_usu WHERE dh.id_medicam = ? AND ep.id_estado = 10 AND dh.can_medica <= ?";
             $stmt_pendientes = $con->prepare($sql_pendientes);
-            $stmt_pendientes->execute([$id_medicamento, $stock_actual]);
+            $stmt_pendientes->execute([$id_medicamento, $nit_farm, $stock_actual]);
             $pendientes_cubiertos = $stmt_pendientes->fetchAll(PDO::FETCH_ASSOC);
+            // --- FIN DE LA CORRECCIÓN ---
 
             $response['success'] = true;
             $response['message'] = 'Entrada de inventario registrada con éxito.';
