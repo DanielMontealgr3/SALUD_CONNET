@@ -14,9 +14,9 @@ try {
     $con = $db->conectar();
 
     $sql = "SELECT 
-                ep.radicado_pendiente, ep.fecha_generacion,
+                ep.radicado_pendiente, ep.fecha_generacion, ep.cantidad_pendiente,
                 u.nom_usu, u.doc_usu, u.tel_usu, u.correo_usu, u.direccion_usu,
-                m.nom_medicamento, dh.can_medica AS cantidad_pendiente,
+                m.nom_medicamento,
                 ug.nom_usu AS farmaceuta_genera
             FROM entrega_pendiente ep
             JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle

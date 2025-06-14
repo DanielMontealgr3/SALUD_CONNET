@@ -4,6 +4,7 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
     const btnCancelar = modalElement.querySelector('#btn-cancelar-entrega');
     const btnCerrarModal = modalElement.querySelector('.modal-header .btn-close');
     const btnGenerarPendientesLote = modalElement.querySelector('#btn-generar-pendientes-lote');
+    const idEntregaPendiente = modalElement.dataset.idEntregaPendiente;
 
     if (contexto === 'entregar_pendiente') {
         btnFinalizar.textContent = 'Finalizar Entrega Pendiente';
@@ -43,6 +44,9 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
         const formData = new FormData();
         formData.append('accion', accion_a_realizar);
         formData.append('id_detalle', fila.dataset.idDetalle);
+        if (idEntregaPendiente) {
+            formData.append('id_entrega_pendiente', idEntregaPendiente);
+        }
 
         try {
             const response = await fetch('/SALUDCONNECT/farma/entregar/ajax_procesar_entrega.php', { method: 'POST', body: formData });
@@ -130,8 +134,12 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                     lotesNecesarios.forEach(l => {
                         mensajeHTML += `Tome <strong>${l.a_tomar}</strong> unidad(es) del Lote: <strong>${l.lote}</strong><br>`;
                     });
+
                     if (stockTotal < cantidadRequerida && contexto === 'turno') {
                         mensajeHTML += `<hr>Se generará un pendiente por <strong>${cantidadRequerida - stockTotal}</strong> unidad(es).`;
+                    } else if (stockTotal < cantidadRequerida && contexto === 'entregar_pendiente') {
+                         await Swal.fire({ title: 'Stock Insuficiente', html: `No hay suficiente stock para completar el pendiente.<br>Requeridas: <strong>${cantidadRequerida}</strong><br>Disponibles: <strong>${stockTotal}</strong>`, icon: 'error', confirmButtonText: 'Entendido' });
+                         return; // Detiene el proceso aquí
                     }
                     
                     await Swal.fire({ title: 'Instrucciones de Entrega', html: mensajeHTML, icon: 'info', confirmButtonText: 'Entendido' });
@@ -212,7 +220,6 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
         let accionFinalizar = '';
         
         if (contexto === 'entregar_pendiente') {
-            const idEntregaPendiente = modalElement.dataset.idEntregaPendiente;
             accionFinalizar = 'finalizar_entrega_pendiente';
             formData.append('accion', accionFinalizar);
             formData.append('id_entrega_pendiente', idEntregaPendiente);

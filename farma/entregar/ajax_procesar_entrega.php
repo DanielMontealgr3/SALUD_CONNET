@@ -23,23 +23,14 @@ if ($accion === 'verificar_stock_pendiente') {
     }
     
     try {
-        $stmt_detalle = $con->prepare("SELECT id_medicam, can_medica FROM detalles_histo_clini WHERE id_detalle = :id_detalle");
-        $stmt_detalle->execute([':id_detalle' => $id_detalle]);
-        $detalle = $stmt_detalle->fetch(PDO::FETCH_ASSOC);
+        $stmt_pendiente_info = $con->prepare("SELECT ep.cantidad_pendiente, i.cantidad_actual, d.id_medicam FROM entrega_pendiente ep JOIN detalles_histo_clini d ON ep.id_detalle_histo = d.id_detalle LEFT JOIN inventario_farmacia i ON d.id_medicam = i.id_medicamento AND i.nit_farm = :nit_farm WHERE ep.id_detalle_histo = :id_detalle AND ep.id_estado = 10");
+        $stmt_pendiente_info->execute([':nit_farm' => $nit_farmacia, ':id_detalle' => $id_detalle]);
+        $data = $stmt_pendiente_info->fetch(PDO::FETCH_ASSOC);
 
-        if (!$detalle) { throw new Exception("Detalle de medicamento no encontrado."); }
+        if (!$data) { throw new Exception("No se encontró información del pendiente."); }
 
-        $stmt_stock = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm");
-        $stmt_stock->execute([':id_medicamento' => $detalle['id_medicam'], ':nit_farm' => $nit_farmacia]);
-        $stock_actual = (int)$stmt_stock->fetchColumn();
-
-        $stmt_pendiente_info = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = :id_detalle_histo AND id_estado = 10");
-        $stmt_pendiente_info->execute([':id_detalle_histo' => $id_detalle]);
-        $cantidad_requerida_pendiente = (int)$stmt_pendiente_info->fetchColumn();
-
-        if ($cantidad_requerida_pendiente <= 0) {
-             throw new Exception("No se encontró una cantidad válida para este pendiente.");
-        }
+        $cantidad_requerida_pendiente = (int)$data['cantidad_pendiente'];
+        $stock_actual = (int)$data['cantidad_actual'];
 
         if ($stock_actual < $cantidad_requerida_pendiente) {
             throw new Exception("Stock insuficiente. Requeridas: {$cantidad_requerida_pendiente}, Disponible: {$stock_actual}.");
@@ -53,10 +44,13 @@ if ($accion === 'verificar_stock_pendiente') {
 
 } elseif ($accion === 'validar_y_entregar' || $accion === 'entregar_pendiente') {
     $id_detalle = filter_input(INPUT_POST, 'id_detalle', FILTER_VALIDATE_INT);
+    $id_entrega_pendiente = filter_input(INPUT_POST, 'id_entrega_pendiente', FILTER_VALIDATE_INT);
+
     if (!$id_detalle) {
         echo json_encode(['success' => false, 'message' => 'ID de detalle no válido.']);
         exit;
     }
+
     try {
         $con->beginTransaction();
         
@@ -66,22 +60,31 @@ if ($accion === 'verificar_stock_pendiente') {
         if (!$detalle_medicamento) { throw new Exception("Detalle de medicamento no encontrado."); }
         
         $id_medicamento = $detalle_medicamento['id_medicam'];
-        $cantidad_necesaria = ($accion === 'entregar_pendiente') 
-            ? (int)$con->query("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = $id_detalle AND id_estado = 10")->fetchColumn() 
-            : (int)$detalle_medicamento['can_medica'];
+        $cantidad_necesaria = 0;
+
+        if ($accion === 'entregar_pendiente') {
+            $stmt_cant = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = :id_detalle AND id_estado = 10");
+            $stmt_cant->execute([':id_detalle' => $id_detalle]);
+            $cantidad_necesaria = (int)$stmt_cant->fetchColumn();
+        } else { // 'validar_y_entregar'
+            $cantidad_necesaria = (int)$detalle_medicamento['can_medica'];
+        }
+
+        if ($cantidad_necesaria <= 0) { throw new Exception("La cantidad requerida no es válida."); }
 
         $stmt_stock_total = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm");
         $stmt_stock_total->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
         $stock_total_actual = (int)$stmt_stock_total->fetchColumn();
 
+        if ($accion === 'entregar_pendiente' && $stock_total_actual < $cantidad_necesaria) {
+            throw new Exception("Stock insuficiente para completar el pendiente. Stock actual: $stock_total_actual. Unidades requeridas: $cantidad_necesaria");
+        }
+
         $cantidad_a_entregar_real = min($cantidad_necesaria, $stock_total_actual);
         $cantidad_a_dejar_pendiente = $cantidad_necesaria - $cantidad_a_entregar_real;
         
         $entregas_realizadas = [];
-
-        if ($accion === 'entregar_pendiente' && $stock_total_actual < $cantidad_necesaria) {
-            throw new Exception("Stock insuficiente para completar la entrega. Stock actual: $stock_total_actual. Unidades requeridas: $cantidad_necesaria");
-        }
+        $radicado_generado = null;
 
         if ($cantidad_a_entregar_real > 0) {
             $sql_lotes = "SELECT lote, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad ELSE -cantidad END) AS stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm GROUP BY lote HAVING stock_lote > 0 ORDER BY fecha_vencimiento ASC";
@@ -102,19 +105,19 @@ if ($accion === 'verificar_stock_pendiente') {
         }
         
         if ($accion !== 'entregar_pendiente' && $cantidad_a_dejar_pendiente > 0) {
-            $radicado = 'PEND-' . strtoupper(substr(uniqid(), -8));
+            $radicado_generado = 'PEND-' . strtoupper(substr(uniqid(), -8));
             $sql_pendiente = "INSERT INTO entrega_pendiente (id_detalle_histo, radicado_pendiente, id_farmaceuta_genera, cantidad_pendiente, id_estado) VALUES (:id_detalle_histo, :radicado, :doc_farma, :cantidad_pendiente, 10)";
             $stmt_pendiente = $con->prepare($sql_pendiente);
             $stmt_pendiente->execute([
                 ':id_detalle_histo' => $id_detalle,
-                ':radicado' => $radicado,
+                ':radicado' => $radicado_generado,
                 ':doc_farma' => $doc_farmaceuta,
                 ':cantidad_pendiente' => $cantidad_a_dejar_pendiente
             ]);
         }
         
         $con->commit();
-        $response = ['success' => true, 'message' => 'Proceso completado.', 'entregas' => $entregas_realizadas, 'pendiente' => $cantidad_a_dejar_pendiente, 'radicado' => $radicado ?? null];
+        $response = ['success' => true, 'message' => 'Proceso completado.', 'entregas' => $entregas_realizadas, 'pendiente' => $cantidad_a_dejar_pendiente, 'radicado' => $radicado_generado];
     } catch (Exception $e) {
         $con->rollBack();
         $response['message'] = 'Error al procesar: ' . $e->getMessage();

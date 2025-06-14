@@ -11,14 +11,26 @@ $id_turno = filter_var($_GET['id_turno'], FILTER_VALIDATE_INT);
 $id_detalle_unico = filter_input(INPUT_GET, 'id_detalle_unico', FILTER_VALIDATE_INT);
 $id_entrega_pendiente = filter_input(INPUT_GET, 'id_entrega_pendiente', FILTER_VALIDATE_INT);
 
+$cantidad_a_entregar_especifica = 0;
+
 try {
     $db = new database(); $con = $db->conectar();
+    
+    // Obtener datos del paciente
     $sql_paciente = "SELECT u.nom_usu, u.doc_usu FROM historia_clinica hc JOIN citas c ON hc.id_cita = c.id_cita JOIN usuarios u ON c.doc_pac = u.doc_usu WHERE hc.id_historia = :id_historia";
     $stmt_paciente = $con->prepare($sql_paciente);
     $stmt_paciente->execute([':id_historia' => $id_historia]);
     $paciente = $stmt_paciente->fetch(PDO::FETCH_ASSOC);
 
-    $sql_medicamentos = "SELECT dh.id_detalle, m.id_medicamento, m.nom_medicamento, m.codigo_barras, dh.can_medica FROM detalles_histo_clini dh JOIN medicamentos m ON dh.id_medicam = m.id_medicamento WHERE dh.id_historia = :id_historia AND dh.can_medica > 0";
+    // Si es un pendiente, obtenemos la cantidad específica a entregar
+    if ($id_entrega_pendiente && $id_detalle_unico) {
+        $stmt_cant_pendiente = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_entrega_pendiente = :id_pendiente AND id_detalle_histo = :id_detalle");
+        $stmt_cant_pendiente->execute([':id_pendiente' => $id_entrega_pendiente, ':id_detalle' => $id_detalle_unico]);
+        $cantidad_a_entregar_especifica = (int)$stmt_cant_pendiente->fetchColumn();
+    }
+
+    // Obtener medicamentos. Siempre se filtra por el detalle único si viene.
+    $sql_medicamentos = "SELECT dh.id_detalle, m.id_medicamento, m.nom_medicamento, m.codigo_barras, dh.can_medica FROM detalles_histo_clini dh JOIN medicamentos m ON dh.id_medicam = m.id_medicamento WHERE dh.id_historia = :id_historia";
     if ($id_detalle_unico) {
         $sql_medicamentos .= " AND dh.id_detalle = :id_detalle_unico";
     }
@@ -29,11 +41,11 @@ try {
     }
     $stmt_medicamentos->execute($params_meds);
     $medicamentos = $stmt_medicamentos->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     http_response_code(500); exit;
 }
 ?>
-
 <style>
     .fila-procesada { background-color: #f8f9fa !important; }
     .fila-procesada .form-control { background-color: #e9ecef; border-color: #ced4da; }
@@ -72,8 +84,11 @@ try {
                         </tr>
                     </thead>
                     <tbody id="cuerpo-tabla-entrega">
-                        <?php foreach ($medicamentos as $med): ?>
-                        <tr id="med-fila-<?php echo $med['id_detalle']; ?>" data-id-turno="<?php echo $id_turno; ?>" data-id-detalle="<?php echo $med['id_detalle']; ?>" data-id-medicamento="<?php echo $med['id_medicamento']; ?>" data-codigo-barras="<?php echo $med['codigo_barras']; ?>" data-cantidad-requerida="<?php echo $med['can_medica']; ?>">
+                        <?php foreach ($medicamentos as $med): 
+                            // Determinamos la cantidad final a usar en la fila
+                            $cantidad_requerida = ($id_entrega_pendiente && $cantidad_a_entregar_especifica > 0) ? $cantidad_a_entregar_especifica : $med['can_medica'];
+                        ?>
+                        <tr id="med-fila-<?php echo $med['id_detalle']; ?>" data-id-turno="<?php echo $id_turno; ?>" data-id-detalle="<?php echo $med['id_detalle']; ?>" data-id-medicamento="<?php echo $med['id_medicamento']; ?>" data-codigo-barras="<?php echo $med['codigo_barras']; ?>" data-cantidad-requerida="<?php echo $cantidad_requerida; ?>">
                             <td class="text-center estado-verificacion">
                                 <i class="bi bi-hourglass-split text-warning fs-4" title="Pendiente"></i>
                             </td>
@@ -81,7 +96,7 @@ try {
                                 <strong><?php echo htmlspecialchars($med['nom_medicamento']); ?></strong>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-primary rounded-pill fs-6"><?php echo htmlspecialchars($med['can_medica']); ?></span>
+                                <span class="badge bg-primary rounded-pill fs-6"><?php echo htmlspecialchars($cantidad_requerida); ?></span>
                             </td>
                             <td>
                                 <div class="input-group input-group-sm">

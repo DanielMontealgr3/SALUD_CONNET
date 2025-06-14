@@ -50,7 +50,7 @@ function generarFilasPendientes($con, $nit_farmacia_actual, &$pagina_actual_ref,
     $offset = ($pagina_actual_ref - 1) * $registros_por_pagina;
     $order_by = ($filtro_orden === 'asc') ? "ep.fecha_generacion ASC" : "ep.fecha_generacion DESC";
     
-    $sql_final = "SELECT ep.id_entrega_pendiente, ep.radicado_pendiente, ep.fecha_generacion, u.nom_usu AS nombre_paciente, u.doc_usu AS doc_paciente, m.nom_medicamento, dh.id_detalle, (SELECT can_medica FROM detalles_histo_clini WHERE id_detalle = ep.id_detalle_histo) AS cantidad_pendiente, hc.id_historia " . $sql_from_join . " GROUP BY ep.id_entrega_pendiente ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
+    $sql_final = "SELECT ep.id_entrega_pendiente, ep.radicado_pendiente, ep.fecha_generacion, u.nom_usu AS nombre_paciente, u.doc_usu AS doc_paciente, m.nom_medicamento, dh.id_detalle, ep.cantidad_pendiente, hc.id_historia " . $sql_from_join . " GROUP BY ep.id_entrega_pendiente ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
     
     $stmt = $con->prepare($sql_final);
     foreach ($params as $key => &$val) $stmt->bindParam($key, $val);
