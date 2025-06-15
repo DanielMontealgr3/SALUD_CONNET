@@ -1,17 +1,23 @@
 <?php
 $currentYear = date("Y");
+
+$document_root = $_SERVER['DOCUMENT_ROOT'];
+$project_folder_name = 'SALUDCONNECT';
+$base_path = str_replace('\\', '/', $document_root) . '/' . $project_folder_name;
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'];
+$base_url = $protocol . '://' . $host . '/' . $project_folder_name;
 ?>
 
 <style>
-    /* === ESTILOS PARA EL FOOTER === */
     .footer-collapsible.navbar-custom-blue {
         padding-top: 0.8rem !important;
         padding-bottom: 0.8rem !important;
-        position: relative; /* Necesario para el contexto de posicionamiento */
-        flex-shrink: 0; /* Evita que el footer se encoja */
+        position: relative;
+        flex-shrink: 0;
         background-color: rgb(0, 117, 201) !important; 
-        color: #ffffff; /* Asegura que el texto sea blanco por defecto */
-        margin-top: auto; /* Empuja el footer hacia abajo */
+        color: #ffffff;
+        margin-top: auto;
     }
 
     .footer-visible-bar {
@@ -19,7 +25,6 @@ $currentYear = date("Y");
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
-        /* Usa el padding del contenedor principal de Bootstrap para alineación */
         padding-left: var(--bs-gutter-x, 1.5rem);
         padding-right: var(--bs-gutter-x, 1.5rem);
     }
@@ -29,15 +34,14 @@ $currentYear = date("Y");
         background: none;
         border: none;
         font-size: 1.2rem;
-        padding: 0.25rem 0.5rem; /* Área de click más grande */
+        padding: 0.25rem 0.5rem;
         line-height: 1;
     }
     
     .footer-toggler i {
-        transition: transform 0.3s ease-in-out; /* Animación suave para la flecha */
+        transition: transform 0.3s ease-in-out;
     }
     
-    /* Gira la flecha cuando el contenido está expandido */
     .footer-visible-bar[aria-expanded="true"] .footer-toggler i {
         transform: rotate(180deg);
     }
@@ -90,7 +94,6 @@ $currentYear = date("Y");
              <hr>
 
             <div class="row gy-3 align-items-center">
-                <!-- Columna 1: Contáctenos -->
                 <div class="col-lg-7 col-md-12">
                     <h5 class="text-uppercase fw-bold mb-2">Contáctenos</h5>
                     <p class="small mb-1">Línea nacional de información general 018000919100 (tel. fijo)</p>
@@ -103,10 +106,9 @@ $currentYear = date("Y");
                     </div>
                 </div>
 
-                <!-- Columna 2: Logos -->
                 <div class="col-lg-5 col-md-12 d-flex align-items-center justify-content-center justify-content-lg-end mt-3 mt-lg-0">
-                    <img src="../img/Minsalud.svg" alt="Logo Minsalud" style="height: 50px; width: auto;" class="me-4">
-                    <img src="../img/sena.png" alt="Logo SENA" style="height: 40px; width: auto;">
+                    <img src="<?php echo $base_url; ?>/img/Minsalud.svg" alt="Logo Minsalud" style="height: 50px; width: auto;" class="me-4">
+                    <img src="<?php echo $base_url; ?>/img/sena.png" alt="Logo SENA" style="height: 40px; width: auto;">
                 </div>
             </div>
         </div>

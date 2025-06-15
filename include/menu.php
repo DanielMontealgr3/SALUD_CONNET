@@ -163,7 +163,6 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownEntidades">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_entidades.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/ver_entidades.php">Ver Entidades</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/crear_entidad.php">Crear Entidad</a></li>
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'editar_entidad.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/editar_entidad.php">Editar Entidad</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_alianza.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/crear_alianza.php">Crear Alianza</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_alianzas.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_entidades/lista_alianzas.php">Ver Alianzas</a></li>
                                 </ul>
@@ -262,7 +261,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
 
                         <?php elseif ($rol_usuario == 4): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_medi.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_medi.php">Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_hoy.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_hoy.php">Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/crear_orden.php">Crear ordenes</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/ver_ordenes.php">Ver ordenes</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_paci.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/historial_paci.php">Historial paciente</a></li>
