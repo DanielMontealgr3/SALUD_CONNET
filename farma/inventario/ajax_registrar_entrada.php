@@ -21,6 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
         exit;
     }
 
+    $fecha_minima = new DateTime();
+    $fecha_minima->modify('+3 months');
+    $fecha_venc_obj = new DateTime($fecha_vencimiento);
+    if ($fecha_venc_obj < $fecha_minima) {
+        $response['message'] = 'La fecha de vencimiento debe ser de al menos 3 meses en el futuro para poder registrar la entrada.';
+        echo json_encode($response);
+        exit;
+    }
+
     $db = new database();
     $con = $db->conectar();
 
@@ -37,9 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
             $stmt_stock->execute([$id_medicamento, $nit_farm]);
             $stock_actual = (int)$stmt_stock->fetchColumn();
             
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Se selecciona `ep.cantidad_pendiente` y se compara `ep.cantidad_pendiente` con el stock.
-            // Se añade el filtro por nit_farma para asegurar que solo notifique pendientes de la farmacia actual.
             $sql_pendientes = "SELECT u.nom_usu, ep.cantidad_pendiente AS can_medica
                                FROM entrega_pendiente ep
                                JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle
@@ -56,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
             $stmt_pendientes = $con->prepare($sql_pendientes);
             $stmt_pendientes->execute([$id_medicamento, $nit_farm, $stock_actual]);
             $pendientes_cubiertos = $stmt_pendientes->fetchAll(PDO::FETCH_ASSOC);
-            // --- FIN DE LA CORRECCIÓN ---
 
             $response['success'] = true;
             $response['message'] = 'Entrada de inventario registrada con éxito.';
@@ -70,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_medicamento'])) {
 
     } catch (PDOException $e) {
         $con->rollBack();
-        $response['message'] = 'Se produjo un error en la base de datos.';
+        $response['message'] = 'Se produjo un error en la base de datos. Es posible que el lote ya exista.';
         error_log("Error en ajax_registrar_entrada: " . $e->getMessage());
     }
 }

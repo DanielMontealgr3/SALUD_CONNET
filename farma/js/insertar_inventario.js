@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function validarCampo(input) {
         let esValido = false;
         const valor = input.value.trim();
-        const feedback = input.nextElementSibling;
         
         switch(input.id) {
             case 'cantidad_entrada':
@@ -47,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'fecha_vencimiento':
                 if (valor) {
-                    const fechaSeleccionada = new Date(valor + "T00:00:00"); 
+                    const fechaSeleccionada = new Date(valor + "T00:00:00");
                     const fechaMinima = new Date();
                     fechaMinima.setHours(0, 0, 0, 0);
                     fechaMinima.setMonth(fechaMinima.getMonth() + 3);
@@ -132,7 +131,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                let timerInterval;
                 Swal.fire({
                     title: '¡Éxito!',
                     text: data.message,
@@ -140,19 +138,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     timer: 2000,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    willClose: () => {
-                        clearInterval(timerInterval);
-                    }
-                });
+                }).then(() => {
+                    if (data.pendientes_cubiertos && data.pendientes_cubiertos.length > 0) {
+                        let listaHtml = '<ul class="list-group">';
+                        data.pendientes_cubiertos.forEach(p => {
+                            listaHtml += `<li class="list-group-item">Paciente <strong>${p.nom_usu}</strong> necesita <strong>${p.can_medica}</strong> unidades.</li>`;
+                        });
+                        listaHtml += '</ul>';
 
-                if (data.pendientes_cubiertos && data.pendientes_cubiertos.length > 0) {
-                    let listaHtml = '<ul class="list-group">';
-                    data.pendientes_cubiertos.forEach(p => {
-                        listaHtml += `<li class="list-group-item">Paciente <strong>${p.nom_usu}</strong> necesita <strong>${p.can_medica}</strong> unidades.</li>`;
-                    });
-                    listaHtml += '</ul>';
-
-                    setTimeout(() => {
                         Swal.fire({
                             icon: 'info',
                             title: '¡Pendientes por Entregar!',
@@ -164,9 +157,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 window.location.href = '../entregar/entregas_pendientes.php';
                             }
                         });
-                    }, 2100);
-                }
-                
+                    }
+                });
+
                 formRegistro.reset();
                 inputCodigo.value = '';
                 mostrarAreaRegistro(false);
