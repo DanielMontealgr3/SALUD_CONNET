@@ -126,11 +126,7 @@ if ($accion === 'verificar_stock_pendiente') {
         try {
             $stmt = $con->prepare("UPDATE entrega_pendiente SET id_estado = 9 WHERE id_entrega_pendiente = :id_entrega_pendiente AND id_estado = 10");
             $stmt->execute([':id_entrega_pendiente' => $id_entrega_pendiente]);
-            if ($stmt->rowCount() > 0) {
-                $response = ['success' => true, 'message' => 'Entrega de pendiente finalizada y estado actualizado.'];
-            } else {
-                $response = ['success' => false, 'message' => 'No se encontró el pendiente o ya estaba finalizado.'];
-            }
+            $response = ['success' => true, 'message' => 'Pendiente finalizado correctamente.'];
         } catch (PDOException $e) {
             $response['message'] = 'Error al actualizar el estado del pendiente: ' . $e->getMessage();
         }

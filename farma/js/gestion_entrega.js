@@ -102,12 +102,6 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                 const stockTotalEntregable = lotesEntregables.reduce((acc, l) => acc + parseInt(l.stock_lote, 10), 0);
                 fila.dataset.stockTotal = stockTotalEntregable;
 
-                if (contexto === 'entregar_pendiente' && stockTotalEntregable < cantidadRequerida) {
-                     inputCodigo.disabled = false; btnVerificarCodigo.disabled = false; inputCodigo.classList.remove('is-valid');
-                     fila.querySelector('.estado-verificacion i').className = 'bi bi-hourglass-split text-warning fs-4';
-                     return;
-                }
-
                 let swalHTML = '';
                 let lotesNecesarios = [];
                 
@@ -235,7 +229,7 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
             const response = await fetch('/SALUDCONNECT/farma/entregar/ajax_procesar_entrega.php', { method: 'POST', body: formData });
             const data = await response.json();
             if (data.success) {
-                await Swal.fire('¡Pendiente Finalizado!', data.message, 'success');
+                await Swal.fire({title: '¡Pendiente Finalizado!', text: data.message, icon: 'success', confirmButtonText: 'OK'});
                 bootstrap.Modal.getInstance(modalElement).hide();
             } else {
                 Swal.fire('Error', data.message, 'error');
