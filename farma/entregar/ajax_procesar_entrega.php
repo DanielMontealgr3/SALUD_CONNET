@@ -66,39 +66,44 @@ if ($accion === 'verificar_stock_pendiente') {
             $stmt_cant = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = :id_detalle AND id_estado = 10");
             $stmt_cant->execute([':id_detalle' => $id_detalle]);
             $cantidad_necesaria = (int)$stmt_cant->fetchColumn();
-        } else { // 'validar_y_entregar'
+        } else {
             $cantidad_necesaria = (int)$detalle_medicamento['can_medica'];
         }
 
         if ($cantidad_necesaria <= 0) { throw new Exception("La cantidad requerida no es válida."); }
+        
+        $sql_lotes = "SELECT lote, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote 
+                      FROM movimientos_inventario 
+                      WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY
+                      GROUP BY lote 
+                      HAVING stock_lote > 0 
+                      ORDER BY fecha_vencimiento ASC";
+        $stmt_lotes = $con->prepare($sql_lotes);
+        $stmt_lotes->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
+        $lotes_disponibles = $stmt_lotes->fetchAll(PDO::FETCH_ASSOC);
+        
+        $stock_total_real_en_lotes = array_sum(array_column($lotes_disponibles, 'stock_lote'));
 
-        $stmt_stock_total = $con->prepare("SELECT cantidad_actual FROM inventario_farmacia WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm");
-        $stmt_stock_total->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
-        $stock_total_actual = (int)$stmt_stock_total->fetchColumn();
-
-        if ($accion === 'entregar_pendiente' && $stock_total_actual < $cantidad_necesaria) {
-            throw new Exception("Stock insuficiente para completar el pendiente. Stock actual: $stock_total_actual. Unidades requeridas: $cantidad_necesaria");
+        if ($accion === 'entregar_pendiente' && $stock_total_real_en_lotes < $cantidad_necesaria) {
+            throw new Exception("Stock insuficiente para completar el pendiente. Stock válido en lotes: $stock_total_real_en_lotes. Unidades requeridas: $cantidad_necesaria");
         }
 
-        $cantidad_a_entregar_real = min($cantidad_necesaria, $stock_total_actual);
+        $cantidad_a_entregar_real = min($cantidad_necesaria, $stock_total_real_en_lotes);
         $cantidad_a_dejar_pendiente = $cantidad_necesaria - $cantidad_a_entregar_real;
         
         $entregas_realizadas = [];
         $radicado_generado = null;
 
         if ($cantidad_a_entregar_real > 0) {
-            $sql_lotes = "SELECT lote, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad ELSE -cantidad END) AS stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm GROUP BY lote HAVING stock_lote > 0 ORDER BY fecha_vencimiento ASC";
-            $stmt_lotes = $con->prepare($sql_lotes);
-            $stmt_lotes->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
-            $lotes_disponibles = $stmt_lotes->fetchAll(PDO::FETCH_ASSOC);
             $cantidad_restante_por_entregar = $cantidad_a_entregar_real;
-
             foreach ($lotes_disponibles as $lote) {
                 if ($cantidad_restante_por_entregar <= 0) break;
                 $cantidad_a_sacar_de_lote = min($cantidad_restante_por_entregar, (int)$lote['stock_lote']);
+                
                 $sql_insert = "INSERT INTO entrega_medicamentos (id_detalle_histo, doc_farmaceuta, id_estado, lote, cantidad_entregada, Observaciones) VALUES (:id_detalle, :doc_farma, 9, :lote, :cantidad, 'Entrega.')";
                 $stmt_insert = $con->prepare($sql_insert);
                 $stmt_insert->execute([':id_detalle' => $id_detalle, ':doc_farma' => $doc_farmaceuta, ':lote' => $lote['lote'], ':cantidad' => $cantidad_a_sacar_de_lote]);
+                
                 $entregas_realizadas[] = ['lote' => $lote['lote'], 'cantidad' => $cantidad_a_sacar_de_lote];
                 $cantidad_restante_por_entregar -= $cantidad_a_sacar_de_lote;
             }

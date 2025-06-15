@@ -7,7 +7,7 @@ $id_medicamento = filter_input(INPUT_GET, 'id_medicamento', FILTER_VALIDATE_INT)
 $nit_farmacia = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
 
 if (!$id_medicamento || !$nit_farmacia) {
-    echo json_encode(['success' => false, 'message' => 'Datos insuficientes.']);
+    echo json_encode(['success' => false, 'message' => 'Datos insuficientes para la consulta.']);
     exit;
 }
 
@@ -15,12 +15,22 @@ try {
     $db = new database();
     $con = $db->conectar();
     
-    $sql = "SELECT lote, fecha_vencimiento, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad ELSE -cantidad END) AS stock_lote
+    $sql = "SELECT 
+                lote, 
+                fecha_vencimiento,
+                SUM(CASE 
+                    WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad 
+                    WHEN id_tipo_mov IN (2, 4) THEN -cantidad 
+                    ELSE 0 
+                END) AS stock_lote
             FROM movimientos_inventario
-            WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm
+            WHERE 
+                id_medicamento = :id_medicamento 
+                AND nit_farm = :nit_farm
+                AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY
             GROUP BY lote, fecha_vencimiento
             HAVING stock_lote > 0
-            ORDER BY fecha_vencimiento ASC, fecha_movimiento ASC";
+            ORDER BY fecha_vencimiento ASC";
 
     $stmt = $con->prepare($sql);
     $stmt->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
@@ -30,6 +40,6 @@ try {
 
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error de base de datos.']);
+    echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
 }
 ?>

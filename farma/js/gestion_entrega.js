@@ -115,7 +115,7 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                 const data = await response.json();
                 
                 if (data.success && data.lotes.length > 0) {
-                    const stockTotal = data.lotes.reduce((acc, lote) => acc + parseInt(lote.stock_lote, 10), 0);
+                    const stockTotalEnLotes = data.lotes.reduce((acc, lote) => acc + parseInt(lote.stock_lote, 10), 0);
                     const cantidadRequerida = parseInt(fila.dataset.cantidadRequerida, 10);
                     let lotesNecesarios = [];
                     let cantidadTemporal = cantidadRequerida;
@@ -128,18 +128,18 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                     }
                     
                     fila.dataset.lotesNecesarios = JSON.stringify(lotesNecesarios);
-                    fila.dataset.stockTotal = stockTotal;
+                    fila.dataset.stockTotal = stockTotalEnLotes;
 
                     let mensajeHTML = '';
                     lotesNecesarios.forEach(l => {
                         mensajeHTML += `Tome <strong>${l.a_tomar}</strong> unidad(es) del Lote: <strong>${l.lote}</strong><br>`;
                     });
 
-                    if (stockTotal < cantidadRequerida && contexto === 'turno') {
-                        mensajeHTML += `<hr>Se generará un pendiente por <strong>${cantidadRequerida - stockTotal}</strong> unidad(es).`;
-                    } else if (stockTotal < cantidadRequerida && contexto === 'entregar_pendiente') {
-                         await Swal.fire({ title: 'Stock Insuficiente', html: `No hay suficiente stock para completar el pendiente.<br>Requeridas: <strong>${cantidadRequerida}</strong><br>Disponibles: <strong>${stockTotal}</strong>`, icon: 'error', confirmButtonText: 'Entendido' });
-                         return; // Detiene el proceso aquí
+                    if (stockTotalEnLotes < cantidadRequerida && contexto === 'turno') {
+                        mensajeHTML += `<hr>Se generará un pendiente por <strong>${cantidadRequerida - stockTotalEnLotes}</strong> unidad(es).`;
+                    } else if (stockTotalEnLotes < cantidadRequerida && contexto === 'entregar_pendiente') {
+                         await Swal.fire({ title: 'Stock Insuficiente', html: `No hay suficiente stock para completar el pendiente.<br>Requeridas: <strong>${cantidadRequerida}</strong><br>Disponibles: <strong>${stockTotalEnLotes}</strong>`, icon: 'error', confirmButtonText: 'Entendido' });
+                         return;
                     }
                     
                     await Swal.fire({ title: 'Instrucciones de Entrega', html: mensajeHTML, icon: 'info', confirmButtonText: 'Entendido' });
@@ -154,15 +154,20 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
                 } else {
                     fila.dataset.stockTotal = 0;
                     if (contexto === 'turno') {
-                        await Swal.fire({ title: 'Sin Stock', text: 'No hay unidades disponibles. Se debe generar un pendiente.', icon: 'error', confirmButtonText: 'Entendido'});
+                        await Swal.fire({ 
+                            title: 'Sin Stock Válido', 
+                            html: 'No hay unidades disponibles para la entrega.<br><small>Esto puede deberse a falta de inventario o a que los lotes existentes están próximos a vencer.</small>', 
+                            icon: 'warning', 
+                            confirmButtonText: 'Entendido'
+                        });
                         
                         fila.dataset.accionPendiente = 'true';
                         fila.classList.add('fila-pendiente-lista');
                         celdaAccion.innerHTML = `<button class="btn btn-warning btn-sm btn-confirmar-accion"><i class="bi bi-file-earmark-plus"></i> Generar Pendiente</button>`;
-                        celdaLotes.innerHTML = `<div class="text-center text-muted small">Sin Stock.</div>`;
+                        celdaLotes.innerHTML = `<div class="text-center text-muted small">Sin stock válido</div>`;
                         actualizarBotonPendientesLote();
                     } else {
-                        Swal.fire({ title: 'Sin Stock', text: 'No hay unidades disponibles para entregar este pendiente.', icon: 'error'});
+                        Swal.fire({ title: 'Sin Stock Válido', text: 'No hay unidades válidas disponibles para entregar este pendiente.', icon: 'error'});
                     }
                 }
             } catch (error) {
@@ -222,7 +227,7 @@ function inicializarLogicaEntrega(modalElement, contexto = 'turno') {
         if (contexto === 'entregar_pendiente') {
             accionFinalizar = 'finalizar_entrega_pendiente';
             formData.append('accion', accionFinalizar);
-            formData.append('id_entrega_pendiente', idEntregaPendiente);
+            formData.append('id_entrega_pendiente', idEntreгаPendiente);
         } else {
             const primeraFila = cuerpoTabla.querySelector('tr');
             const idTurno = primeraFila ? primeraFila.dataset.idTurno : null;

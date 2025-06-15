@@ -16,20 +16,17 @@ $cantidad_a_entregar_especifica = 0;
 try {
     $db = new database(); $con = $db->conectar();
     
-    // Obtener datos del paciente
     $sql_paciente = "SELECT u.nom_usu, u.doc_usu FROM historia_clinica hc JOIN citas c ON hc.id_cita = c.id_cita JOIN usuarios u ON c.doc_pac = u.doc_usu WHERE hc.id_historia = :id_historia";
     $stmt_paciente = $con->prepare($sql_paciente);
     $stmt_paciente->execute([':id_historia' => $id_historia]);
     $paciente = $stmt_paciente->fetch(PDO::FETCH_ASSOC);
 
-    // Si es un pendiente, obtenemos la cantidad específica a entregar
     if ($id_entrega_pendiente && $id_detalle_unico) {
         $stmt_cant_pendiente = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_entrega_pendiente = :id_pendiente AND id_detalle_histo = :id_detalle");
         $stmt_cant_pendiente->execute([':id_pendiente' => $id_entrega_pendiente, ':id_detalle' => $id_detalle_unico]);
         $cantidad_a_entregar_especifica = (int)$stmt_cant_pendiente->fetchColumn();
     }
 
-    // Obtener medicamentos. Siempre se filtra por el detalle único si viene.
     $sql_medicamentos = "SELECT dh.id_detalle, m.id_medicamento, m.nom_medicamento, m.codigo_barras, dh.can_medica FROM detalles_histo_clini dh JOIN medicamentos m ON dh.id_medicam = m.id_medicamento WHERE dh.id_historia = :id_historia";
     if ($id_detalle_unico) {
         $sql_medicamentos .= " AND dh.id_detalle = :id_detalle_unico";
@@ -85,7 +82,6 @@ try {
                     </thead>
                     <tbody id="cuerpo-tabla-entrega">
                         <?php foreach ($medicamentos as $med): 
-                            // Determinamos la cantidad final a usar en la fila
                             $cantidad_requerida = ($id_entrega_pendiente && $cantidad_a_entregar_especifica > 0) ? $cantidad_a_entregar_especifica : $med['can_medica'];
                         ?>
                         <tr id="med-fila-<?php echo $med['id_detalle']; ?>" data-id-turno="<?php echo $id_turno; ?>" data-id-detalle="<?php echo $med['id_detalle']; ?>" data-id-medicamento="<?php echo $med['id_medicamento']; ?>" data-codigo-barras="<?php echo $med['codigo_barras']; ?>" data-cantidad-requerida="<?php echo $cantidad_requerida; ?>">
