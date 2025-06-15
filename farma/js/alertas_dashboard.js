@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const alertModal = new bootstrap.Modal(document.getElementById('alertasModal'));
+    const alertasModalElement = document.getElementById('alertasModal');
+    if (!alertasModalElement) return;
+
+    const alertModal = new bootstrap.Modal(alertasModalElement);
     const modalTitle = document.getElementById('alertasModalLabel');
     const modalBody = document.getElementById('alertasModalBody');
     const modalFooter = document.getElementById('alertasModalFooter');
@@ -7,7 +10,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentAlertType = '';
 
-    document.querySelectorAll('.alert-card[data-bs-toggle="modal"]').forEach(card => {
+    // --- LÓGICA DE RUTA DINÁMICA ---
+    // Determina la ruta base correcta dependiendo de la página actual.
+    const path = window.location.pathname;
+    const basePath = path.includes('/inventario/') ? '../alertas/' : 'alertas/';
+    const basePathRoot = path.includes('/inventario/') ? '../' : './';
+    // --- FIN LÓGICA DE RUTA ---
+
+
+    document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target="#alertasModal"]').forEach(card => {
         card.addEventListener('click', function () {
             currentAlertType = this.dataset.alertType;
             let url = '';
@@ -18,15 +29,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             switch (currentAlertType) {
                 case 'por-vencer':
-                    url = 'alertas/productos_por_vencer.php';
+                    url = `${basePath}productos_por_vencer.php`;
                     title = '<i class="bi bi-hourglass-split me-2"></i>Productos Próximos a Vencer';
                     break;
                 case 'vencidos':
-                    url = 'alertas/productos_vencidos.php';
+                    url = `${basePath}productos_vencidos.php`;
                     title = '<i class="bi bi-calendar-x-fill me-2"></i>Productos Vencidos en Inventario';
                     break;
                 case 'stock-bajo':
-                    url = 'alertas/stock_bajo.php';
+                    url = `${basePath}stock_bajo.php`;
                     title = '<i class="bi bi-box-seam me-2"></i>Medicamentos con Stock Bajo';
                     break;
                 default: return;
@@ -77,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (currentAlertType === 'por-vencer' && data.length > 0) {
                         modalFooter.innerHTML = '<button type="button" class="btn btn-warning" id="btn-abrir-modal-retiro" data-tipo="por_vencer"><i class="bi bi-shield-slash me-2"></i>Gestionar Retiro</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
                     } else if (currentAlertType === 'stock-bajo') {
-                        modalFooter.innerHTML = '<a href="inventario/insertar_inventario.php" class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Ingresar Medicamentos</a><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
+                        modalFooter.innerHTML = `<a href="${basePathRoot}inventario/insertar_inventario.php" class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Ingresar Medicamentos</a><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>`;
                     }
                 })
                 .catch(error => {
@@ -89,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
     modalFooter.addEventListener('click', function(e) {
         if (e.target.id === 'btn-abrir-modal-retiro') {
             const tipo = e.target.dataset.tipo;
-            fetch(`alertas/modal_retirar_inventario.php?tipo=${tipo}`)
+            fetch(`${basePath}modal_retirar_inventario.php?tipo=${tipo}`)
                 .then(response => response.text())
                 .then(html => {
                     modalSecundarioPlaceholder.innerHTML = html;
@@ -117,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (botonClicado.classList.contains('btn-validar-codigo')) {
             const inputCodigo = fila.querySelector('.input-codigo-barras');
-            inputCodigo.classList.remove('is-valid', 'is-invalid'); // Limpiar estado previo
+            inputCodigo.classList.remove('is-valid', 'is-invalid');
 
             if (inputCodigo.value.trim() === fila.dataset.codigoBarras) {
                 inputCodigo.classList.add('is-valid');
@@ -137,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (botonClicado.classList.contains('btn-validar-lote')) {
             const inputLote = fila.querySelector('.input-lote');
-            inputLote.classList.remove('is-valid', 'is-invalid'); // Limpiar estado previo
+            inputLote.classList.remove('is-valid', 'is-invalid');
 
             if (inputLote.value.trim().toLowerCase() === fila.dataset.lote.toLowerCase()) {
                 inputLote.classList.add('is-valid');
@@ -171,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('motivo', fila.dataset.motivoRetiro);
 
         try {
-            const response = await fetch('alertas/ajax_retirar_inventario.php', { method: 'POST', body: formData });
+            const response = await fetch(`${basePath}ajax_retirar_inventario.php`, { method: 'POST', body: formData });
             const data = await response.json();
             
             if (data.success) {

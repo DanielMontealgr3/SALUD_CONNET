@@ -97,7 +97,7 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                 </div>
 
                 <div class="alerts-grid">
-                    <div class="alert-card position-relative">
+                    <div class="alert-card position-relative <?php echo ($count_entregas_pendientes > 0) ? 'has-alerts' : ''; ?>">
                         <div class="alert-card-icon icon-deliveries"><i class="fas fa-file-prescription"></i></div>
                         <div class="alert-card-info">
                             <h5>Entregas Pendientes</h5>
@@ -107,7 +107,7 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <a href="entregar/entregas_pendientes.php" class="stretched-link"></a>
                     </div>
 
-                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="stock-bajo">
+                    <div class="alert-card <?php echo ($count_stock_bajo > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="stock-bajo">
                         <div class="alert-card-icon icon-stock"><i class="fas fa-cubes"></i></div>
                         <div class="alert-card-info">
                             <h5>Stock Bajo</h5>
@@ -116,7 +116,7 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <div class="alert-card-count"><?php echo $count_stock_bajo; ?></div>
                     </div>
 
-                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="por-vencer">
+                    <div class="alert-card <?php echo ($count_por_vencer > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="por-vencer">
                         <div class="alert-card-icon icon-expiring"><i class="fas fa-hourglass-half"></i></div>
                         <div class="alert-card-info">
                             <h5>Próximos a Vencer</h5>
@@ -125,7 +125,7 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
                         <div class="alert-card-count"><?php echo $count_por_vencer; ?></div>
                     </div>
 
-                    <div class="alert-card" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="vencidos">
+                    <div class="alert-card <?php echo ($count_vencidos > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="vencidos">
                         <div class="alert-card-icon icon-expired"><i class="fas fa-calendar-times"></i></div>
                         <div class="alert-card-info">
                             <h5>Productos Vencidos</h5>

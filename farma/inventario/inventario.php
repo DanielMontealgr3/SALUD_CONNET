@@ -3,14 +3,16 @@ require_once '../../include/validar_sesion.php';
 require_once '../../include/inactividad.php';
 require_once '../../include/conexion.php';
 
+// (La función generarFilasInventario no cambia, la omito por brevedad)
 function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_ref)
 {
+    // ... tu función existente sin cambios ...
     $filtro_tipo = trim($_GET['filtro_tipo'] ?? 'todos');
     $filtro_nombre = trim($_GET['filtro_nombre'] ?? '');
     $filtro_estado_stock = trim($_GET['filtro_stock'] ?? 'todos');
     $filtro_orden = trim($_GET['filtro_orden'] ?? 'asc');
     $filtro_codigo_barras = trim($_GET['filtro_codigo_barras'] ?? '');
-    $registros_por_pagina = 4;
+    $registros_por_pagina = 15;
 
     $params = [':nit_farma' => $nit_farmacia_actual];
     $sql_where_conditions = [];
@@ -37,7 +39,7 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
         $sql_from_join .= " AND " . implode(" AND ", $sql_where_conditions);
     }
 
-    $stmt_total = $con->prepare("SELECT COUNT(*) " . $sql_from_join);
+    $stmt_total = $con->prepare("SELECT COUNT(DISTINCT m.id_medicamento) " . $sql_from_join);
     $stmt_total->execute($params);
     $total_registros_ref = (int)$stmt_total->fetchColumn();
 
@@ -48,7 +50,7 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
     $offset = ($pagina_actual - 1) * $registros_por_pagina;
 
     $order_by = ($filtro_orden === 'desc') ? "m.nom_medicamento DESC" : "m.nom_medicamento ASC";
-    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est " . $sql_from_join . " ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
+    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est " . $sql_from_join . " GROUP BY m.id_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
 
     $stmt_inventario = $con->prepare($sql_final);
     foreach ($params as $key => &$val) $stmt_inventario->bindParam($key, $val);
@@ -59,7 +61,18 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
 
     ob_start();
     if (!empty($inventario_list)):
-        foreach ($inventario_list as $item): ?>
+        $stock_por_lote_sql = "SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END)";
+        $sql_lotes_base = "SELECT lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm GROUP BY lote, fecha_vencimiento HAVING $stock_por_lote_sql > 0";
+        $stmt_lotes = $con->prepare($sql_lotes_base);
+
+        foreach ($inventario_list as $item): 
+            $lotes_activos = [];
+            if ($item['cantidad_actual'] > 0) {
+                $stmt_lotes->execute([':id_medicamento' => $item['id_medicamento'], ':nit_farm' => $nit_farmacia_actual]);
+                $lotes_activos = $stmt_lotes->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $num_lotes = count($lotes_activos);
+            ?>
             <tr>
                 <td><?php echo htmlspecialchars($item['nom_medicamento']); ?></td>
                 <td><?php echo htmlspecialchars($item['nom_tipo_medi']); ?></td>
@@ -71,6 +84,19 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
                     <?php endif; ?>
                 </td>
                 <td><strong><?php echo htmlspecialchars($item['cantidad_actual']); ?></strong></td>
+                <td class="col-lotes">
+                    <?php if ($num_lotes === 0): ?>
+                        <span class="badge bg-secondary">Sin Lotes</span>
+                    <?php elseif ($num_lotes === 1): ?>
+                        <button class="btn btn-outline-dark btn-sm btn-ver-detalle-lote" data-id-medicamento="<?php echo $item['id_medicamento']; ?>" data-lote="<?php echo htmlspecialchars($lotes_activos[0]['lote']); ?>">
+                           <i class="bi bi-eye"></i> <?php echo htmlspecialchars($lotes_activos[0]['lote']); ?>
+                        </button>
+                    <?php else: ?>
+                        <button class="btn btn-outline-primary btn-sm btn-ver-lotes" data-id-medicamento="<?php echo $item['id_medicamento']; ?>">
+                           <?php echo $num_lotes; ?> Lotes...
+                        </button>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php
                     $clase_badge = 'bg-secondary';
@@ -82,15 +108,15 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
                 </td>
                 <td class="acciones-tabla">
                     <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalDetallesMedicamento" data-id-medicamento="<?php echo $item['id_medicamento']; ?>" title="Ver Detalles Completos"><i class="bi bi-info-circle-fill"></i> Ver</button>
-                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarMedicamento" data-id-medicamento="<?php echo $item['id_medicamento']; ?>" title="Editar Medicamento"><i class="bi bi-pencil-fill"></i> Editar</button>
                 </td>
             </tr>
         <?php endforeach;
     else: ?>
-        <tr><td colspan="6" class="text-center p-4">No se encontraron medicamentos.</td></tr>
+        <tr><td colspan="7" class="text-center p-4">No se encontraron medicamentos que coincidan con los filtros.</td></tr>
     <?php endif;
     return ob_get_clean();
 }
+
 
 if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
     $db = new database();
@@ -113,30 +139,40 @@ if (isset($_GET['ajax_search'])) {
 
 $total_registros = 0;
 $filas_html = generarFilasInventario($con, $nit_farmacia_actual, $total_registros);
-$registros_por_pagina = 15;
-$total_paginas = ceil($total_registros / $registros_por_pagina);
-$pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-if ($pagina_actual < 1) $pagina_actual = 1;
-if ($pagina_actual > $total_paginas && $total_paginas > 0) $pagina_actual = $total_paginas;
 
 $pageTitle = "Inventario de Farmacia";
 $nombre_farmacia_asignada = "";
+$count_stock_bajo = 0;
+$count_por_vencer = 0;
+$count_vencidos = 0;
+
 if ($nit_farmacia_actual) {
     $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
     $stmt_nombre->execute([$nit_farmacia_actual]);
     $nombre_farmacia_asignada = $stmt_nombre->fetchColumn();
+
+    $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= 10";
+    $stmt_stock = $con->prepare($sql_stock);
+    $stmt_stock->execute(['nit' => $nit_farmacia_actual]);
+    $count_stock_bajo = $stmt_stock->fetchColumn();
+
+    $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
+
+    $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND $stock_por_lote_sql > 0";
+    $stmt_por_vencer = $con->prepare($sql_por_vencer);
+    $stmt_por_vencer->execute(['nit' => $nit_farmacia_actual]);
+    $count_por_vencer = $stmt_por_vencer->fetchColumn();
+    
+    $sql_vencidos = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento < CURDATE() AND $stock_por_lote_sql > 0";
+    $stmt_vencidos = $con->prepare($sql_vencidos);
+    $stmt_vencidos->execute(['nit' => $nit_farmacia_actual]);
+    $count_vencidos = $stmt_vencidos->fetchColumn();
 }
-$umbral_pocas_unidades = 10;
-$stmt_agotados = $con->prepare("SELECT m.nom_medicamento, i.cantidad_actual FROM inventario_farmacia i JOIN medicamentos m ON i.id_medicamento = m.id_medicamento WHERE i.nit_farm = :nit_farma AND i.cantidad_actual <= :umbral ORDER BY i.cantidad_actual ASC, m.nom_medicamento ASC");
-$stmt_agotados->execute([':nit_farma' => $nit_farmacia_actual, ':umbral' => $umbral_pocas_unidades]);
-$medicamentos_agotados = $stmt_agotados->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt_tipos = $con->prepare("SELECT id_tip_medic, nom_tipo_medi FROM tipo_de_medicamento ORDER BY nom_tipo_medi ASC");
 $stmt_tipos->execute();
 $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_tipos_mov = $con->query("SELECT id_tipo_mov, nom_mov FROM tipo_movimiento ORDER BY nom_mov");
-$tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -145,6 +181,19 @@ $tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
     <style>
         .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: inline-block; }
+        .btn .badge { margin-left: 8px; }
+        .has-alerts { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .btn-warning.has-alerts { animation-name: pulse-warning; }
+        @keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -152,16 +201,23 @@ $tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 header-form-responsive">
                     <h3 class="titulo-lista-tabla m-0">Inventario de: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></h3>
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgotados"><i class="bi bi-exclamation-triangle-fill"></i> Ver Stock Crítico (<?php echo count($medicamentos_agotados); ?>)</button>
-                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalReportes"><i class="bi bi-file-earmark-excel-fill"></i> Generar Reporte</button>
+                    <div class="d-flex align-items-center gap-2 header-alert-buttons">
+                        <button type="button" class="btn btn-secondary btn-sm <?php echo ($count_stock_bajo > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="stock-bajo">
+                            <i class="bi bi-battery-charging"></i><span class="btn-text"> Stock Bajo</span><span class="badge bg-dark rounded-pill"><?php echo $count_stock_bajo; ?></span>
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm <?php echo ($count_por_vencer > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="por-vencer">
+                            <i class="bi bi-hourglass-split"></i><span class="btn-text"> Próximos a Vencer</span><span class="badge bg-dark rounded-pill"><?php echo $count_por_vencer; ?></span>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm <?php echo ($count_vencidos > 0) ? 'has-alerts' : ''; ?>" data-bs-toggle="modal" data-bs-target="#alertasModal" data-alert-type="vencidos">
+                            <i class="bi bi-calendar-x-fill"></i><span class="btn-text"> Vencidos</span><span class="badge bg-light text-dark rounded-pill"><?php echo $count_vencidos; ?></span>
+                        </button>
                     </div>
                 </div>
                 
                 <form id="formFiltros" class="mb-4 filtros-tabla-container">
-                    <div class="row g-2 align-items-end">
+                     <div class="row g-2 align-items-end">
                         <div class="col-lg-2 col-md-6">
                             <label for="filtro_tipo" class="form-label"><i class="bi bi-tag"></i>Tipo Medicamento:</label>
                             <select id="filtro_tipo" name="filtro_tipo" class="form-select form-select-sm">
@@ -208,7 +264,8 @@ $tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Medicamento</th>
                                 <th>Tipo</th>
                                 <th>Código de Barras</th>
-                                <th>Cantidad Actual</th>
+                                <th>Cantidad Total</th>
+                                <th>Lotes</th>
                                 <th>Estado</th>
                                 <th class="columna-acciones-fija">Acciones</th>
                             </tr>
@@ -218,155 +275,35 @@ $tipos_movimiento = $stmt_tipos_mov->fetchAll(PDO::FETCH_ASSOC);
                         </tbody>
                     </table>
                 </div>
-                
-                <?php if ($total_registros > 0 && $total_paginas > 1): ?>
-                    <nav aria-label="Paginación de inventario" class="mt-3 paginacion-tabla-container">
-                        <ul class="pagination pagination-sm">
-                            <?php $query_params = http_build_query(array_filter(['filtro_tipo' => $_GET['filtro_tipo'] ?? 'todos', 'filtro_stock' => $_GET['filtro_stock'] ?? 'todos','filtro_orden' => $_GET['filtro_orden'] ?? 'asc', 'filtro_nombre' => $_GET['filtro_nombre'] ?? '', 'filtro_codigo_barras' => $_GET['filtro_codigo_barras'] ?? ''])); ?>
-                            <li class="page-item <?php echo ($pagina_actual <= 1) ? 'disabled' : ''; ?>">
-                                <a class="page-link" href="?pagina=<?php echo $pagina_actual - 1; ?>&<?php echo $query_params; ?>"><i class="bi bi-chevron-left"></i></a>
-                            </li>
-                            <li class="page-item active" id="page-number-container">
-                                <span class="page-link page-number-display" title="Click/Enter para ir a pág."><?php echo $pagina_actual; ?> / <?php echo $total_paginas; ?></span>
-                                <input type="number" class="form-control form-control-sm page-number-input-field" value="<?php echo $pagina_actual; ?>" min="1" max="<?php echo $total_paginas; ?>" style="display: none;" data-total="<?php echo $total_paginas; ?>">
-                            </li>
-                            <li class="page-item <?php echo ($pagina_actual >= $total_paginas) ? 'disabled' : ''; ?>">
-                                <a class="page-link" href="?pagina=<?php echo $pagina_actual + 1; ?>&<?php echo $query_params; ?>"><i class="bi bi-chevron-right"></i></a>
-                            </li>
-                        </ul>
-                    </nav>
-                <?php endif; ?>
             </div>
         </div>
     </main>
-    <div class="modal fade" id="modalReportes" tabindex="-1" aria-labelledby="modalReportesLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <form action="generar_reporte_excel.php" method="POST" target="_blank">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="modalReportesLabel"><i class="bi bi-gear-fill me-2"></i>Configurar Reporte de Movimientos</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="reporte_fecha_inicio" class="form-label">Fecha de Inicio:</label>
-                            <input type="date" class="form-control" id="reporte_fecha_inicio" name="fecha_inicio" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="reporte_fecha_fin" class="form-label">Fecha de Fin:</label>
-                            <input type="date" class="form-control" id="reporte_fecha_fin" name="fecha_fin" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="reporte_tipo_movimiento" class="form-label">Tipo de Movimiento:</label>
-                            <select class="form-select" id="reporte_tipo_movimiento" name="tipo_movimiento">
-                                <option value="todos" selected>Todos</option>
-                                <?php foreach ($tipos_movimiento as $mov): ?>
-                                <option value="<?php echo $mov['id_tipo_mov']; ?>"><?php echo htmlspecialchars($mov['nom_mov']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="reporte_tipo_medicamento" class="form-label">Tipo de Medicamento:</label>
-                            <select class="form-select" id="reporte_tipo_medicamento" name="tipo_medicamento">
-                                <option value="todos" selected>Todos</option>
-                                <?php foreach ($tipos_medicamento as $tipo): ?>
-                                <option value="<?php echo $tipo['id_tip_medic']; ?>"><?php echo htmlspecialchars($tipo['nom_tipo_medi']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-download me-2"></i>Descargar Excel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="modalAgotados" tabindex="-1" aria-labelledby="modalAgotadosLabel" aria-hidden="true">
+
+    <div id="modal-lotes-placeholder"></div>
+    <div id="modal-secundario-placeholder"></div>
+    
+    <div class="modal fade" id="alertasModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalAgotadosLabel"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Reporte de Stock Crítico</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Lista de medicamentos con <?php echo $umbral_pocas_unidades; ?> o menos unidades.</p>
-                    <table class="table table-sm table-striped">
-                        <thead>
-                            <tr>
-                                <th>Medicamento</th>
-                                <th>Cantidad Restante</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($medicamentos_agotados)):
-                                foreach($medicamentos_agotados as $med_agotado): ?>
-                                    <tr class="<?php echo ($med_agotado['cantidad_actual'] == 0) ? 'table-danger' : 'table-warning'; ?>">
-                                        <td><?php echo htmlspecialchars($med_agotado['nom_medicamento']); ?></td>
-                                        <td><strong><?php echo htmlspecialchars($med_agotado['cantidad_actual']); ?></strong></td>
-                                    </tr>
-                                <?php endforeach;
-                            else: ?>
-                                <tr><td colspan="2" class="text-center p-3">¡Excelente! No hay medicamentos con stock crítico.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title" id="alertasModalLabel">Detalles de la Alerta</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="alertasModalBody"></div>
+                <div class="modal-footer" id="alertasModalFooter"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
             </div>
         </div>
     </div>
-    <div class="modal fade" id="modalDetallesMedicamento" tabindex="-1" aria-labelledby="modalDetallesLabel" aria-hidden="true">
+    <div class="modal fade" id="modalDetallesMedicamento" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalDetallesLabel"><i class="bi bi-capsule-pill me-2"></i>Detalles del Medicamento</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="contenidoModalDetalles">
-                    <div class="text-center p-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="modalEditarMedicamento" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <form id="formEditarMedicamento">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="modalEditarLabel"><i class="bi bi-pencil-square me-2"></i>Editar Medicamento</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" id="cuerpoModalEditar">
-                        <div class="text-center p-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <input type="hidden" name="accion" value="actualizar_detalles">
-                        <input type="hidden" id="edit_id_medicamento" name="id_medicamento">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" disabled>Guardar Cambios</button>
-                    </div>
-                </form>
+                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-capsule-pill me-2"></i>Detalles del Medicamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="contenidoModalDetalles"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
             </div>
         </div>
     </div>
     
     <?php include '../../include/footer.php'; ?>
     <script src="../js/gestion_inventario.js?v=<?php echo time(); ?>"></script>
+    <script src="../js/alertas_dashboard.js?v=<?php echo time(); ?>"></script>
     <script src="../includes_farm/JsBarcode.all.min.js"></script>
 </body>
 </html>

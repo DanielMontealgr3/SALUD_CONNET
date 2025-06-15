@@ -368,3 +368,47 @@ body {
 .table-primary-light {
     background-color: #cfe2ff !important;
 }
+
+
+/* ===== ESTILOS RESPONSIVOS PARA BOTONES DE ALERTA EN INVENTARIO ===== */
+
+@media (max-width: 767.98px) {
+    /* Ocultamos el texto dentro del botón en pantallas pequeñas */
+    .header-alert-buttons .btn .btn-text {
+        display: none;
+    }
+
+    /* Ajustamos el badge para que quede pegado al ícono */
+    .header-alert-buttons .btn .badge {
+        margin-left: 5px;
+    }
+    
+    /* Opcional: Hacemos los botones un poco más compactos */
+    .header-alert-buttons .btn {
+        padding: 0.375rem 0.5rem;
+    }
+}
+
+/* ===== ESTILOS PARA ANIMACIÓN DE TARJETAS DE ALERTA ===== */
+
+/* La clase .has-alerts activará la animación */
+.alert-card.has-alerts {
+    /* Usamos la animación 'pulse-red' para todas las alertas activas */
+    animation: pulse-red 1.5s infinite;
+}
+
+/* Definimos una única animación de pulso en color rojo */
+@keyframes pulse-red {
+    0% {
+        /* Sombra roja semi-transparente al inicio */
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); 
+    }
+    70% {
+        /* La sombra se expande y se desvanece */
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); 
+    }
+    100% {
+        /* Vuelve al estado inicial para crear el bucle */
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
