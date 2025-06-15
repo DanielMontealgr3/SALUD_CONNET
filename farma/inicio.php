@@ -36,6 +36,8 @@ $count_por_vencer = 0;
 $count_vencidos = 0;
 
 if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
+    
+    // --- Búsqueda de asignación de farmacia activa ---
     $sql_asignacion = "SELECT f.nom_farm, af.nit_farma, af.id_estado FROM asignacion_farmaceuta af JOIN farmacias f ON af.nit_farma = f.nit_farm WHERE af.doc_farma = :doc_farma AND af.id_estado = 1 LIMIT 1";
     $stmt_asignacion = $con->prepare($sql_asignacion);
     $stmt_asignacion->bindParam(':doc_farma', $documento_farmaceuta, PDO::PARAM_STR);
@@ -49,23 +51,28 @@ if ($documento_farmaceuta && isset($con) && $con instanceof PDO) {
         $_SESSION['nit_farma'] = $nit_farmacia_asignada;
         $_SESSION['nit_farmacia_asignada_actual'] = $nit_farmacia_asignada;
 
-        $sql_entregas = "SELECT COUNT(ep.id_entrega_pendiente) FROM entrega_pendiente ep JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle JOIN historia_clinica hc ON dh.id_historia = hc.id_historia JOIN citas ci ON hc.id_cita = ci.id_cita JOIN usuarios u ON ci.doc_pac = u.doc_usu JOIN afiliados a ON u.doc_usu = a.doc_afiliado JOIN detalle_eps_farm def ON a.id_eps = def.nit_eps WHERE def.nit_farm = :nit AND ep.id_estado = 10";
+        // --- Búsqueda de Entregas Pendientes ---
+        $sql_entregas = "SELECT COUNT(DISTINCT ep.id_entrega_pendiente) FROM entrega_pendiente ep JOIN detalles_histo_clini dh ON ep.id_detalle_histo = dh.id_detalle JOIN historia_clinica hc ON dh.id_historia = hc.id_historia JOIN citas c ON hc.id_cita = c.id_cita JOIN usuarios u ON c.doc_pac = u.doc_usu JOIN afiliados a ON u.doc_usu = a.doc_afiliado JOIN detalle_eps_farm def ON a.id_eps = def.nit_eps WHERE def.nit_farm = :nit AND ep.id_estado = 10";
         $stmt_entregas = $con->prepare($sql_entregas);
         $stmt_entregas->execute(['nit' => $nit_farmacia_asignada]);
         $count_entregas_pendientes = $stmt_entregas->fetchColumn();
 
+        // --- Búsqueda de Medicamentos con Stock Bajo ---
         $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= 10";
         $stmt_stock = $con->prepare($sql_stock);
         $stmt_stock->execute(['nit' => $nit_farmacia_asignada]);
         $count_stock_bajo = $stmt_stock->fetchColumn();
 
+        // Subconsulta para calcular el stock real por lote, usada en las siguientes consultas
         $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
 
+        // --- Búsqueda de Productos Próximos a Vencer ---
         $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND $stock_por_lote_sql > 0";
         $stmt_por_vencer = $con->prepare($sql_por_vencer);
         $stmt_por_vencer->execute(['nit' => $nit_farmacia_asignada]);
         $count_por_vencer = $stmt_por_vencer->fetchColumn();
         
+        // --- Búsqueda de Productos Vencidos ---
         $sql_vencidos = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento < CURDATE() AND $stock_por_lote_sql > 0";
         $stmt_vencidos = $con->prepare($sql_vencidos);
         $stmt_vencidos->execute(['nit' => $nit_farmacia_asignada]);
