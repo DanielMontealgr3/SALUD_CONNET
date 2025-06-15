@@ -23,17 +23,23 @@ if ($accion === 'verificar_stock_pendiente') {
     }
     
     try {
-        $stmt_pendiente_info = $con->prepare("SELECT ep.cantidad_pendiente, i.cantidad_actual, d.id_medicam FROM entrega_pendiente ep JOIN detalles_histo_clini d ON ep.id_detalle_histo = d.id_detalle LEFT JOIN inventario_farmacia i ON d.id_medicam = i.id_medicamento AND i.nit_farm = :nit_farm WHERE ep.id_detalle_histo = :id_detalle AND ep.id_estado = 10");
-        $stmt_pendiente_info->execute([':nit_farm' => $nit_farmacia, ':id_detalle' => $id_detalle]);
-        $data = $stmt_pendiente_info->fetch(PDO::FETCH_ASSOC);
+        $stmt_info = $con->prepare("SELECT d.id_medicam, ep.cantidad_pendiente FROM entrega_pendiente ep JOIN detalles_histo_clini d ON ep.id_detalle_histo = d.id_detalle WHERE ep.id_detalle_histo = :id_detalle AND ep.id_estado = 10");
+        $stmt_info->execute([':id_detalle' => $id_detalle]);
+        $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
 
-        if (!$data) { throw new Exception("No se encontró información del pendiente."); }
+        if (!$info) { throw new Exception("No se encontró información del pendiente."); }
 
-        $cantidad_requerida_pendiente = (int)$data['cantidad_pendiente'];
-        $stock_actual = (int)$data['cantidad_actual'];
+        $id_medicamento = $info['id_medicam'];
+        $cantidad_requerida = (int)$info['cantidad_pendiente'];
 
-        if ($stock_actual < $cantidad_requerida_pendiente) {
-            throw new Exception("Stock insuficiente. Requeridas: {$cantidad_requerida_pendiente}, Disponible: {$stock_actual}.");
+        $sql_lotes = "SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY GROUP BY lote HAVING stock_lote > 0";
+        $stmt_lotes = $con->prepare($sql_lotes);
+        $stmt_lotes->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
+        $lotes_disponibles = $stmt_lotes->fetchAll(PDO::FETCH_ASSOC);
+        $stock_valido = array_sum(array_column($lotes_disponibles, 'stock_lote'));
+
+        if ($stock_valido < $cantidad_requerida) {
+            throw new Exception("Stock insuficiente. Requeridas: {$cantidad_requerida}, Disponibles (lotes vigentes): {$stock_valido}.");
         }
         
         $response = ['success' => true, 'message' => 'Stock suficiente.'];
@@ -62,9 +68,9 @@ if ($accion === 'verificar_stock_pendiente') {
         $id_medicamento = $detalle_medicamento['id_medicam'];
         $cantidad_necesaria = 0;
 
-        if ($accion === 'entregar_pendiente') {
-            $stmt_cant = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_detalle_histo = :id_detalle AND id_estado = 10");
-            $stmt_cant->execute([':id_detalle' => $id_detalle]);
+        if ($accion === 'entregar_pendiente' && $id_entrega_pendiente) {
+            $stmt_cant = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_entrega_pendiente = :id_entrega_pendiente AND id_estado = 10");
+            $stmt_cant->execute([':id_entrega_pendiente' => $id_entrega_pendiente]);
             $cantidad_necesaria = (int)$stmt_cant->fetchColumn();
         } else {
             $cantidad_necesaria = (int)$detalle_medicamento['can_medica'];
@@ -72,21 +78,12 @@ if ($accion === 'verificar_stock_pendiente') {
 
         if ($cantidad_necesaria <= 0) { throw new Exception("La cantidad requerida no es válida."); }
         
-        $sql_lotes = "SELECT lote, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote 
-                      FROM movimientos_inventario 
-                      WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY
-                      GROUP BY lote 
-                      HAVING stock_lote > 0 
-                      ORDER BY fecha_vencimiento ASC";
+        $sql_lotes = "SELECT lote, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY GROUP BY lote HAVING stock_lote > 0 ORDER BY fecha_vencimiento ASC";
         $stmt_lotes = $con->prepare($sql_lotes);
         $stmt_lotes->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
         $lotes_disponibles = $stmt_lotes->fetchAll(PDO::FETCH_ASSOC);
         
         $stock_total_real_en_lotes = array_sum(array_column($lotes_disponibles, 'stock_lote'));
-
-        if ($accion === 'entregar_pendiente' && $stock_total_real_en_lotes < $cantidad_necesaria) {
-            throw new Exception("Stock insuficiente para completar el pendiente. Stock válido en lotes: $stock_total_real_en_lotes. Unidades requeridas: $cantidad_necesaria");
-        }
 
         $cantidad_a_entregar_real = min($cantidad_necesaria, $stock_total_real_en_lotes);
         $cantidad_a_dejar_pendiente = $cantidad_necesaria - $cantidad_a_entregar_real;
@@ -113,12 +110,7 @@ if ($accion === 'verificar_stock_pendiente') {
             $radicado_generado = 'PEND-' . strtoupper(substr(uniqid(), -8));
             $sql_pendiente = "INSERT INTO entrega_pendiente (id_detalle_histo, radicado_pendiente, id_farmaceuta_genera, cantidad_pendiente, id_estado) VALUES (:id_detalle_histo, :radicado, :doc_farma, :cantidad_pendiente, 10)";
             $stmt_pendiente = $con->prepare($sql_pendiente);
-            $stmt_pendiente->execute([
-                ':id_detalle_histo' => $id_detalle,
-                ':radicado' => $radicado_generado,
-                ':doc_farma' => $doc_farmaceuta,
-                ':cantidad_pendiente' => $cantidad_a_dejar_pendiente
-            ]);
+            $stmt_pendiente->execute([':id_detalle_histo' => $id_detalle, ':radicado' => $radicado_generado, ':doc_farma' => $doc_farmaceuta, ':cantidad_pendiente' => $cantidad_a_dejar_pendiente]);
         }
         
         $con->commit();
@@ -134,7 +126,11 @@ if ($accion === 'verificar_stock_pendiente') {
         try {
             $stmt = $con->prepare("UPDATE entrega_pendiente SET id_estado = 9 WHERE id_entrega_pendiente = :id_entrega_pendiente AND id_estado = 10");
             $stmt->execute([':id_entrega_pendiente' => $id_entrega_pendiente]);
-            $response = ['success' => true, 'message' => 'Entrega de pendiente finalizada y estado actualizado.'];
+            if ($stmt->rowCount() > 0) {
+                $response = ['success' => true, 'message' => 'Entrega de pendiente finalizada y estado actualizado.'];
+            } else {
+                $response = ['success' => false, 'message' => 'No se encontró el pendiente o ya estaba finalizado.'];
+            }
         } catch (PDOException $e) {
             $response['message'] = 'Error al actualizar el estado del pendiente: ' . $e->getMessage();
         }
@@ -147,15 +143,8 @@ if ($accion === 'verificar_stock_pendiente') {
     if ($id_turno) {
         try {
             $con->beginTransaction();
-            $stmt_get_horario = $con->prepare("SELECT hora_entreg FROM turno_ent_medic WHERE id_turno_ent = :id_turno");
-            $stmt_get_horario->execute([':id_turno' => $id_turno]);
-            $id_horario = $stmt_get_horario->fetchColumn();
             $stmt_turno = $con->prepare("UPDATE turno_ent_medic SET id_est = 9 WHERE id_turno_ent = :id_turno");
             $stmt_turno->execute([':id_turno' => $id_turno]);
-            if ($id_horario) {
-                $stmt_horario = $con->prepare("UPDATE horario_farm SET id_estado = 4 WHERE id_horario_farm = :id_horario");
-                $stmt_horario->execute([':id_horario' => $id_horario]);
-            }
             $stmt_vista = $con->prepare("DELETE FROM vista_televisor WHERE id_turno = :id_turno");
             $stmt_vista->execute([':id_turno' => $id_turno]);
             $con->commit();

@@ -22,21 +22,33 @@ try {
                     WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad 
                     WHEN id_tipo_mov IN (2, 4) THEN -cantidad 
                     ELSE 0 
-                END) AS stock_lote
+                END) AS stock_lote,
+                DATEDIFF(fecha_vencimiento, CURDATE()) as dias_restantes
             FROM movimientos_inventario
             WHERE 
                 id_medicamento = :id_medicamento 
                 AND nit_farm = :nit_farm
-                AND fecha_vencimiento > CURDATE() + INTERVAL 15 DAY
             GROUP BY lote, fecha_vencimiento
             HAVING stock_lote > 0
             ORDER BY fecha_vencimiento ASC";
 
     $stmt = $con->prepare($sql);
     $stmt->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
-    $lotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $lotes_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode(['success' => true, 'lotes' => $lotes]);
+    $lotes_procesados = [];
+    foreach($lotes_raw as $lote) {
+        $estado = 'vigente';
+        if ($lote['dias_restantes'] < 0) {
+            $estado = 'vencido';
+        } elseif ($lote['dias_restantes'] <= 15) {
+            $estado = 'proximo_vencer';
+        }
+        $lote['estado'] = $estado;
+        $lotes_procesados[] = $lote;
+    }
+
+    echo json_encode(['success' => true, 'lotes' => $lotes_procesados]);
 
 } catch (PDOException $e) {
     http_response_code(500);
