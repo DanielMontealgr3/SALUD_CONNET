@@ -357,3 +357,14 @@ body {
     .welcome-image-container .welcome-image { max-height: 120px; margin-top: 1rem; }
     .alerts-grid { gap: 1rem; }
 }
+
+/* Añade esto a tu archivo CSS principal */
+.table-danger-light {
+    background-color: #f8d7da !important;
+}
+.table-warning-light {
+    background-color: #fff3cd !important;
+}
+.table-primary-light {
+    background-color: #cfe2ff !important;
+}

@@ -29,8 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     url = 'alertas/stock_bajo.php';
                     title = '<i class="bi bi-box-seam me-2"></i>Medicamentos con Stock Bajo';
                     break;
-                default:
-                    return;
+                default: return;
             }
 
             modalTitle.innerHTML = title;
@@ -50,11 +49,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     let tableHTML = '<div class="table-responsive"><table class="table table-striped table-hover table-sm"><thead><tr>';
                     
                     if (currentAlertType === 'por-vencer') {
-                        tableHTML += '<th><i class="bi bi-capsule-pill me-1"></i>Medicamento</th><th><i class="bi bi-tag me-1"></i>Lote</th><th><i class="bi bi-alarm me-1"></i>Vence en</th><th><i class="bi bi-calendar-event me-1"></i>Fecha Venc.</th><th><i class="bi bi-boxes me-1"></i>Stock Lote</th>';
+                        tableHTML += '<th><i class="bi bi-capsule-pill"></i> Medicamento</th><th><i class="bi bi-tag"></i> Lote</th><th><i class="bi bi-alarm"></i> Vence en</th><th><i class="bi bi-calendar-event"></i> Fecha Venc.</th><th><i class="bi bi-boxes"></i> Stock Lote</th>';
                     } else if (currentAlertType === 'vencidos') {
-                        tableHTML += '<th><i class="bi bi-capsule-pill me-1"></i>Medicamento</th><th><i class="bi bi-tag me-1"></i>Lote</th><th><i class="bi bi-calendar-x me-1"></i>Fecha Venc.</th><th><i class="bi bi-boxes me-1"></i>Stock Lote</th>';
+                        tableHTML += '<th><i class="bi bi-capsule-pill"></i> Medicamento</th><th><i class="bi bi-tag"></i> Lote</th><th><i class="bi bi-calendar-x"></i> Fecha Venc.</th><th><i class="bi bi-boxes"></i> Stock Lote</th>';
                     } else if (currentAlertType === 'stock-bajo') {
-                        tableHTML += '<th><i class="bi bi-capsule-pill me-1"></i>Medicamento</th><th><i class="bi bi-upc-scan me-1"></i>Cód. Barras</th><th><i class="bi bi-box-seam me-1"></i>Stock Actual</th>';
+                        tableHTML += '<th><i class="bi bi-capsule-pill"></i> Medicamento</th><th><i class="bi bi-upc-scan"></i> Cód. Barras</th><th><i class="bi bi-box-seam"></i> Stock Actual</th>';
                     }
                     tableHTML += '</tr></thead><tbody>';
 
@@ -74,9 +73,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     modalBody.innerHTML = tableHTML;
                     
                     if (currentAlertType === 'vencidos' && data.length > 0) {
-                         modalFooter.innerHTML = '<button type="button" class="btn btn-danger" id="btn-abrir-modal-retiro"><i class="bi bi-trash me-2"></i>Retirar Vencidos</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
-                    }
-                     if (currentAlertType === 'stock-bajo') {
+                         modalFooter.innerHTML = '<button type="button" class="btn btn-danger" id="btn-abrir-modal-retiro" data-tipo="vencidos"><i class="bi bi-trash me-2"></i>Retirar Vencidos</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
+                    } else if (currentAlertType === 'por-vencer' && data.length > 0) {
+                        modalFooter.innerHTML = '<button type="button" class="btn btn-warning" id="btn-abrir-modal-retiro" data-tipo="por_vencer"><i class="bi bi-shield-slash me-2"></i>Gestionar Retiro</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
+                    } else if (currentAlertType === 'stock-bajo') {
                         modalFooter.innerHTML = '<a href="inventario/insertar_inventario.php" class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Ingresar Medicamentos</a><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
                     }
                 })
@@ -88,14 +88,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     modalFooter.addEventListener('click', function(e) {
         if (e.target.id === 'btn-abrir-modal-retiro') {
-            fetch('alertas/modal_retirar_vencidos.php')
+            const tipo = e.target.dataset.tipo;
+            fetch(`alertas/modal_retirar_inventario.php?tipo=${tipo}`)
                 .then(response => response.text())
                 .then(html => {
                     modalSecundarioPlaceholder.innerHTML = html;
-                    const modalRetiroElement = document.getElementById('modalRetiroVencidos');
+                    const modalRetiroElement = document.getElementById('modalRetiroInventario');
                     const modalRetiro = new bootstrap.Modal(modalRetiroElement);
                     alertModal.hide();
                     modalRetiro.show();
+
+                    modalRetiroElement.addEventListener('hidden.bs.modal', function () {
+                        if (retiroIniciado) {
+                           window.location.reload();
+                        }
+                    }, { once: true });
                 });
         }
     });
@@ -110,86 +117,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (botonClicado.classList.contains('btn-validar-codigo')) {
             const inputCodigo = fila.querySelector('.input-codigo-barras');
+            inputCodigo.classList.remove('is-valid', 'is-invalid'); // Limpiar estado previo
+
             if (inputCodigo.value.trim() === fila.dataset.codigoBarras) {
+                inputCodigo.classList.add('is-valid');
                 inputCodigo.disabled = true;
                 botonClicado.disabled = true;
-                inputCodigo.classList.remove('is-invalid');
-                inputCodigo.classList.add('is-valid');
-                botonClicado.classList.add('btn-success');
+                
                 const inputLote = fila.querySelector('.input-lote');
                 const btnValidarLote = fila.querySelector('.btn-validar-lote');
                 inputLote.disabled = false;
                 btnValidarLote.disabled = false;
                 inputLote.focus();
             } else {
-                Swal.fire('Error', 'El código de barras no corresponde al medicamento.', 'error');
                 inputCodigo.classList.add('is-invalid');
+                Swal.fire('Error de Validación', 'Incorrecto. El código de barras no pertenece a este medicamento.', 'error');
             }
         }
 
         if (botonClicado.classList.contains('btn-validar-lote')) {
             const inputLote = fila.querySelector('.input-lote');
+            inputLote.classList.remove('is-valid', 'is-invalid'); // Limpiar estado previo
+
             if (inputLote.value.trim().toLowerCase() === fila.dataset.lote.toLowerCase()) {
+                inputLote.classList.add('is-valid');
                 inputLote.disabled = true;
                 botonClicado.disabled = true;
-                inputLote.classList.remove('is-invalid');
-                inputLote.classList.add('is-valid');
-                botonClicado.classList.add('btn-success');
-                fila.querySelector('.btn-retirar-lote').disabled = false;
-                await verificarEstadoGlobalRetiro();
+                
+                const btnRetirar = fila.querySelector('.btn-retirar-lote');
+                btnRetirar.disabled = false;
+                const motivo = fila.dataset.motivoRetiro;
+                btnRetirar.classList.add(motivo === 'vencido' ? 'btn-danger' : 'btn-warning');
+
             } else {
-                Swal.fire('Error', 'El número de lote no coincide.', 'error');
                 inputLote.classList.add('is-invalid');
+                Swal.fire('Error de Validación', 'Incorrecto. El número de lote no corresponde al que se debe retirar.', 'error');
             }
         }
 
         if (botonClicado.classList.contains('btn-retirar-lote')) {
             await procesarRetiro(fila, botonClicado);
-            await verificarEstadoGlobalRetiro();
         }
     });
-
-    async function verificarEstadoGlobalRetiro() {
-        const modalRetiro = document.getElementById('modalRetiroVencidos');
-        if (!modalRetiro) return;
-        
-        const filas = modalRetiro.querySelectorAll('#tabla-retiro-vencidos tr');
-        const todasRetiradas = [...filas].every(f => f.classList.contains('fila-retirada'));
-        
-        if (retiroIniciado && todasRetiradas) {
-            let resumenHtml = '<p>Se han retirado los siguientes lotes del inventario:</p>';
-            resumenHtml += '<table class="table table-bordered table-sm text-start"><thead><tr><th>Medicamento</th><th>Lote</th><th>Cant.</th></tr></thead><tbody>';
-
-            filas.forEach(fila => {
-                const medicamento = fila.querySelector('td:first-child strong').textContent;
-                const lote = fila.dataset.lote;
-                const cantidad = fila.dataset.cantidad;
-                resumenHtml += `<tr><td>${medicamento}</td><td>${lote}</td><td>${cantidad}</td></tr>`;
-            });
-            
-            resumenHtml += '</tbody></table><p class="mt-3">Recuerda gestionar activamente los productos para darles salida antes de su fecha de vencimiento. ¡Más cuidado a la próxima!</p>';
-            
-            const modalRetiroBootstrap = bootstrap.Modal.getInstance(modalRetiro);
-            if (modalRetiroBootstrap) {
-                 modalRetiroBootstrap.hide();
-            }
-
-            await Swal.fire({
-                icon: 'success',
-                title: '¡Proceso Completado!',
-                html: resumenHtml,
-                confirmButtonText: 'OK'
-            });
-
-            window.location.reload();
-        }
-    }
-
+    
     async function procesarRetiro(fila, boton) {
-        if (boton.disabled && !fila.classList.contains('fila-retirada')) {
-            return;
-        }
-        
         boton.disabled = true;
         boton.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         
@@ -197,20 +168,24 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('id_medicamento', fila.dataset.idMedicamento);
         formData.append('lote', fila.dataset.lote);
         formData.append('cantidad', fila.dataset.cantidad);
+        formData.append('motivo', fila.dataset.motivoRetiro);
 
         try {
-            const response = await fetch('alertas/ajax_retirar_vencido.php', { method: 'POST', body: formData });
+            const response = await fetch('alertas/ajax_retirar_inventario.php', { method: 'POST', body: formData });
             const data = await response.json();
             
             if (data.success) {
                 if (!retiroIniciado) {
-                    const modalElement = document.getElementById('modalRetiroVencidos');
+                    const modalElement = document.getElementById('modalRetiroInventario');
                     modalElement.querySelector('.btn-close').disabled = true;
+                    modalElement.querySelector('.btn-cerrar-retiro').textContent = 'Finalizar';
                     retiroIniciado = true;
                 }
-                fila.classList.add('fila-retirada', 'table-success');
+                const motivo = fila.dataset.motivoRetiro;
+                fila.classList.remove('table-danger-light', 'table-warning-light');
+                fila.classList.add(motivo === 'vencido' ? 'table-success' : 'table-primary-light');
                 fila.querySelectorAll('input, button').forEach(el => el.disabled = true);
-                boton.innerHTML = '<i class="bi bi-check-circle-fill"></i> Retirado';
+                fila.querySelector('td:last-child').innerHTML = `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Retirado</span>`;
             } else {
                 Swal.fire('Error', data.message, 'error');
                 boton.disabled = false;
