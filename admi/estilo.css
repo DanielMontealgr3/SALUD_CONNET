@@ -566,3 +566,94 @@ input[type="text"]:disabled, .form-control:disabled,
     #detalleHorarioDia .list-group-item { font-size: 0.75rem; padding: 0.3rem 0.4rem; }
     .badge-estado { font-size: 0.65rem; min-width: 55px; padding: 0.25em 0.4em;}
 }
+
+
+
+/* ESTU¿ILOS MEJORAS */
+
+/* === Mejoras para Filtros y Búsqueda en Tiempo Real === */
+.filtros-tabla-container .input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #cbd5e0;
+    font-size: 0.875rem;
+}
+
+#btnLimpiarFiltros {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+#btnLimpiarFiltros:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+#loaderBusqueda {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+}
+
+/* === Fix para Botones de Acción (Punto 7) === */
+.tabla-admin-mejorada th.columna-acciones {
+    min-width: 180px; /* Ancho mínimo para la columna */
+    width: 180px;     /* Ancho fijo para la columna */
+    text-align: center !important;
+}
+
+.tabla-admin-mejorada td.acciones-tabla {
+    justify-content: center; /* Centra los botones dentro del TD */
+    white-space: nowrap;
+}
+
+/* === Estilos para Modal de Detalles (Punto 5) === */
+#modalVerDetalles .modal-header {
+    background-color: #005A9C;
+    color: white;
+}
+
+#modalVerDetalles .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#modalVerDetalles .modal-title {
+    font-weight: 600;
+}
+
+#modalVerDetalles .detalle-seccion {
+    border: 1px solid #e9ecef;
+    border-radius: .375rem;
+    background-color: #fcfdff;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+#modalVerDetalles .detalle-seccion h6 {
+    color: rgb(0, 86, 149);
+    font-weight: 600;
+    border-bottom: 2px solid #e0e6ed;
+    padding-bottom: .5rem;
+    margin-bottom: 1rem;
+}
+
+#modalVerDetalles .list-group-item {
+    background-color: transparent;
+    border-color: #e9ecef;
+    padding-top: .6rem;
+    padding-bottom: .6rem;
+}
+
+#modalVerDetalles .list-group-item strong {
+    color: #343a40;
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+    color: #6c757d;
+}
+
+#modalVerDetalles .badge {
+    font-size: 0.9rem;
+}
