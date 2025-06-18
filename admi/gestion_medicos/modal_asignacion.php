@@ -1,5 +1,4 @@
 <?php
-
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -48,7 +47,8 @@ if ($con) {
     #modalAsignarIPSContenidoInterno .modal-header { background-color: #005A9C; color: white; border-bottom: 1px solid #0047AB; }
     #modalAsignarIPSContenidoInterno .modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
     #modalAsignarIPSContenidoInterno .form-label { font-weight: 500; }
-    #modalAsignarIPSContenidoInterno .invalid-feedback { display: block; width: 100%; margin-top: .15rem; font-size: .80em; color: #dc3545; }
+    #modalAsignarIPSContenidoInterno .invalid-feedback { display: none; width: 100%; margin-top: .15rem; font-size: .80em; color: #dc3545; }
+    #modalAsignarIPSContenidoInterno .form-select.is-invalid ~ .invalid-feedback { display: block; }
 </style>
 <div id="modalAsignarIPSContenidoInterno">
     <div class="modal-header">
@@ -59,12 +59,10 @@ if ($con) {
         <?php if (!empty($error_carga_modal)): ?>
             <div class="alert alert-danger"><?php echo $error_carga_modal; ?></div>
         <?php endif; ?>
-        <div id="modalAsignacionGlobalErrorInterno" class="mb-3"></div>
         <div id="modalAsignacionMessageInterno" class="mb-3"></div>
 
         <form id="formAsignarIPSModalInterno" method="POST" novalidate>
-            <input type="hidden" name="doc_medico_asignar" id="doc_medico_asignar_modal" value="<?php echo htmlspecialchars($doc_medico_modal); ?>">
-            <input type="hidden" name="nom_medico_original" value="<?php echo htmlspecialchars($nom_medico_modal); ?>"> 
+            <input type="hidden" name="doc_medico_asignar" value="<?php echo htmlspecialchars($doc_medico_modal); ?>">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token_modal); ?>">
             <input type="hidden" name="accion_guardar_asignacion" value="1"> 
             
@@ -73,11 +71,11 @@ if ($con) {
                 <div class="row g-2">
                     <div class="col-md-6">
                         <label class="form-label small text-muted">Documento:</label>
-                        <input type="text" class="form-control form-control-sm bg-white border-0 px-1" value="<?php echo htmlspecialchars($doc_medico_modal); ?>" readonly tabindex="-1">
+                        <input type="text" class="form-control form-control-sm bg-white border-0 px-1" value="<?php echo htmlspecialchars($doc_medico_modal); ?>" readonly>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted">Nombre:</label>
-                        <input type="text" class="form-control form-control-sm bg-white border-0 px-1" value="<?php echo htmlspecialchars($nom_medico_modal); ?>" readonly tabindex="-1">
+                        <input type="text" class="form-control form-control-sm bg-white border-0 px-1" value="<?php echo htmlspecialchars($nom_medico_modal); ?>" readonly>
                     </div>
                 </div>
             </div>
@@ -97,7 +95,7 @@ if ($con) {
                             <option value="" disabled>No hay IPS disponibles</option>
                         <?php endif; ?>
                     </select>
-                    <div class="invalid-feedback" id="error-nit_ips_asignar_modal">Debe seleccionar una IPS.</div>
+                    <div class="invalid-feedback">Debe seleccionar una IPS.</div>
                 </div>
                 <div class="col-md-6">
                     <label for="id_estado_asignacion_modal" class="form-label">Estado de la Asignación <span class="text-danger">(*)</span></label>
@@ -109,22 +107,20 @@ if ($con) {
                                 </option>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <option value="" disabled>No hay estados</option>
                             <option value="1" selected>Activo</option> 
                             <option value="2">Inactivo</option>
                         <?php endif; ?>
                     </select>
-                    <div class="invalid-feedback" id="error-id_estado_asignacion_modal">Debe seleccionar un estado.</div>
                 </div>
             </div>
              <small class="form-text text-muted mb-3 d-block">
-                Nota: Si el médico ya tiene una asignación activa a otra IPS, esta será reemplazada o deberá gestionarla manually.
+                Nota: Si asigna una nueva IPS activa, cualquier otra asignación activa para este médico será inactivada automáticamente.
             </small>
         </form>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-        <button type="submit" name="guardar_asignacion_modal_submit" class="btn btn-primary" form="formAsignarIPSModalInterno" id="btnGuardarAsignacionModalInterno" <?php if (!empty($error_carga_modal)) echo 'disabled'; ?>>
+        <button type="submit" class="btn btn-primary" form="formAsignarIPSModalInterno" id="btnGuardarAsignacionModalInterno" disabled>
             <i class="bi bi-building-add me-1"></i>Guardar Asignación
         </button>
     </div>

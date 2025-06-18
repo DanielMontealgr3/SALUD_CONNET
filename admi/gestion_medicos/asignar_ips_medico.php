@@ -18,14 +18,12 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$json_response_for_ajax = null;
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_guardar_asignacion'])) {
     header('Content-Type: application/json');
     $response = ['success' => false, 'message' => 'Error desconocido al guardar.'];
 
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $response['message'] = 'Error de validación de seguridad (CSRF). Por favor, recargue la página e intente de nuevo.';
+        $response['message'] = 'Error de validación de seguridad (CSRF). Por favor, recargue la página.';
         echo json_encode($response);
         exit;
     }
@@ -35,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_guardar_asigna
     $id_estado_asignacion = trim($_POST['id_estado_asignacion'] ?? '');
 
     if (empty($doc_medico) || empty($nit_ips) || empty($id_estado_asignacion)) {
-        $response['message'] = "Todos los campos son obligatorios: Médico, IPS y Estado.";
+        $response['message'] = "Todos los campos son obligatorios.";
         echo json_encode($response);
         exit;
     }
@@ -58,13 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_guardar_asigna
     try {
         $con->beginTransaction();
 
-        if ($id_estado_asignacion == 1) { // Si la nueva asignación es para ACTIVAR
-            // Inactivar TODAS las otras asignaciones ACTIVAS de este médico a CUALQUIER OTRA IPS
+        if ($id_estado_asignacion == 1) {
             $sql_inactivar_otras = "UPDATE asignacion_medico 
                                     SET id_estado = 2 
                                     WHERE doc_medico = :doc_medico 
                                     AND id_estado = 1 
-                                    AND nit_ips != :nit_ips_actual_asignacion"; // Solo inactivar las de OTRAS IPS
+                                    AND nit_ips != :nit_ips_actual_asignacion";
             $stmt_inactivar = $con->prepare($sql_inactivar_otras);
             $stmt_inactivar->bindParam(':doc_medico', $doc_medico, PDO::PARAM_STR);
             $stmt_inactivar->bindParam(':nit_ips_actual_asignacion', $nit_ips, PDO::PARAM_STR);
@@ -124,14 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_guardar_asigna
 
 $doc_medico_page = $_GET['doc_medico'] ?? '';
 $nom_medico_page = $_GET['nom_medico'] ?? 'Médico no especificado';
+$return_to_page = $_GET['return_to'] ?? 'lista_medicos.php';
 
 if (empty($doc_medico_page)) {
     $_SESSION['mensaje_accion'] = 'No se especificó un médico para la asignación.';
     $_SESSION['mensaje_accion_tipo'] = 'danger';
-    header('Location: lista_medicos.php');
+    header('Location: ' . htmlspecialchars($return_to_page));
     exit;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -140,17 +137,6 @@ if (empty($doc_medico_page)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asignar IPS a Médico - SaludConnect</title>
     <link rel="icon" type="image/png" href="../../img/loguito.png">
-    <style>
-        body { background-color: #e9ecef; }
-        #modalContenedorAsignacion .modal-content.modal-content-asignacion-styled { 
-            background-color: #f0f2f5; 
-            border: 3px solid #87CEEB; 
-            border-radius: .5rem; 
-        }
-        #modalContenedorAsignacion .modal-dialog { 
-            max-width: 750px;
-        }
-    </style>
 </head>
 <body class="d-flex flex-column">
     <?php include '../../include/menu.php'; ?>
@@ -161,7 +147,7 @@ if (empty($doc_medico_page)) {
 
     <div class="modal fade" id="modalContenedorAsignacion" tabindex="-1" aria-labelledby="modalContenedorAsignacionLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
-            <div class="modal-content modal-content-asignacion-styled" id="modalDinamicoContent">
+            <div class="modal-content" id="modalDinamicoContent">
                 <div class="modal-body text-center p-5">
                     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Cargando...</span>
@@ -173,6 +159,8 @@ if (empty($doc_medico_page)) {
     </div>
 
     <?php include '../../include/footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../js/asignacion_medico.js?v=<?php echo time(); ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const modalContenedorElement = document.getElementById('modalContenedorAsignacion');
@@ -181,6 +169,7 @@ if (empty($doc_medico_page)) {
 
             const docMedico = '<?php echo htmlspecialchars($doc_medico_page, ENT_QUOTES, 'UTF-8'); ?>';
             const nomMedico = '<?php echo htmlspecialchars($nom_medico_page, ENT_QUOTES, 'UTF-8'); ?>';
+            const returnTo = '<?php echo htmlspecialchars($return_to_page, ENT_QUOTES, 'UTF-8'); ?>';
 
             function cargarYMostrarModal() {
                 fetch(`modal_asignacion.php?doc_medico=${encodeURIComponent(docMedico)}&nom_medico=${encodeURIComponent(nomMedico)}`)
@@ -193,99 +182,18 @@ if (empty($doc_medico_page)) {
                     .then(html => {
                         modalDinamicoContent.innerHTML = html;
                         bootstrapModal.show();
-                        inicializarLogicaFormularioModal();
-                    })
-                    .catch(error => {
-                        modalDinamicoContent.innerHTML = `<div class="modal-body p-4"><div class="alert alert-danger">Error al cargar el formulario de asignación: ${error.message}. Por favor, intente recargar la página.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="window.location.href='lista_medicos.php'">Volver a la lista</button></div></div>`;
-                        bootstrapModal.show();
-                        console.error('Error cargando modal:', error);
-                    });
-            }
-
-            function inicializarLogicaFormularioModal() {
-                const formAsignarIPSModalInterno = document.getElementById('formAsignarIPSModalInterno');
-                const btnGuardarAsignacionModalInterno = document.getElementById('btnGuardarAsignacionModalInterno');
-                const modalAsignacionMessageInterno = document.getElementById('modalAsignacionMessageInterno');
-                const modalAsignacionGlobalErrorInterno = document.getElementById('modalAsignacionGlobalErrorInterno');
-
-                if (!formAsignarIPSModalInterno || !btnGuardarAsignacionModalInterno) {
-                    if(modalAsignacionGlobalErrorInterno) modalAsignacionGlobalErrorInterno.innerHTML = '<div class="alert alert-danger">Error interno: No se pudieron inicializar los controles del formulario.</div>';
-                    return;
-                }
-
-                formAsignarIPSModalInterno.addEventListener('submit', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    let isValid = true;
-                    if (modalAsignacionMessageInterno) modalAsignacionMessageInterno.innerHTML = '';
-                    if (modalAsignacionGlobalErrorInterno) modalAsignacionGlobalErrorInterno.innerHTML = '';
-                    
-                    const nitIpsSelect = document.getElementById('nit_ips_asignar_modal');
-                    const estadoSelect = document.getElementById('id_estado_asignacion_modal');
-
-                    if (nitIpsSelect && !nitIpsSelect.value) {
-                        nitIpsSelect.classList.add('is-invalid');
-                        const errorDivNit = document.getElementById('error-nit_ips_asignar_modal');
-                        if (errorDivNit) errorDivNit.style.display = 'block';
-                        isValid = false;
-                    } else if (nitIpsSelect) {
-                        nitIpsSelect.classList.remove('is-invalid');
-                        const errorDivNit = document.getElementById('error-nit_ips_asignar_modal');
-                        if (errorDivNit) errorDivNit.style.display = 'none';
-                    }
-
-                    if (estadoSelect && !estadoSelect.value) {
-                        estadoSelect.classList.add('is-invalid');
-                        const errorDivEstado = document.getElementById('error-id_estado_asignacion_modal');
-                        if (errorDivEstado) errorDivEstado.style.display = 'block';
-                        isValid = false;
-                    } else if (estadoSelect) {
-                        estadoSelect.classList.remove('is-invalid');
-                        const errorDivEstado = document.getElementById('error-id_estado_asignacion_modal');
-                        if (errorDivEstado) errorDivEstado.style.display = 'none';
-                    }
-                    
-                    if (!isValid) return;
-
-                    btnGuardarAsignacionModalInterno.disabled = true;
-                    btnGuardarAsignacionModalInterno.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
-
-                    const formData = new FormData(formAsignarIPSModalInterno);
-                    
-                    fetch(window.location.href, { 
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (modalAsignacionMessageInterno) modalAsignacionMessageInterno.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                            setTimeout(() => {
-                                bootstrapModal.hide();
-                                window.location.href = 'lista_medicos.php?asignacion_exitosa=1'; 
-                            }, 2000);
-                        } else {
-                             if (modalAsignacionMessageInterno) modalAsignacionMessageInterno.innerHTML = `<div class="alert alert-danger">${data.message || 'Error desconocido al guardar.'}</div>`;
+                        if (typeof inicializarLogicaAsignacionMedico === "function") {
+                            inicializarLogicaAsignacionMedico();
                         }
                     })
                     .catch(error => {
-                        if (modalAsignacionGlobalErrorInterno) modalAsignacionGlobalErrorInterno.innerHTML = `<div class="alert alert-danger">Error de conexión o del servidor: ${error}. Intente de nuevo.</div>`;
-                        console.error('Error en fetch (guardado):', error);
-                    })
-                    .finally(() => {
-                        btnGuardarAsignacionModalInterno.disabled = false;
-                        btnGuardarAsignacionModalInterno.innerHTML = '<i class="bi bi-building-add me-1"></i>Guardar Asignación';
+                        modalDinamicoContent.innerHTML = `<div class="modal-body p-4"><div class="alert alert-danger">Error al cargar el formulario: ${error.message}.</div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="window.location.href='${returnTo}'">Volver</button></div></div>`;
+                        bootstrapModal.show();
                     });
-                });
             }
             
             modalContenedorElement.addEventListener('hidden.bs.modal', function () {
-                const successMessageElement = modalDinamicoContent.querySelector('.alert-success');
-                if (!successMessageElement) {
-                    window.location.href = 'lista_medicos.php';
-                }
-                modalDinamicoContent.innerHTML = '<div class="modal-body text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+                window.location.href = returnTo;
             });
 
             cargarYMostrarModal();
