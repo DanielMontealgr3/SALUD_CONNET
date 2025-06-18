@@ -17,23 +17,38 @@ function render_pacientes_body($pacientes, $filtro_estado) {
             $tiene_afiliacion_eps_activa = !empty($paciente['nombre_eps_activa']);
             $es_activo = $paciente['id_estado_usuario'] == 1;
             $es_eliminado = $paciente['id_estado_usuario'] == 17;
+
+            $badge_class = 'bg-secondary';
+            if ($es_activo) $badge_class = 'bg-success';
+            if ($paciente['id_estado_usuario'] == 2) $badge_class = 'bg-warning text-dark';
+            if ($es_eliminado) $badge_class = 'bg-danger';
+
             ?>
             <tr>
                 <td><?php echo htmlspecialchars($paciente['doc_usu']); ?></td>
                 <td><span class="truncate-text" title="<?php echo htmlspecialchars($paciente['nom_usu']); ?>"><?php echo htmlspecialchars($paciente['nom_usu']); ?></span></td>
                 <td><span class="truncate-text" title="<?php echo htmlspecialchars($paciente['correo_usu']); ?>"><?php echo htmlspecialchars($paciente['correo_usu'] ?? 'N/A'); ?></span></td>
                 <td><?php echo $tiene_afiliacion_eps_activa ? htmlspecialchars($paciente['nombre_eps_activa']) : 'Sin EPS Activa'; ?></td>
-                <td><span class="badge <?php echo $es_activo ? 'bg-success' : 'bg-danger'; ?>"><?php echo htmlspecialchars($paciente['nombre_estado_usuario']); ?></span></td>
-                <td class="acciones-tabla">
+                <td><span class="badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($paciente['nombre_estado_usuario']); ?></span></td>
+                
+                <td class="acciones-tabla celda-acciones-fija">
                     <?php if ($es_eliminado): ?>
                         <button class="btn btn-success btn-sm btn-cambiar-estado" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="revertir" title="Revertir Eliminación">
-                            <i class="bi bi-arrow-counterclockwise"></i> Revertir Eliminación
+                            <i class="bi bi-arrow-counterclockwise"></i><span>Revertir</span>
                         </button>
                     <?php else: ?>
-                        <button class="btn btn-sm btn-cambiar-estado <?php echo $es_activo ? 'btn-warning' : 'btn-success'; ?>" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="<?php echo $es_activo ? 'inactivar' : 'activar'; ?>" title="<?php echo $es_activo ? 'Inactivar' : 'Activar'; ?>"><i class="bi <?php echo $es_activo ? 'bi-person-slash' : 'bi-person-check'; ?>"></i> <?php echo $es_activo ? 'Inactivar' : 'Activar'; ?></button>
-                        <button class="btn btn-info btn-sm btn-editar-usuario" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" title="Editar Paciente"><i class="bi bi-pencil-square"></i> Editar</button>
-                        <button class="btn btn-danger btn-sm btn-eliminar-paciente" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-id-tipo-doc="<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" title="Eliminar Paciente"><i class="bi bi-trash3"></i> Eliminar</button>
-                        <a href="../includes/afiliacion.php?doc_usu=<?php echo htmlspecialchars($paciente['doc_usu']); ?>&id_tipo_doc=<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>&return_to=<?php echo urlencode($return_page); ?>" class="btn btn-primary btn-sm" title="<?php echo $tiene_afiliacion_eps_activa ? 'Gestionar Afiliación' : 'Afiliar a EPS'; ?>"><i class="bi <?php echo $tiene_afiliacion_eps_activa ? 'bi-arrow-repeat' : 'bi-person-plus-fill'; ?>"></i> Gestionar EPS</a>
+                        <button class="btn btn-sm btn-cambiar-estado <?php echo $es_activo ? 'btn-warning' : 'btn-success'; ?>" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="<?php echo $es_activo ? 'inactivar' : 'activar'; ?>" title="<?php echo $es_activo ? 'Inactivar' : 'Activar'; ?>">
+                            <i class="bi <?php echo $es_activo ? 'bi-person-slash' : 'bi-person-check'; ?>"></i><span><?php echo $es_activo ? 'Inactivar' : 'Activar'; ?></span>
+                        </button>
+                        <button class="btn btn-info btn-sm btn-editar-usuario" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" title="Editar Paciente">
+                            <i class="bi bi-pencil-square"></i><span>Editar</span>
+                        </button>
+                        <button class="btn btn-danger btn-sm btn-eliminar-paciente" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-id-tipo-doc="<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" title="Eliminar Paciente">
+                            <i class="bi bi-trash3"></i><span>Eliminar</span>
+                        </button>
+                        <a href="../includes/afiliacion.php?doc_usu=<?php echo htmlspecialchars($paciente['doc_usu']); ?>&id_tipo_doc=<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>&return_to=<?php echo urlencode($return_page); ?>" class="btn btn-primary btn-sm" title="<?php echo $tiene_afiliacion_eps_activa ? 'Gestionar Afiliación' : 'Afiliar a EPS'; ?>">
+                            <i class="bi <?php echo $tiene_afiliacion_eps_activa ? 'bi-arrow-repeat' : 'bi-person-plus-fill'; ?>"></i><span>Gestionar EPS</span>
+                        </a>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -48,7 +63,7 @@ function render_pacientes_body($pacientes, $filtro_estado) {
 $db = new database();
 $con = $db->conectar();
 
-$registros_por_pagina = 4;
+$registros_por_pagina = 5;
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
 
@@ -60,7 +75,7 @@ $params = [];
 $where_clauses = ["u.id_rol = 2"];
 
 if (empty($filtro_estado)) {
-    $where_clauses[] = "u.id_est != 17"; // Por defecto, no mostrar eliminados
+    $where_clauses[] = "u.id_est != 17"; 
 } else {
     $where_clauses[] = "u.id_est = :estado";
     $params[':estado'] = $filtro_estado;

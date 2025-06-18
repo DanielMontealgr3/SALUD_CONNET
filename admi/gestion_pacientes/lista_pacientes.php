@@ -84,8 +84,14 @@ if ($con) {
                     <table class="tabla-admin-mejorada">
                         <thead>
                             <tr>
-                                <th>Documento</th><th>Nombre</th><th>Correo</th><th>EPS (Activa)</th><th>Estado Usuario</th>
-                                <th class="columna-acciones-tabla" style="min-width: 250px; width: 250px; text-align: left;">Acciones</th>
+                                <th>Documento</th>
+                                <th>Nombre</th>
+                                <th>Correo</th>
+                                <th>EPS (Activa)</th>
+                                <th>Estado Usuario</th>
+                                <!-- INICIO DE LA MODIFICACIÓN -->
+                                <th class="columna-acciones-fija">Acciones</th>
+                                <!-- FIN DE LA MODIFICACIÓN -->
                             </tr>
                         </thead>
                         <tbody id="tabla_pacientes_body">

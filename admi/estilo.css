@@ -507,6 +507,12 @@ input[type="text"]:disabled, .form-control:disabled,
     .filtros-tabla-container .row > div { margin-bottom: 0.5rem; }
     .tabla-admin-mejorada td.acciones-tabla .btn span { display: none; } 
     .tabla-admin-mejorada td.acciones-tabla .btn i { margin-right: 0; }
+    /* --- INICIO DE LA MODIFICACIÓN --- */
+    .tabla-admin-mejorada td.acciones-tabla,
+    .tabla-usuarios td.acciones-tabla {
+        justify-content: center; /* Centra los botones de íconos */
+    }
+    /* --- FIN DE LA MODIFICACIÓN --- */
     .tabla-usuarios td.acciones-tabla .btn, .tabla-usuarios td.acciones-tabla .accion-afiliar { width: 44px; min-height: 38px; font-size: 0.6rem; }
     .tabla-usuarios td.acciones-tabla .btn i, .tabla-usuarios td.acciones-tabla .accion-afiliar i { font-size: 0.8rem; }
 }
@@ -524,6 +530,12 @@ input[type="text"]:disabled, .form-control:disabled,
     .tabla-entidades th, .tabla-entidades td { padding: 0.5rem 0.6rem; }
     .tabla-admin-mejorada .columna-acciones-tabla,
     .tabla-usuarios th.columna-acciones, .tabla-usuarios td.acciones-tabla { min-width: auto; width: auto; }
+    /* --- INICIO DE LA MODIFICACIÓN (SE REPITE PARA ASEGURAR CONSISTENCIA) --- */
+    .tabla-admin-mejorada td.acciones-tabla,
+    .tabla-usuarios td.acciones-tabla {
+        justify-content: center; /* Centra los botones de íconos */
+    }
+     /* --- FIN DE LA MODIFICACIÓN --- */
     .tabla-admin-mejorada td.acciones-tabla .btn,
     .tabla-usuarios td.acciones-tabla .btn, .tabla-usuarios td.acciones-tabla .accion-afiliar { width: 32px; min-height: 32px; padding: 0.25rem; font-size: 0.75rem; }
     .tabla-usuarios td.acciones-tabla .btn span, .tabla-usuarios td.acciones-tabla .accion-afiliar span { display: none; } 
