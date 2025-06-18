@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || $_SESSION['id_rol'] != 1 ) {
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 1 ) {
     echo json_encode(['success' => false, 'message' => 'Acceso no autorizado.']);
     exit;
 }
@@ -20,9 +20,10 @@ if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST[
 
 $doc_usu = $_POST['doc_usu'] ?? '';
 $id_tipo_doc = $_POST['id_tipo_doc'] ?? '';
+$id_estado_eliminado = 17; // ID del estado "Eliminado"
 
 if (empty($doc_usu) || empty($id_tipo_doc)) {
-    echo json_encode(['success' => false, 'message' => 'Faltan datos para la eliminación.']);
+    echo json_encode(['success' => false, 'message' => 'Faltan datos para la operación.']);
     exit;
 }
 
@@ -31,25 +32,24 @@ $con = $db->conectar();
 
 try {
     $con->beginTransaction();
+
+    // 1. Eliminar afiliaciones (esto se mantiene para limpiar relaciones)
     $con->prepare("DELETE FROM afiliados WHERE doc_afiliado = ?")->execute([$doc_usu]);
     
-    $stmt = $con->prepare("DELETE FROM usuarios WHERE doc_usu = ? AND id_tipo_doc = ?");
-    $stmt->execute([$doc_usu, $id_tipo_doc]);
+    // 2. Actualizar el estado del usuario a "Eliminado"
+    $stmt = $con->prepare("UPDATE usuarios SET id_est = ? WHERE doc_usu = ? AND id_tipo_doc = ?");
+    $stmt->execute([$id_estado_eliminado, $doc_usu, $id_tipo_doc]);
 
     if ($stmt->rowCount() > 0) {
         $con->commit();
-        echo json_encode(['success' => true, 'message' => 'Paciente eliminado correctamente.']);
+        echo json_encode(['success' => true, 'message' => 'Paciente marcado como eliminado correctamente.']);
     } else {
         $con->rollBack();
-        echo json_encode(['success' => false, 'message' => 'No se encontró el paciente para eliminar.']);
+        echo json_encode(['success' => false, 'message' => 'No se encontró el paciente para marcar como eliminado.']);
     }
 } catch (PDOException $e) {
     if ($con->inTransaction()) { $con->rollBack(); }
-    if ($e->getCode() == '23000') {
-         echo json_encode(['success' => false, 'message' => 'No se puede eliminar. El paciente tiene citas u otros registros asociados.']);
-    } else {
-        error_log("Error al eliminar paciente: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Error de base de datos al eliminar.']);
-    }
+    error_log("Error al marcar como eliminado al paciente: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Error de base de datos durante la operación.']);
 }
 ?>

@@ -9,13 +9,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-function render_pacientes_body($pacientes) {
+function render_pacientes_body($pacientes, $filtro_estado) {
     ob_start();
     if (!empty($pacientes)) {
         foreach ($pacientes as $paciente) {
-            $url_actual_para_retorno = 'lista_pacientes.php?' . http_build_query($_GET);
+            $return_page = '../gestion_pacientes/lista_pacientes.php';
             $tiene_afiliacion_eps_activa = !empty($paciente['nombre_eps_activa']);
             $es_activo = $paciente['id_estado_usuario'] == 1;
+            $es_eliminado = $paciente['id_estado_usuario'] == 17;
             ?>
             <tr>
                 <td><?php echo htmlspecialchars($paciente['doc_usu']); ?></td>
@@ -24,12 +25,16 @@ function render_pacientes_body($pacientes) {
                 <td><?php echo $tiene_afiliacion_eps_activa ? htmlspecialchars($paciente['nombre_eps_activa']) : 'Sin EPS Activa'; ?></td>
                 <td><span class="badge <?php echo $es_activo ? 'bg-success' : 'bg-danger'; ?>"><?php echo htmlspecialchars($paciente['nombre_estado_usuario']); ?></span></td>
                 <td class="acciones-tabla">
-                    <button class="btn btn-sm btn-cambiar-estado <?php echo $es_activo ? 'btn-warning' : 'btn-success'; ?>" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="<?php echo $es_activo ? 'inactivar' : 'activar'; ?>" title="<?php echo $es_activo ? 'Inactivar' : 'Activar'; ?>">
-                        <i class="bi <?php echo $es_activo ? 'bi-person-slash' : 'bi-person-check'; ?>"></i> <?php echo $es_activo ? 'Inactivar' : 'Activar'; ?>
-                    </button>
-                    <button class="btn btn-info btn-sm btn-editar-usuario" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" title="Editar Paciente"><i class="bi bi-pencil-square"></i> Editar</button>
-                    <button class="btn btn-danger btn-sm btn-eliminar-paciente" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-id-tipo-doc="<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" title="Eliminar Paciente"><i class="bi bi-trash3"></i> Eliminar</button>
-                    <a href="includes/afiliacion.php?doc_usu=<?php echo htmlspecialchars($paciente['doc_usu']); ?>&id_tipo_doc=<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>&return_to=<?php echo urlencode($url_actual_para_retorno); ?>" class="btn btn-primary btn-sm" title="<?php echo $tiene_afiliacion_eps_activa ? 'Gestionar Afiliación' : 'Afiliar a EPS'; ?>"><i class="bi <?php echo $tiene_afiliacion_eps_activa ? 'bi-arrow-repeat' : 'bi-person-plus-fill'; ?>"></i> Gestionar EPS</a>
+                    <?php if ($es_eliminado): ?>
+                        <button class="btn btn-success btn-sm btn-cambiar-estado" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="revertir" title="Revertir Eliminación">
+                            <i class="bi bi-arrow-counterclockwise"></i> Revertir Eliminación
+                        </button>
+                    <?php else: ?>
+                        <button class="btn btn-sm btn-cambiar-estado <?php echo $es_activo ? 'btn-warning' : 'btn-success'; ?>" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" data-correo-usu="<?php echo htmlspecialchars($paciente['correo_usu']); ?>" data-accion="<?php echo $es_activo ? 'inactivar' : 'activar'; ?>" title="<?php echo $es_activo ? 'Inactivar' : 'Activar'; ?>"><i class="bi <?php echo $es_activo ? 'bi-person-slash' : 'bi-person-check'; ?>"></i> <?php echo $es_activo ? 'Inactivar' : 'Activar'; ?></button>
+                        <button class="btn btn-info btn-sm btn-editar-usuario" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" title="Editar Paciente"><i class="bi bi-pencil-square"></i> Editar</button>
+                        <button class="btn btn-danger btn-sm btn-eliminar-paciente" data-doc-usu="<?php echo htmlspecialchars($paciente['doc_usu']); ?>" data-id-tipo-doc="<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>" data-nom-usu="<?php echo htmlspecialchars($paciente['nom_usu']); ?>" title="Eliminar Paciente"><i class="bi bi-trash3"></i> Eliminar</button>
+                        <a href="../includes/afiliacion.php?doc_usu=<?php echo htmlspecialchars($paciente['doc_usu']); ?>&id_tipo_doc=<?php echo htmlspecialchars($paciente['id_tipo_doc']); ?>&return_to=<?php echo urlencode($return_page); ?>" class="btn btn-primary btn-sm" title="<?php echo $tiene_afiliacion_eps_activa ? 'Gestionar Afiliación' : 'Afiliar a EPS'; ?>"><i class="bi <?php echo $tiene_afiliacion_eps_activa ? 'bi-arrow-repeat' : 'bi-person-plus-fill'; ?>"></i> Gestionar EPS</a>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php
@@ -43,7 +48,7 @@ function render_pacientes_body($pacientes) {
 $db = new database();
 $con = $db->conectar();
 
-$registros_por_pagina = 4;
+$registros_por_pagina = 10;
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
 
@@ -54,13 +59,16 @@ $filtro_estado = $_GET['filtro_estado_paciente'] ?? '';
 $params = [];
 $where_clauses = ["u.id_rol = 2"];
 
+if (empty($filtro_estado)) {
+    $where_clauses[] = "u.id_est != 17"; // Por defecto, no mostrar eliminados
+} else {
+    $where_clauses[] = "u.id_est = :estado";
+    $params[':estado'] = $filtro_estado;
+}
+
 if (!empty($filtro_doc)) {
     $where_clauses[] = "u.doc_usu LIKE :doc";
     $params[':doc'] = "%" . $filtro_doc . "%";
-}
-if (!empty($filtro_estado)) {
-    $where_clauses[] = "u.id_est = :estado";
-    $params[':estado'] = $filtro_estado;
 }
 
 $from_join = "FROM usuarios u
@@ -94,5 +102,5 @@ $stmt_pacientes->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt_pacientes->execute();
 $pacientes_list = $stmt_pacientes->fetchAll(PDO::FETCH_ASSOC);
 
-echo json_encode(['html_body' => render_pacientes_body($pacientes_list), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas]]);
+echo json_encode(['html_body' => render_pacientes_body($pacientes_list, $filtro_estado), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas]]);
 ?>

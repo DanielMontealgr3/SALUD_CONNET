@@ -68,9 +68,10 @@ if ($con) {
                         <div class="col-md-3">
                             <label for="filtro_estado_paciente" class="form-label">Estado Usuario:</label>
                             <select id="filtro_estado_paciente" class="form-select form-select-sm">
-                                <option value="">Todos los estados</option>
+                                <option value="">Todos (Excepto Eliminados)</option>
                                 <option value="1">Activo</option>
                                 <option value="2">Inactivo</option>
+                                <option value="17">Eliminados</option>
                             </select>
                         </div>
                         <div class="col-md-3 d-grid">

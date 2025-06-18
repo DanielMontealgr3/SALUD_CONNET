@@ -85,9 +85,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nom = this.dataset.nomUsu;
                 const accion = this.dataset.accion;
                 const correo = this.dataset.correoUsu;
+                
+                let tituloSwal = `¿Confirmar ${accion}?`;
+                if(accion === 'revertir') tituloSwal = `¿Revertir Eliminación?`;
+                else if (accion === 'activar') tituloSwal = `¿Confirmar Activación?`;
+                else if (accion === 'inactivar') tituloSwal = `¿Confirmar Inactivación?`;
+
                 Swal.fire({
-                    title: `¿Confirmar ${accion === 'activar' ? 'Activación' : 'Inactivación'}?`,
-                    html: `¿Seguro que deseas ${accion} al paciente <strong>${nom}</strong>?`,
+                    title: tituloSwal,
+                    html: `¿Seguro que deseas continuar con esta acción para el paciente <strong>${nom}</strong>?`,
                     icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, confirmar', cancelButtonText: 'Cancelar'
                 }).then(result => {
                     if (result.isConfirmed) {
@@ -128,8 +134,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nom = this.dataset.nomUsu;
                 Swal.fire({
                     title: '¿Confirmar Eliminación?',
-                    html: `Esta acción eliminará permanentemente al paciente <strong>${nom}</strong> y todos sus registros asociados. ¿Continuar?`,
-                    icon: 'error', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, ¡Eliminar!', cancelButtonText: 'Cancelar'
+                    html: `Esta acción marcará al paciente <strong>${nom}</strong> como eliminado. Podrá revertir esta acción más tarde. ¿Continuar?`,
+                    icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, ¡Eliminar!', cancelButtonText: 'Cancelar'
                 }).then(result => {
                     if (result.isConfirmed) {
                         const formData = new FormData();
