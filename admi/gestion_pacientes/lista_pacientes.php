@@ -107,5 +107,6 @@ if ($con) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>const csrfToken = '<?php echo $csrf_token; ?>';</script>
     <script src="../js/lista_pacientes.js?v=<?php echo time(); ?>"></script>
+    <script src="../js/editar_usuario_admin.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

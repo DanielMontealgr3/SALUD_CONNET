@@ -1,281 +1,233 @@
-function inicializarValidacionesEdicionAdmin() {
+document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver((mutationsList, obs) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                const editModal = document.getElementById('editUserModal');
+                if (editModal && !editModal.dataset.initialized) {
+                    editModal.dataset.initialized = 'true';
+                    initializeEditUserForm();
+                    obs.disconnect(); 
+                }
+            }
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+});
+
+function initializeEditUserForm() {
     const form = document.getElementById('editUserFormAdmin');
-    if (!form) { return null; }
-    const nomUsu = document.getElementById('nom_usu_edit');
-    const correoUsu = document.getElementById('correo_usu_edit');
-    const telUsu = document.getElementById('tel_usu_edit');
-    const fechaNac = document.getElementById('fecha_nac_edit');
-    const direccionUsu = document.getElementById('direccion_usu_edit');
+    if (!form) return;
+
+    const allInputs = Array.from(form.querySelectorAll('input:not([type="hidden"]), select'));
+    const saveButton = document.getElementById('saveUserChangesAdminButton');
     const selectDepartamento = document.getElementById('id_departamento_edit');
     const selectMunicipio = document.getElementById('id_municipio_edit');
     const selectBarrio = document.getElementById('id_barrio_edit');
-    const idGen = document.getElementById('id_gen_edit');
-    const idEst = document.getElementById('id_est_edit');
     const idRol = document.getElementById('id_rol_edit');
     const divEspecialidad = document.getElementById('div_especialidad_edit');
     const selectEspecialidad = document.getElementById('id_especialidad_edit');
-    const saveButton = document.getElementById('saveUserChangesAdminButton');
-    const globalMessageDiv = document.getElementById('modalEditUserUpdateMessage');
-    
-    const ID_ESPECIALIDAD_NO_APLICA = "46"; 
+
     let initialFormState = {};
-    let formIsDirty = false;
+    const initialMunicipioId = form.dataset.initialMunicipio;
+    const initialBarrioId = form.dataset.initialBarrio;
 
-    function storeInitialFormState() {
+    const storeInitialState = () => {
         initialFormState = {};
-        formIsDirty = false;
-        if (saveButton) saveButton.disabled = true;
-        inputsCfg.forEach(c => { 
-            if (c.el) { 
-                initialFormState[c.el.id] = c.el.value; 
-            } 
+        allInputs.forEach(input => {
+            if (input && input.name) {
+                initialFormState[input.name] = input.value;
+            }
         });
-    }
+    };
 
-    function checkFormDirty() {
-        formIsDirty = false;
-        for (const c of inputsCfg) {
-            if (c.el && initialFormState.hasOwnProperty(c.el.id)) {
-                 if (initialFormState[c.el.id] !== c.el.value) {
-                    formIsDirty = true; break;
-                }
+    const checkFormDirty = () => {
+        for (const input of allInputs) {
+            if (input && input.name && initialFormState[input.name] !== input.value) {
+                return true;
             }
         }
-        return formIsDirty;
-    }
-    
-    function setValidationMessage(el, msg, isValid) { const errDiv = el.nextElementSibling; if (errDiv && errDiv.classList.contains('invalid-feedback')) { errDiv.textContent = msg; } if (isValid) { el.classList.remove('is-invalid'); } else if (msg) { el.classList.add('is-invalid'); } else { el.classList.remove('is-invalid'); } }
-    
-    function validateNombre(i) { 
-        const val = i.value.trim();
-        if (val === "" && i.hasAttribute('required')) return { isValid: false, message: "Nombre requerido." }; 
-        if (val !== "" && !/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/.test(val)) return { isValid: false, message: "Solo letras y espacios." };
-        if (val !== "" && val.length < 5) return { isValid: false, message: "Mínimo 5 caracteres."};
-        if (val.length > 100) return { isValid: false, message: "Máximo 100 caracteres." }; 
-        return { isValid: true, message: "" }; 
-    }
-    function validateCorreo(i) { if (i.value.trim() === "" && i.hasAttribute('required')) return { isValid: false, message: "Correo requerido." }; if (i.value.trim() !== "" && !/^\w+([.-_+]?\w+)*@\w+([.-]?\w+)*(\.\w{2,10})+$/.test(i.value.trim())) return { isValid: false, message: "Correo inválido." }; if (i.value.trim().length > 150) return { isValid: false, message: "Máx 150." }; return { isValid: true, message: "" }; }
-    function validateTelefono(i) { 
-        const val = i.value.trim();
-        if (val === "" && !i.hasAttribute('required')) return { isValid: true, message: ""};
-        if (val !== "" && !/^\d{7,11}$/.test(val)) return { isValid: false, message: "7-11 dígitos." }; 
-        return { isValid: true, message: "" }; 
-    }
-    function validateFechaNac(i) { if (!i.value && i.hasAttribute('required')) return { isValid: false, message: "F. Nacimiento requerida."}; if (i.value) { const hoy = new Date(); hoy.setHours(0,0,0,0); const fechaN = new Date(i.value + "T00:00:00Z"); if (isNaN(fechaN.getTime())) return { isValid: false, message: "Fecha inválida."}; if (fechaN >= hoy) return { isValid: false, message: "Anterior a hoy." }; const edadMin = new Date(hoy.getFullYear() - 120, hoy.getMonth(), hoy.getDate()); if (fechaN < edadMin) return { isValid: false, message: "Fecha muy antigua."}; } return { isValid: true, message: "" }; }
-    function validateDireccion(i) { if (i.value.trim().length > 200) return { isValid: false, message: "Máx 200."}; return { isValid: true, message: "" }; }
-    function validateSelect(i, field) { if (i.value === "" && i.hasAttribute('required') && !i.disabled) return { isValid: false, message: `${field} requerido.`}; return { isValid: true, message: "" }; }
-    
-    const inputsCfg = [ 
-        { el: nomUsu, v: validateNombre, r: true, fN: "Nombre" }, 
-        { el: correoUsu, v: validateCorreo, r: true, fN: "Correo" }, 
-        { el: telUsu, v: validateTelefono, r: false, fN: "Teléfono" }, 
-        { el: fechaNac, v: validateFechaNac, r: true, fN: "F. Nac." }, 
-        { el: direccionUsu, v: validateDireccion, r: false, fN: "Dirección" }, 
-        { el: selectDepartamento, v: validateSelect, r: true, fN: "Dpto." }, 
-        { el: selectMunicipio, v: validateSelect, r: true, fN: "Mcipio." }, 
-        { el: selectBarrio, v: validateSelect, r: true, fN: "Barrio" }, 
-        { el: idGen, v: validateSelect, r: true, fN: "Género" }, 
-        { el: idEst, v: validateSelect, r: true, fN: "Estado" }, 
-        { el: idRol, v: validateSelect, r: true, fN: "Rol" }, 
-        { el: selectEspecialidad, v: validateSelect, r: false, fN: "Especialidad" }
-    ];
-    
-    function toggleEspecialidadField() {
-        const isRolMedico = idRol && idRol.value === '4'; 
-        if (divEspecialidad && selectEspecialidad) {
-            divEspecialidad.style.display = isRolMedico ? 'block' : 'none';
-            selectEspecialidad.required = isRolMedico;
-            
-            const espConfig = inputsCfg.find(c => c.el === selectEspecialidad);
-            if (espConfig) { espConfig.r = isRolMedico; }
+        return false;
+    };
 
-            if (!isRolMedico) { 
-                selectEspecialidad.value = ID_ESPECIALIDAD_NO_APLICA; 
-                setValidationMessage(selectEspecialidad, '', true);
-            } else if (selectEspecialidad.value === ID_ESPECIALIDAD_NO_APLICA || selectEspecialidad.value === "") {
-                 selectEspecialidad.value = "";
+    const setValidation = (element, isValid, message = '') => {
+        if (!element || element.disabled) return;
+        const feedback = element.nextElementSibling;
+        
+        element.classList.remove('is-invalid', 'is-valid');
+        
+        if (isValid) {
+            if (initialFormState[element.name] !== element.value) {
+                 element.classList.add('is-valid');
             }
+            if (feedback) feedback.textContent = '';
+        } else {
+            element.classList.add('is-invalid');
+            if (feedback) feedback.textContent = message;
         }
-        checkValidityAndDirty();
-    }
+    };
+    
+    const validators = {
+        nom_usu_edit: val => val ? (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(val) ? {valid: true} : {valid: false, message: 'Solo letras y espacios.'}) : {valid: false, message: 'El nombre es obligatorio.'},
+        correo_usu_edit: val => val ? (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val) ? {valid: true} : {valid: false, message: 'Formato de correo inválido.'}) : {valid: false, message: 'El correo es obligatorio.'},
+        tel_usu_edit: val => val ? (/^\d{7,10}$/.test(val) ? {valid: true} : {valid: false, message: 'Debe ser de 7 a 10 dígitos.'}) : {valid: false, message: 'El teléfono es obligatorio.'},
+        direccion_usu_edit: val => val ? (val.length >= 7 ? {valid: true} : {valid: false, message: 'Mínimo 7 caracteres.'}) : {valid: false, message: 'La dirección es obligatoria.'},
+        requiredSelect: val => val ? {valid: true} : {valid: false, message: 'Debe seleccionar una opción.'},
+        especialidad: val => (idRol.value === '4' && (!val || val === '46')) ? {valid: false, message: 'Especialidad es requerida.'} : {valid: true}
+    };
 
-    function populateSel(selEl, opts, ph, selVal = null) { 
-        selEl.innerHTML = `<option value="">${ph}</option>`; 
-        opts.forEach(o => { 
-            const opt = document.createElement('option'); 
-            opt.value = o.id; 
-            opt.textContent = o.nombre; 
-            if (selVal && String(o.id) === String(selVal)) {
-                 opt.selected = true; 
-            }
-            selEl.appendChild(opt); 
-        }); 
-        selEl.disabled = false;
-        if (opts.length === 0 && (ph.toLowerCase().includes("seleccione") || ph.toLowerCase().includes("no hay") || ph.toLowerCase().includes("error"))) {
-            if (ph.toLowerCase().includes("seleccione") && selEl.hasAttribute('required')) {
-                 selEl.disabled = true;
-            }
+    const validateField = (input) => {
+        if (!input || input.disabled) return true;
+        let validator = input.tagName === 'SELECT' ? 
+            ((input.id === 'id_especialidad_edit') ? validators.especialidad : validators.requiredSelect) 
+            : validators[input.id];
+
+        if(validator) {
+            const result = validator(input.value.trim());
+            setValidation(input, result.valid, result.message);
+            return result.valid;
         }
-    }
-    
-    if(selectDepartamento){ 
-        selectDepartamento.addEventListener('change', function() { 
-            const idD = this.value; 
-            populateSel(selectBarrio, [], "Seleccione Municipio...", null); 
-            selectBarrio.disabled = true; 
-            
-            if (idD) { 
-                populateSel(selectMunicipio, [], "Cargando Municipios...", null); 
-                selectMunicipio.disabled = true;
-                fetch('../ajax/get_municipios.php?id_dep=' + idD)
-                .then(r => {
-                    if (!r.ok) { throw new Error(`HTTP error ${r.status}`); }
-                    return r.json();
-                })
-                .then(d => { 
-                    populateSel(selectMunicipio, d, d.length > 0 ? "Seleccione Municipio..." : "No hay Municipios para este Dpto.", null); 
-                }).catch(e => { 
-                    console.error('Error fetching municipios:', e); 
-                    populateSel(selectMunicipio, [], "Error al cargar Municipios.", null); 
-                }).finally(() => {
-                    checkValidityAndDirty();
-                }); 
-            } else {
-                populateSel(selectMunicipio, [], "Seleccione Departamento...", null); 
-                selectMunicipio.disabled = true;
-                checkValidityAndDirty(); 
-            }
-        }); 
-    }
-    if(selectMunicipio){ 
-        selectMunicipio.addEventListener('change', function() { 
-            const idM = this.value; 
-            if (idM) { 
-                populateSel(selectBarrio, [], "Cargando Barrios...", null); 
-                selectBarrio.disabled = true;
-                fetch('../ajax/get_barrios.php?id_mun=' + idM)
-                .then(r => {
-                    if (!r.ok) { throw new Error(`HTTP error ${r.status}`); }
-                    return r.json();
-                })
-                .then(d => { 
-                    populateSel(selectBarrio, d, d.length > 0 ? "Seleccione Barrio..." : "No hay Barrios para este Mcipio.", null); 
-                }).catch(e => { 
-                    console.error('Error fetching barrios:', e); 
-                    populateSel(selectBarrio, [], "Error al cargar Barrios.", null); 
-                }).finally(() => {
-                    checkValidityAndDirty();
-                });
-            } else {
-                populateSel(selectBarrio, [], "Seleccione Municipio...", null); 
-                selectBarrio.disabled = true;
-                checkValidityAndDirty(); 
-            }
-        }); 
-    }
-    if (idRol) { idRol.addEventListener('change', toggleEspecialidadField); }
-    
-    function checkValidityAndDirty() { 
-        let formIsValid = true; 
-        inputsCfg.forEach(c => { if (c.el) { 
-            let vRes; 
-            if (c.el.tagName === 'SELECT') vRes = validateSelect(c.el, c.fN || 'elemento'); 
-            else vRes = c.v(c.el); 
-            
-            let fieldIsInvalid = false;
-            if (c.r && (c.el.value === null || String(c.el.value).trim() === "") && !c.el.disabled) {
-                setValidationMessage(c.el, `${c.fN || 'Campo'} requerido.`, false);
-                fieldIsInvalid = true;
-            } else {
-                setValidationMessage(c.el, vRes.message, vRes.isValid);
-                if (!vRes.isValid && !c.el.disabled) {
-                    fieldIsInvalid = true;
+        return true;
+    };
+
+    const updateButtonState = () => {
+        if (!saveButton) return;
+        let isFormValid = allInputs.every(input => validateField(input));
+        const isDirty = checkFormDirty();
+        saveButton.disabled = !(isFormValid && isDirty);
+    };
+
+    const populateSelect = (select, data, placeholder, selectedValue = null, valueKey, textKey) => {
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                const option = new Option(item[textKey], item[valueKey]);
+                if (selectedValue && option.value == selectedValue) {
+                    option.selected = true;
                 }
-            }
-            if (fieldIsInvalid) formIsValid = false;
-        }}); 
-        const dirty = checkFormDirty();
-        if (globalMessageDiv) { if (formIsValid && globalMessageDiv.classList.contains('alert-danger')) { globalMessageDiv.innerHTML = ''; globalMessageDiv.className = 'mt-3'; } } 
-        if (saveButton) saveButton.disabled = !(formIsValid && dirty); 
-        return formIsValid; 
-    }
-    inputsCfg.forEach(c => { if (c.el) { const evType = (c.el.tagName === 'SELECT' || c.el.type === 'date') ? 'change' : 'input'; c.el.addEventListener(evType, () => { checkValidityAndDirty(); }); c.el.addEventListener('blur', () => { checkValidityAndDirty(); }); } });
-    
-    storeInitialFormState(); 
-    toggleEspecialidadField(); 
-    
-    form.addEventListener('submit', function(ev) {
-        ev.preventDefault();
-        toggleEspecialidadField(); 
-        if (!checkValidityAndDirty()) { 
-            if (globalMessageDiv) { globalMessageDiv.innerHTML = '<div class="alert alert-danger">Corrija los errores marcados o realice algún cambio para guardar.</div>'; } 
-            return; 
-        }
-        if (saveButton) saveButton.disabled = true;
-        if (globalMessageDiv) globalMessageDiv.innerHTML = '<div class="alert alert-info d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2"></div><span>Guardando cambios...</span></div>';
-        const formDt = new FormData(form);
-        fetch('editar_usuario.php', { method: 'POST', body: formDt })
-        .then(r => {
-            if (!r.ok) { 
-                return r.text().then(text => { throw new Error(`Error HTTP ${r.status}: ${text}`); });
-            }
-            const contentType = r.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                return r.json();
-            } else {
-                return r.text().then(text => { throw new Error(`Respuesta inesperada del servidor (no es JSON): ${text}`); });
-            }
-        })
-        .then(data => {
-            if (globalMessageDiv) { globalMessageDiv.className = 'mt-3 alert ' + (data.success ? 'alert-success' : 'alert-danger'); globalMessageDiv.innerHTML = data.message; }
-            if (data.success) { 
-                storeInitialFormState(); 
-                setTimeout(() => { 
-                    const modalEl = document.getElementById('editUserModal'); 
-                    if(modalEl){ const modalInst = bootstrap.Modal.getInstance(modalEl); if(modalInst) modalInst.hide(); } 
-                    if (typeof cargarUsuarios === 'function') { cargarUsuarios(); } else { window.location.reload(); }
-                }, 1800);
-            } else { 
-                if (saveButton) saveButton.disabled = false; 
-            }
-        })
-        .catch(e => { 
-            console.error('Error en el fetch o procesamiento:', e); 
-            if (globalMessageDiv) globalMessageDiv.innerHTML = `<div class="alert alert-danger">Error de conexión o al procesar la respuesta: ${e.message}</div>`; 
-            if (saveButton) saveButton.disabled = false; 
-        });
-    });
-    
-    if (selectDepartamento.value) {
-        populateSel(selectMunicipio, [], "Cargando Municipios...", null); selectMunicipio.disabled = true;
-        fetch('../ajax/get_municipios.php?id_dep=' + selectDepartamento.value)
-            .then(r => r.ok ? r.json() : Promise.reject(new Error("Error al cargar municipios")))
-            .then(d => { 
-                const currentMunicipioVal = initialFormState['id_municipio_edit'];
-                populateSel(selectMunicipio, d, d.length > 0 ? "Seleccione Municipio..." : "No hay Municipios", currentMunicipioVal);
-                if(currentMunicipioVal && selectMunicipio.value === currentMunicipioVal && initialFormState['id_barrio_edit']){
-                    populateSel(selectBarrio, [], "Cargando Barrios...", null); selectBarrio.disabled = true;
-                     fetch('../ajax/get_barrios.php?id_mun=' + currentMunicipioVal)
-                        .then(r => r.ok ? r.json() : Promise.reject(new Error("Error al cargar barrios")))
-                        .then(dataBarrios => {
-                            populateSel(selectBarrio, dataBarrios, dataBarrios.length > 0 ? "Seleccione Barrio..." : "No hay Barrios", initialFormState['id_barrio_edit']);
-                        }).catch(eBarrios => {
-                            populateSel(selectBarrio, [], "Error al cargar Barrios.", null);
-                        }).finally(() => {
-                             checkValidityAndDirty();
-                        });
-                } else {
-                     checkValidityAndDirty(); 
-                }
-            }).catch(e => { 
-                populateSel(selectMunicipio, [], "Error al cargar.", null); 
-                checkValidityAndDirty(); 
+                select.appendChild(option);
             });
-    } else {
+            select.disabled = false;
+        } else {
+            select.disabled = true;
+        }
+    };
+
+    async function loadMunicipios(idDep, selectedValue = null) {
+        selectMunicipio.innerHTML = '<option value="">Cargando...</option>';
         selectMunicipio.disabled = true;
+        if (!idDep) {
+            populateSelect(selectMunicipio, [], "Seleccione Departamento", null, 'id_mun', 'nom_mun');
+            return;
+        }
+        try {
+            const response = await fetch(`../ajax/get_municipios.php?id_dep=${idDep}`);
+            const data = await response.json();
+            populateSelect(selectMunicipio, data, "Seleccione Municipio...", selectedValue, 'id_mun', 'nom_mun');
+        } catch (error) {
+            populateSelect(selectMunicipio, [], "Error al cargar", null, 'id_mun', 'nom_mun');
+        }
+    }
+
+    async function loadBarrios(idMun, selectedValue = null) {
+        selectBarrio.innerHTML = '<option value="">Cargando...</option>';
         selectBarrio.disabled = true;
-        checkValidityAndDirty();
+        if (!idMun) {
+            populateSelect(selectBarrio, [], "Seleccione Municipio", null, 'id_barrio', 'nom_barrio');
+            return;
+        }
+        try {
+            const response = await fetch(`../ajax/get_barrios.php?id_mun=${idMun}`);
+            const data = await response.json();
+            populateSelect(selectBarrio, data, "Seleccione Barrio...", selectedValue, 'id_barrio', 'nom_barrio');
+        } catch (error) {
+            populateSelect(selectBarrio, [], "Error al cargar", null, 'id_barrio', 'nom_barrio');
+        }
+    }
+
+    selectDepartamento.addEventListener('change', async function() {
+        await loadMunicipios(this.value);
+        await loadBarrios(null);
+        updateButtonState();
+    });
+
+    selectMunicipio.addEventListener('change', async function() {
+        await loadBarrios(this.value);
+        updateButtonState();
+    });
+
+    idRol.addEventListener('change', function() {
+        const isMedico = this.value === '4';
+        divEspecialidad.style.display = isMedico ? 'block' : 'none';
+        selectEspecialidad.required = isMedico;
+        if (!isMedico) {
+            selectEspecialidad.value = '46';
+        }
+        updateButtonState();
+    });
+
+    allInputs.forEach(input => {
+        input.addEventListener('input', updateButtonState);
+    });
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        updateButtonState();
+        if(saveButton.disabled) return;
+
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+        
+        const modalEl = document.getElementById('editUserModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+
+        fetch(form.action, { method: 'POST', body: new FormData(form) })
+            .then(response => response.json())
+            .then(data => {
+                if(modal) {
+                    modal.hide();
+                }
+                
+                Swal.fire({
+                    title: data.success ? '¡Éxito!' : 'Error',
+                    text: data.message,
+                    icon: data.success ? 'success' : 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#0d6efd'
+                }).then((result) => {
+                    if (data.success && result.isConfirmed) {
+                        location.reload();
+                    }
+                });
+            })
+            .catch(err => {
+                 if(modal) {
+                    modal.hide();
+                }
+                Swal.fire({
+                    title: 'Error de Conexión',
+                    text: 'No se pudo comunicar con el servidor. ' + err,
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#0d6efd'
+                });
+            }).finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = 'Guardar Cambios';
+            });
+    });
+
+    async function initializeForm() {
+        const idDep = selectDepartamento.value;
+        if (idDep) {
+            await loadMunicipios(idDep, initialMunicipioId);
+            if (initialMunicipioId) {
+                await loadBarrios(initialMunicipioId, initialBarrioId);
+            }
+        }
+        storeInitialState();
+        updateButtonState();
     }
     
-    return checkValidityAndDirty;
+    initializeForm();
 }

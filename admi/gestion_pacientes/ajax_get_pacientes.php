@@ -48,7 +48,7 @@ function render_pacientes_body($pacientes, $filtro_estado) {
 $db = new database();
 $con = $db->conectar();
 
-$registros_por_pagina = 10;
+$registros_por_pagina = 4;
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
 

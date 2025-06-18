@@ -65,20 +65,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function inicializarListenersBotones() {
+        // --- Lógica para el botón Editar (Corregida) ---
         document.querySelectorAll('.btn-editar-usuario').forEach(button => {
             button.addEventListener('click', function() {
                 const docUsu = this.dataset.docUsu;
-                modalContainer.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+                modalContainer.innerHTML = '<div class="d-flex justify-content-center align-items-center p-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div></div>';
+                
+                // Usamos la ruta correcta según la estructura de carpetas
                 fetch(`../includes/modal_editar_usuario.php?doc_usu_editar=${docUsu}`)
-                    .then(response => response.text())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al cargar el modal.');
+                        }
+                        return response.text();
+                    })
                     .then(html => {
                         modalContainer.innerHTML = html;
                         const modalElement = document.getElementById('editUserModal');
-                        new bootstrap.Modal(modalElement).show();
+                        const modalInstance = new bootstrap.Modal(modalElement);
+                        modalInstance.show();
+                        
+                        modalElement.addEventListener('hidden.bs.modal', () => {
+                           modalContainer.innerHTML = ''; 
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        modalContainer.innerHTML = `<div class="alert alert-danger">No se pudo cargar el contenido para editar.</div>`;
                     });
             });
         });
 
+        // --- Lógica para Cambiar Estado (Sin modificar) ---
         document.querySelectorAll('.btn-cambiar-estado').forEach(button => {
             button.addEventListener('click', function() {
                 const doc = this.dataset.docUsu;
@@ -127,6 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // --- Lógica para Eliminar (Sin modificar) ---
         document.querySelectorAll('.btn-eliminar-paciente').forEach(button => {
             button.addEventListener('click', function() {
                 const doc = this.dataset.docUsu;
