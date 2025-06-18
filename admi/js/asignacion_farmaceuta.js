@@ -7,12 +7,22 @@ function inicializarLogicaFormularioModalFarmaceuta() {
     const selectFarmaciaInterno = document.getElementById('nit_farma_asignar_modal_select_interno');
     const selectEstadoInterno = document.getElementById('id_estado_asignacion_farmaceuta_modal_select_interno');
     const errorFarmaciaInterno = document.getElementById('error-nit_farma_asignar_modal_interno');
-    const errorEstadoInterno = document.getElementById('error-id_estado_asignacion_farmaceuta_modal_interno'); // Aunque no mostraremos el mensaje, lo referenciamos para ocultarlo
+    const errorEstadoInterno = document.getElementById('error-id_estado_asignacion_farmaceuta_modal_interno');
 
     if (!formAsignarFarmaciaInterno || !btnGuardarAsignacionInterno) {
-        if(modalGlobalErrorDivInterno) modalGlobalErrorDivInterno.innerHTML = '<div class="alert alert-danger">Error interno: No se pudieron inicializar los controles del formulario dentro del modal.</div>';
+        if(modalGlobalErrorDivInterno) modalGlobalErrorDivInterno.innerHTML = '<div class="alert alert-danger">Error interno: No se pudieron inicializar los controles del formulario.</div>';
         return;
     }
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    function actualizarEstadoBoton() {
+        if (selectFarmaciaInterno.value) {
+            btnGuardarAsignacionInterno.disabled = false;
+        } else {
+            btnGuardarAsignacionInterno.disabled = true;
+        }
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
 
     function validarCampoSelectObligatorio(selectElement, errorElement, mensajeError) {
         if (!selectElement.value) {
@@ -29,31 +39,20 @@ function inicializarLogicaFormularioModalFarmaceuta() {
         }
     }
     
-    // Inicializar el campo de estado como válido visualmente
-    if (selectEstadoInterno) {
-        selectEstadoInterno.classList.add('is-valid'); // Añade el borde verde
-        selectEstadoInterno.classList.remove('is-invalid');
-        if (errorEstadoInterno) {
-            errorEstadoInterno.style.display = 'none'; // Asegura que el mensaje de error esté oculto
-        }
+    if(selectEstadoInterno) {
+        selectEstadoInterno.classList.add('is-valid');
+        if (errorEstadoInterno) errorEstadoInterno.style.display = 'none';
     }
 
     if(selectFarmaciaInterno) {
         selectFarmaciaInterno.addEventListener('change', function() {
             validarCampoSelectObligatorio(this, errorFarmaciaInterno, 'Debe seleccionar una farmacia.');
+            actualizarEstadoBoton(); // Llama a la función para habilitar/deshabilitar el botón
         });
     }
 
-    if(selectEstadoInterno) {
-        selectEstadoInterno.addEventListener('change', function() {
-            // Mantenerlo visualmente válido sin importar la selección (Activo o Inactivo)
-            this.classList.add('is-valid');
-            this.classList.remove('is-invalid');
-            if (errorEstadoInterno) {
-                errorEstadoInterno.style.display = 'none';
-            }
-        });
-    }
+    // Llamada inicial para establecer el estado del botón al cargar el modal
+    actualizarEstadoBoton();
 
     formAsignarFarmaciaInterno.addEventListener('submit', function (event) {
         event.preventDefault();
@@ -64,17 +63,8 @@ function inicializarLogicaFormularioModalFarmaceuta() {
         
         let esValidoFarmacia = validarCampoSelectObligatorio(selectFarmaciaInterno, errorFarmaciaInterno, 'Debe seleccionar una farmacia.');
         
-        // La validación lógica del estado sigue siendo importante en el backend,
-        // pero visualmente no mostramos error aquí ya que siempre tendrá un valor.
-        let esValidoEstado = true; // Asumimos que siempre es válido visualmente
-        if (selectEstadoInterno && !selectEstadoInterno.value) { // Salvaguarda por si el HTML cambia
-            esValidoEstado = false;
-            if(modalMessageDivInterno) modalMessageDivInterno.innerHTML = `<div class="alert alert-warning">El estado de asignación es requerido.</div>`;
-        }
-
-
-        if (!esValidoFarmacia || !esValidoEstado) {
-            if (modalMessageDivInterno && !modalMessageDivInterno.innerHTML) { // Solo muestra si no hay ya un mensaje específico de estado
+        if (!esValidoFarmacia) {
+            if (modalMessageDivInterno) {
                 modalMessageDivInterno.innerHTML = `<div class="alert alert-warning">Por favor, corrija los campos marcados.</div>`;
             }
             return;
@@ -85,34 +75,37 @@ function inicializarLogicaFormularioModalFarmaceuta() {
 
         const formData = new FormData(formAsignarFarmaciaInterno);
         
-        fetch(window.location.pathname + window.location.search, { 
+        fetch(window.location.href, { 
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                if (modalMessageDivInterno) modalMessageDivInterno.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                if(selectFarmaciaInterno) selectFarmaciaInterno.classList.remove('is-valid');
-                // El estado ya debería estar 'is-valid'
-                setTimeout(() => {
+             Swal.fire({
+                title: data.success ? '¡Éxito!' : 'Error',
+                text: data.message,
+                icon: data.success ? 'success' : 'error',
+                timer: data.success ? 2000 : 4000,
+                showConfirmButton: false,
+                timerProgressBar: true
+            }).then(() => {
+                if (data.success) {
                     const modalElement = document.getElementById('modalContenedorAsignacionFarmaceuta');
                     const bootstrapModalInstance = bootstrap.Modal.getInstance(modalElement);
                     if (bootstrapModalInstance) {
                         bootstrapModalInstance.hide();
                     }
-                }, 2000);
-            } else {
-                 if (modalMessageDivInterno) modalMessageDivInterno.innerHTML = `<div class="alert alert-danger">${data.message || 'Error desconocido al guardar.'}</div>`;
-            }
+                }
+            });
         })
         .catch(error => {
-            if (modalGlobalErrorDivInterno) modalGlobalErrorDivInterno.innerHTML = `<div class="alert alert-danger">Error de conexión o del servidor: ${error}. Intente de nuevo.</div>`;
-            console.error('Error en fetch (guardado asignación farmaceuta - interno):', error);
+            if (modalGlobalErrorDivInterno) modalGlobalErrorDivInterno.innerHTML = `<div class="alert alert-danger">Error de conexión o del servidor. Intente de nuevo.</div>`;
+            console.error('Error en fetch:', error);
         })
         .finally(() => {
-            btnGuardarAsignacionInterno.disabled = false;
+            // No se vuelve a habilitar el botón aquí, se controla con la función actualizarEstadoBoton
             btnGuardarAsignacionInterno.innerHTML = '<i class="bi bi-shop-window me-1"></i>Guardar Asignación';
+            actualizarEstadoBoton(); 
         });
     });
 }

@@ -138,9 +138,6 @@ if (empty($doc_farma_page)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asignar Farmacia a Farmaceuta - SaludConnect</title>
     <link rel="icon" type="image/png" href="../img/loguito.png">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../css/styles_admin.css">
     <style>
         body { background-color: #e9ecef; }
         #modalContenedorAsignacionFarmaceuta .modal-content.modal-content-asignacion-styled { 
@@ -175,7 +172,7 @@ if (empty($doc_farma_page)) {
     </div>
 
     <?php include '../../include/footer.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../js/asignacion_farmaceuta.js?v=<?php echo time(); ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -213,13 +210,7 @@ if (empty($doc_farma_page)) {
             }
             
             modalContenedorElement.addEventListener('hidden.bs.modal', function () {
-                const successMessageElement = modalDinamicoContent.querySelector('.alert-success');
-                if (successMessageElement) {
-                    window.location.href = returnTo + (returnTo.includes('?') ? '&' : '?') + 'asignacion_exitosa_farmaceuta=1';
-                } else {
-                     window.location.href = returnTo;
-                }
-                modalDinamicoContent.innerHTML = '<div class="modal-body text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+                window.location.href = returnTo;
             });
 
             cargarYMostrarModalFarmaceuta();
