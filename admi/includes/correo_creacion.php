@@ -12,7 +12,7 @@ use PHPMailer\PHPMailer\Exception;
 
 function enviarCorreoBienvenida($destinatario_correo, $destinatario_nombre, $destinatario_documento, $contrasena_temporal, $estado_inicial_usuario, $nombre_rol_creado) {
     $base_url_sitio = "http://" . ($_SERVER['HTTP_HOST'] ?? 'localhost') . "/SALUDCONNECT"; 
-    $nombre_empresa_sitio = "Salud Connect";
+    $nombre_empresa_sitio = "Salud Connected";
     $email_remitente_soporte = 'saludconneted@gmail.com'; 
     $password_remitente_soporte = 'czlr pxjh jxeu vzsz'; 
 
