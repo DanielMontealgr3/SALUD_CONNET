@@ -88,16 +88,25 @@ function inicializarModalEdicionEntidad() {
                 fetch('editar_entidad.php', { method: 'POST', body: formData })
                     .then(response => response.json())
                     .then(data => {
-                        if (messageDiv) {
-                            messageDiv.className = 'mt-3 alert ' + (data.success ? 'alert-success' : 'alert-danger');
-                            messageDiv.innerHTML = data.message;
-                        }
                         if (data.success) {
-                            setTimeout(() => {
-                                if (activeModalInstance) activeModalInstance.hide();
-                                window.location.reload(); 
-                            }, 1800);
+                            if (activeModalInstance) {
+                                activeModalInstance.hide();
+                            }
+                            Swal.fire({
+                                title: '¡Éxito!',
+                                text: data.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.location.reload();
+                                }
+                            });
                         } else {
+                            if (messageDiv) {
+                                messageDiv.className = 'mt-3 alert alert-danger';
+                                messageDiv.innerHTML = data.message;
+                            }
                             btnGuardar.disabled = false;
                         }
                     })
@@ -181,7 +190,7 @@ function inicializarModalEdicionEntidad() {
             feedbackEl.style.display = isValid ? 'none' : 'block';
         }
         el.classList.toggle('is-invalid', !isValid && message !== "");
-        el.classList.remove('is-valid'); // No usamos is-valid
+        el.classList.remove('is-valid');
     }
 
     function validateModalField(el, isRequired, validationFn, fieldName, specificMsg = "") {
@@ -202,19 +211,19 @@ function inicializarModalEdicionEntidad() {
     function validateModalForm(form, tipo) {
         let allValid = true;
         if (tipo === 'farmacias') {
-            if (!validateModalField(form.nom_farm_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s.,'-]+$/.test(v)}), "Nombre Farmacia", "Nombre inválido (mín 3, máx 150, solo letras, números y algunos símbolos).")) allValid = false;
+            if (!validateModalField(form.nom_farm_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/.test(v)}), "Nombre Farmacia", "Nombre inválido (mín 3, máx 150, solo se permiten letras y espacios).")) allValid = false;
             if (!validateModalField(form.tel_farm_modal, false, v => ({isValid: /^\d{7,15}$/.test(v) || v === ""}), "Teléfono", "Solo numeros 7-15 dígitos.")) allValid = false;
             if (!validateModalField(form.correo_farm_modal, false, v => ({isValid: /^\S+@\S+\.\S+$/.test(v) || v === ""}), "Correo", "Correo inválido.")) allValid = false;
             if (!validateModalField(form.nom_gerente_farm_modal, false, v => ({isValid: /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s.,'-]+$/.test(v) || v === ""}), "Nombre Gerente", "Nombre inavlido solo letras y espacios.")) allValid = false;
 
         } else if (tipo === 'eps') {
-            if (!validateModalField(form.nombre_eps_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s.,'-]+$/.test(v)}), "Nombre EPS", "Nombre inválido (mín 3, máx 150, solo letras, números y algunos símbolos).")) allValid = false;
+            if (!validateModalField(form.nombre_eps_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/.test(v)}), "Nombre EPS", "Nombre inválido (mín 3, máx 150, solo se permiten letras y espacios).")) allValid = false;
             if (!validateModalField(form.telefono_eps_modal, false, v => ({isValid: /^\d{7,15}$/.test(v) || v === ""}), "Teléfono", "Solo numeros 7-15 dígitos.")) allValid = false;
             if (!validateModalField(form.correo_eps_modal, false, v => ({isValid: /^\S+@\S+\.\S+$/.test(v) || v === ""}), "Correo", "Correo inválido.")) allValid = false;
             if (!validateModalField(form.nom_gerente_eps_modal, false, v => ({isValid: /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s.,'-]+$/.test(v) || v === ""}), "Nombre Gerente", "Nombre inavlido solo letras y espacios.")) allValid = false;
 
         } else if (tipo === 'ips') {
-            if (!validateModalField(form.nom_ips_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s.,'-]+$/.test(v)}), "Nombre IPS", "Nombre inválido (mín 3, máx 150, solo letras, números y algunos símbolos).")) allValid = false;
+            if (!validateModalField(form.nom_ips_modal, true, v => ({isValid: v.length >= 3 && v.length <= 150 && /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/.test(v)}), "Nombre IPS", "Nombre inválido (mín 3, máx 150, solo se permiten letras y espacios).")) allValid = false;
             if (!validateModalField(form.id_dep_ips_modal, true, null, "Departamento")) allValid = false;
             if (!validateModalField(form.ubicacion_mun_ips_modal, true, null, "Municipio")) allValid = false;
             if (!validateModalField(form.tel_ips_modal, false, v => ({isValid: /^\d{7,15}$/.test(v) || v === ""}), "Teléfono", "Solo numeros 7-15 dígitos.")) allValid = false;

@@ -181,8 +181,6 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 <head>
     <link rel="icon" type="image/png" href="../img/loguito.png">
     <title>Ver Entidades - Administración</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="../css/mejoras.css?v=<?php echo time(); ?>">
     <style>
         .columna-acciones-fija {
             width: 220px;

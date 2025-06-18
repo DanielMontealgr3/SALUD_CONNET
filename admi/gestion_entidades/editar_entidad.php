@@ -82,14 +82,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_update = $con->prepare($sql_update);
                 
                 if ($stmt_update->execute($params_update)) {
-                    $_SESSION['mensaje_accion'] = "Entidad '" . htmlspecialchars(reset($update_data)) . "' actualizada correctamente.";
-                    $_SESSION['mensaje_accion_tipo'] = "success";
-                    echo json_encode(['success' => true, 'message' => 'Entidad actualizada correctamente.']);
+                    $nombre_actualizado = htmlspecialchars(reset($update_data));
+                    echo json_encode(['success' => true, 'message' => "La entidad '" . $nombre_actualizado . "' fue actualizada exitosamente."]);
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Error al ejecutar la actualización en la base de datos.']);
                 }
             } else {
-                echo json_encode(['success' => true, 'message' => 'No se realizaron cambios (no se proporcionaron datos diferentes).']);
+                echo json_encode(['success' => true, 'message' => 'No se realizaron cambios.']);
             }
         } catch (PDOException $e) {
             error_log("Error PDO al actualizar entidad: " . $e->getMessage());
