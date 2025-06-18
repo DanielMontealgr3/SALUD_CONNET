@@ -1,4 +1,3 @@
-/* === ESTILOS GLOBALES Y DE DISEÑO BASE === */
 html {
     height: 100%;
     margin: 0;
@@ -25,12 +24,10 @@ body {
     overflow-x: hidden; 
 }
 
-/* === ESTILOS PARA LA PÁGINA DE INICIO DEL ADMINISTRADOR (admi/inicio.php) === */
 #contenido-principal-inicio {
     align-items: center; 
     justify-content: center; 
-    /* background: linear-gradient(to bottom, #ffffff, #f0f4f8); */ /* Comentado, si prefieres fondo sólido */
-    background-color: #ffffff; /* Fondo blanco para que el ECG resalte */
+    background-color: #ffffff;
 }
 
 .contenedor-bienvenida {
@@ -39,22 +36,19 @@ body {
     margin: auto; 
 }
 
-/* Contenedor para la animación ECG */
 #ecg-animation-container {
     width: 100%;
-    max-width: 400px; /* Ancho máximo del ECG */
-    height: 120px; /* Altura para el ECG */
+    max-width: 400px;
+    height: 120px;
     margin-left: auto;
     margin-right: auto;
-    overflow: hidden; /* Para que la línea no se salga al animar */
-    /* border: 1px solid #eee; // Opcional, para ver el contenedor */
+    overflow: hidden;
 }
 
 #ecg-svg {
-    display: block; /* Para centrar si el contenedor es más ancho */
+    display: block;
     margin: auto;
 }
-
 
 .mensaje-bienvenida-admin {
     color: rgb(0, 86, 149); 
@@ -73,15 +67,12 @@ body {
     margin-bottom: 2rem !important;
 }
 
-/* Ya no se usa la imagen estática, pero dejo el estilo por si lo reutilizas */
 .imagen-bienvenida-admin {
     border: 3px solid rgba(0, 117, 201, 0.2); 
     padding: 5px;
     background-color: #fff;
 }
 
-
-/* === COMPONENTES GENERALES (MENSAJES, IMÁGENES - MENOS ESPECÍFICOS) === */
 .mensaje-bienvenida strong { 
     color: rgb(0, 117, 201); 
 }
@@ -94,7 +85,6 @@ body {
     border-radius: 8px;
 }
 
-/* === TÍTULOS DE SECCIÓN (Para otras vistas) === */
 h3.titulo-lista { 
     text-align: center;
     color: #343a40; 
@@ -120,8 +110,6 @@ h3.titulo-lista-tabla,
     flex-shrink: 0;
 }
 
-
-/* === CONTENEDORES DE FILTROS === */
 .filtros-superiores-container, 
 .filtros-tabla-container { 
     background-color: #ffffff; 
@@ -171,8 +159,6 @@ h3.titulo-lista-tabla,
 .filtros-superiores-container .filtro-item-expandir { flex-grow: 1; }
 .filtros-superiores-container .filtro-item-expandir .form-control-sm { width: 100%; }
 
-
-/* === ESTILOS DE TABLAS (Mejorados y unificados) === */
 .vista-datos-container { 
     background-color: #ffffff;
     padding: 20px 25px; 
@@ -279,8 +265,6 @@ td .truncate-text {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-
-/* === BOTONES GENERALES === */
 .btn-success { background-color: #28a745; border-color: #28a745; } 
 .btn-success:hover { background-color: #218838; border-color: #1e7e34; }
 .btn-danger { background-color: #e74c3c; border-color: #e74c3c; } 
@@ -292,7 +276,6 @@ td .truncate-text {
 .btn-secondary { background-color: #6c757d; border-color: #6c757d; }
 .btn-secondary:hover { background-color: #5a6268; border-color: #545b62; }
 
-/* === CONTENEDORES DE FORMULARIO (Crear Usuario, Crear Entidad, Crear Horario) === */
 .form-container,
 .form-container-entidad {
     max-width: 850px; 
@@ -358,8 +341,6 @@ td .truncate-text {
     position: sticky; top: 0; background-color: #ffffff; z-index: 1; padding-bottom: 5px; 
 }
 
-
-/* === VALIDACIÓN DE FORMULARIOS (General) === */
 .form-control.is-invalid, .was-validated .form-control:invalid,
 .form-select.is-invalid, .was-validated .form-select:invalid {
     border-color: #e74c3c; 
@@ -383,7 +364,6 @@ td .truncate-text {
     border-color: #2ecc71; box-shadow: 0 0 0 .25rem rgba(46, 204, 113,.25); 
 }
 
-/* === PAGINACIÓN === */
 .paginacion-tabla-container { 
     margin-top: 1.5rem; display: flex; justify-content: center;
 }
@@ -408,8 +388,6 @@ td .truncate-text {
     padding: 0.4rem 0.75rem !important; line-height: inherit; height: auto; cursor: pointer;
 }
 
-
-/* === MODALES DE CONFIRMACIÓN Y ALERTA === */
 .modal-confirmacion {
     display: none; position: fixed; z-index: 1060; 
     left: 0; top: 0; width: 100%; height: 100%; overflow: auto;
@@ -444,14 +422,12 @@ td .truncate-text {
 .modal-confirmacion .modal-botones .btn-primary { background-color: rgb(0, 117, 201); border-color: rgb(0, 117, 201);} 
 .modal-confirmacion .modal-botones .btn-primary:hover { background-color: rgb(0, 96, 165); border-color: rgb(0, 96, 165);}
 
-/* === ESTADOS DESHABILITADOS (General) === */
 select:disabled, .form-select:disabled, 
 input[type="text"]:disabled, .form-control:disabled,
 .flatpickr-input[readonly]:disabled { 
     background-color: #e9ecef !important; opacity: 0.7; cursor: not-allowed !important; border-color: #ced4da;
 }
 
-/* === BLOQUES DE HORA (Ej: Formulario creación horario) === */
 #contenedor_bloques_hora .form-check-inline { margin-right: .8rem; margin-bottom: .5rem; }
 #contenedor_bloques_hora .form-check-input:checked {
     background-color: rgb(0, 117, 201); 
@@ -461,14 +437,12 @@ input[type="text"]:disabled, .form-control:disabled,
     box-shadow: 0 0 0 0.25rem rgba(0, 117, 201, 0.25);
 }
 
-/* === BADGES GENERALES BOOTSTRAP (Sobrescrituras para tu paleta) === */
 .badge.bg-primary { background-color: rgb(0, 117, 201) !important; }
 .badge.bg-info { background-color: #5dade2 !important; color: white !important; } 
 .badge.bg-success { background-color: #2ecc71 !important; } 
 .badge.bg-danger { background-color: #e74c3c !important; } 
 .badge.bg-warning { background-color: #f39c12 !important; color: white !important; } 
 
-/* === ESTILOS PARA MODAL DE HORARIOS DE MÉDICO === */
 .modal-content-horarios { background-color: #fdfdff; border: 1px solid #e0e6ed; border-radius: .5rem; box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
 .modal-header-horarios { 
     padding: 0.8rem 1.25rem; background-color: rgb(0, 117, 201) !important; 
@@ -512,8 +486,6 @@ input[type="text"]:disabled, .form-control:disabled,
 .modal-footer-horarios .btn-outline-secondary { border-color: #adb5bd; color: #495057;}
 .modal-footer-horarios .btn-outline-secondary:hover { background-color: #e9ecef; }
 
-
-/* === MEDIA QUERIES (RESPONSIVE DESIGN) === */
 @media (min-width: 768px) { 
     .tabla-admin-mejorada td.acciones-tabla .btn span,
     .tabla-usuarios td.acciones-tabla .btn span { 
@@ -567,11 +539,6 @@ input[type="text"]:disabled, .form-control:disabled,
     .badge-estado { font-size: 0.65rem; min-width: 55px; padding: 0.25em 0.4em;}
 }
 
-
-
-/* ESTU¿ILOS MEJORAS */
-
-/* === Mejoras para Filtros y Búsqueda en Tiempo Real === */
 .filtros-tabla-container .input-group-text {
     background-color: #e9ecef;
     border: 1px solid #cbd5e0;
@@ -597,19 +564,17 @@ input[type="text"]:disabled, .form-control:disabled,
     z-index: 5;
 }
 
-/* === Fix para Botones de Acción (Punto 7) === */
 .tabla-admin-mejorada th.columna-acciones {
-    min-width: 180px; /* Ancho mínimo para la columna */
-    width: 180px;     /* Ancho fijo para la columna */
+    min-width: 180px;
+    width: 180px;
     text-align: center !important;
 }
 
 .tabla-admin-mejorada td.acciones-tabla {
-    justify-content: center; /* Centra los botones dentro del TD */
+    justify-content: center;
     white-space: nowrap;
 }
 
-/* === Estilos para Modal de Detalles (Punto 5) === */
 #modalVerDetalles .modal-header {
     background-color: #005A9C;
     color: white;
@@ -657,3 +622,75 @@ input[type="text"]:disabled, .form-control:disabled,
 #modalVerDetalles .badge {
     font-size: 0.9rem;
 }
+
+/* === INICIO DE ESTILOS PARA MODAL DE RESPUESTA === */
+.modal-custom {
+    max-width: 400px;
+}
+.modal-content-custom {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+.modal-icon-container { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 1.25rem;
+    margin-top: 0.5rem;
+}
+.modal-icon-svg { 
+    width: 80px; 
+    height: 80px; 
+}
+.modal-icon-svg .checkmark__circle, .modal-icon-svg .crossmark__circle { 
+    stroke-dasharray: 166; 
+    stroke-dashoffset: 166; 
+    stroke-width: 3; 
+    stroke-miterlimit: 10; 
+    fill: none; 
+    animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; 
+}
+.modal-icon-svg .checkmark__circle { stroke: #2ecc71; }
+.modal-icon-svg .checkmark__check { 
+    transform-origin: 50% 50%; 
+    stroke-dasharray: 48; 
+    stroke-dashoffset: 48; 
+    stroke: #2ecc71;
+    stroke-width: 4; 
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; 
+}
+.modal-icon-svg .crossmark__circle { stroke: #e74c3c; }
+.modal-icon-svg .crossmark__line { 
+    transform-origin: 50% 50%; 
+    stroke-dasharray: 48; 
+    stroke-dashoffset: 48; 
+    stroke: #e74c3c;
+    stroke-width: 4; 
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; 
+}
+@keyframes stroke { 
+    100% { stroke-dashoffset: 0; } 
+}
+.modal-footer-custom {
+    display: flex;
+    justify-content: center;
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    border-top: none;
+}
+.btn-primary-custom {
+    background-color: #5865F2; /* Color morado/azul de la imagen */
+    border: none;
+    color: white;
+    padding: 0.6rem 0;
+    width: 120px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+.btn-primary-custom:hover {
+    background-color: #4752C4;
+    color: white;
+}
+/* === FIN DE ESTILOS PARA MODAL DE RESPUESTA === */

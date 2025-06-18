@@ -277,7 +277,7 @@ if ($con) {
             </div>    
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     
     <div class="modal-confirmacion" id="modalConfirmacionAccion" style="display:none;">
         <div class="modal-contenido">

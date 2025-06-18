@@ -107,7 +107,7 @@ if ($con) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>SaludConnect - Lista de Farmaceutas</title>
     <style>
         .btn-group-acciones .btn { margin-right: 3px; margin-bottom: 3px; display: inline-flex; align-items: center; font-size:0.8rem; padding: 0.25rem 0.5rem;}
@@ -117,7 +117,7 @@ if ($con) {
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../include/menu.php'; ?>
+    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
@@ -272,7 +272,7 @@ if ($con) {
             </div>    
         </div>
     </main>
-    <?php include '../include/footer.php'; ?>
+    <?php include '../../include/footer.php'; ?>
     
     <div class="modal-confirmacion" id="modalConfirmacionAccion" style="display:none;">
         <div class="modal-contenido">

@@ -3,11 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const formCrearEntidad = document.getElementById('formCrearEntidad');
     const submitButton = formCrearEntidad.querySelector('button[type="submit"]');
     const globalMessagesContainer = document.getElementById('global-messages-container');
+    const responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
 
     const formFarmacia = document.getElementById('form_farmacia');
     const formEps = document.getElementById('form_eps');
     const formIps = document.getElementById('form_ips');
     const allForms = [formFarmacia, formEps, formIps];
+    const allInputs = formCrearEntidad.querySelectorAll('input, select');
 
     const nitFarm = document.getElementById('nit_farm');
     const nomFarm = document.getElementById('nom_farm');
@@ -31,6 +33,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const nomGerenteIps = document.getElementById('nom_gerente_ips');
     const telIps = document.getElementById('tel_ips');
     const correoIps = document.getElementById('correo_ips');
+    
+    const showResponseModal = (status, title, message) => {
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+
+        const successIcon = `<svg class="modal-icon-svg checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>`;
+        const errorIcon = `<svg class="modal-icon-svg crossmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="crossmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="crossmark__line" fill="none" d="M16 16 36 36 M36 16 16 36"/></svg>`;
+
+        modalIcon.innerHTML = (status === 'success') ? successIcon : errorIcon;
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+
+        responseModal.show();
+    };
 
     const setError = (element, message) => {
         if (!element) return;
@@ -61,6 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const clearAllValidations = () => {
+        allInputs.forEach(input => clearValidation(input));
+    };
+
     function validateNit(field) {
         if (!field || field.disabled) return true;
         const value = field.value.trim();
@@ -77,16 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.]+$/u.test(value)) { setError(field, `El ${fieldName} solo debe contener letras, puntos y espacios.`); return false; }
         setSuccess(field); return true;
     }
-    
-    function validateOptionalNameField(field, fieldName = "Nombre Gerente") {
-        if (!field || field.disabled) return true;
-        const value = field.value.trim();
-        if (value !== "" && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/u.test(value)) {
-            setError(field, `El ${fieldName} solo debe contener letras y espacios si se ingresa.`); return false;
-        }
-        if(value === "") clearValidation(field); else setSuccess(field);
-        return true;
-    }
 
     function validateAddress(field, fieldName = "Dirección") {
         if (!field || field.disabled) return true;
@@ -98,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function validatePhone(field) {
         if (!field || field.disabled) return true;
         const value = field.value.trim();
-        if (value === "") { clearValidation(field); return true; } 
+        if (value === "") { setError(field, 'El teléfono es obligatorio.'); return false; } 
         if (!/^\d+$/.test(value)) { setError(field, 'El teléfono solo debe contener números.'); return false; }
         if (value.length < 7 || value.length > 10) { setError(field, 'El teléfono debe tener entre 7 y 10 dígitos.'); return false; }
         setSuccess(field); return true;
@@ -107,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateEmail(field) {
         if (!field || field.disabled) return true;
         const value = field.value.trim();
-        if (value === "") { clearValidation(field); return true; } 
+        if (value === "") { setError(field, 'El correo es obligatorio.'); return false; } 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/; 
         if (!emailRegex.test(value)) { setError(field, 'El formato del correo no es válido.'); return false; }
         setSuccess(field); return true;
@@ -139,47 +150,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedType = tipoEntidadSelector.value;
         let activeForm = null;
 
-        if (selectedType === 'farmacia' && formFarmacia) activeForm = formFarmacia;
-        else if (selectedType === 'eps' && formEps) activeForm = formEps;
-        else if (selectedType === 'ips' && formIps) activeForm = formIps;
+        if (selectedType === 'farmacia') activeForm = formFarmacia;
+        else if (selectedType === 'eps') activeForm = formEps;
+        else if (selectedType === 'ips') activeForm = formIps;
 
         if (activeForm) {
             activeForm.style.display = 'block';
             setFieldStatus(activeForm, false);
-            if(selectedType === 'ips' && munIpsSelect && depIpsSelect){ 
-                depIpsSelect.disabled = false;
-                if(depIpsSelect.value && munIpsSelect.options.length <= 1 && munIpsSelect.dataset.currentValue) { 
-                    depIpsSelect.dispatchEvent(new Event('change')); 
-                } else if(!depIpsSelect.value) {
-                     munIpsSelect.disabled = true; 
-                     munIpsSelect.innerHTML = '<option value="">Seleccione Departamento primero...</option>';
-                     clearValidation(munIpsSelect); 
-                }
+            if(selectedType === 'ips' && munIpsSelect && depIpsSelect){
+                munIpsSelect.disabled = !depIpsSelect.value;
             }
             if (submitButton) submitButton.disabled = false;
             if (selectedType !== "") setSuccess(tipoEntidadSelector); else clearValidation(tipoEntidadSelector);
         } else {
-            if(selectedType === "" && tipoEntidadSelector.name === "tipo_entidad_selector") { // Solo mostrar error si es el selector principal
+             if(selectedType === "") {
                 setError(tipoEntidadSelector, "Debe seleccionar un tipo de entidad.");
-            } else {
-                clearValidation(tipoEntidadSelector);
-            }
+             } else {
+                 clearValidation(tipoEntidadSelector);
+             }
         }
     }
 
     if (tipoEntidadSelector) {
         tipoEntidadSelector.addEventListener('change', showSelectedForm);
-        if (document.readyState === "complete" || document.readyState === "interactive") {
-            showSelectedForm();
-        } else {
-            document.addEventListener("DOMContentLoaded", showSelectedForm);
-        }
+        showSelectedForm();
     }
 
     if (depIpsSelect) {
         depIpsSelect.addEventListener('change', function() {
             const idDep = this.value;
-            const currentMunValue = munIpsSelect.dataset.currentValue || "";
             munIpsSelect.innerHTML = '<option value="">Cargando municipios...</option>';
             munIpsSelect.disabled = true;
             clearValidation(munIpsSelect); 
@@ -192,56 +191,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (idDep) {
                 fetch(`../ajax/get_municipios.php?id_dep=${encodeURIComponent(idDep)}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Error en la respuesta de red');
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
                         munIpsSelect.innerHTML = '<option value="">Seleccione Municipio...</option>';
                         if (data && data.length > 0) {
                             data.forEach(mun => {
-                                const option = document.createElement('option');
-                                option.value = mun.id;
-                                option.textContent = mun.nombre;
-                                if(mun.id === currentMunValue) option.selected = true;
+                                const option = new Option(mun.nombre, mun.id);
                                 munIpsSelect.appendChild(option);
                             });
                             munIpsSelect.disabled = false;
-                            if(munIpsSelect.value) setSuccess(munIpsSelect); else setError(munIpsSelect, "Debe seleccionar un Municipio.");
-
                         } else {
                             munIpsSelect.innerHTML = '<option value="">No hay municipios</option>';
                             setError(munIpsSelect, "No hay municipios para este departamento.");
                         }
-                        if(currentMunValue && munIpsSelect.value === currentMunValue) setSuccess(munIpsSelect); // Re-validar si se repobló
                     })
                     .catch(error => {
                         console.error('Error cargando municipios:', error);
                         munIpsSelect.innerHTML = '<option value="">Error al cargar</option>';
-                        if(!this.disabled) setError(this, "Error cargando municipios.");
+                        setError(munIpsSelect, "Error al cargar municipios.");
                     });
             } else {
                 munIpsSelect.innerHTML = '<option value="">Seleccione Departamento primero...</option>';
-                if(!munIpsSelect.disabled) setError(munIpsSelect, "Debe seleccionar un Municipio (después del Departamento).");
+                munIpsSelect.disabled = true;
             }
         });
-        if(munIpsSelect.value) munIpsSelect.dataset.currentValue = munIpsSelect.value;
-        if (depIpsSelect.value && munIpsSelect.options.length <= 1 && tipoEntidadSelector.value === 'ips') {
-             depIpsSelect.dispatchEvent(new Event('change'));
-        }
     }
     
     if(nitFarm) nitFarm.addEventListener('input', () => validateNit(nitFarm));
     if(nomFarm) nomFarm.addEventListener('input', () => validateNameField(nomFarm, "Nombre Farmacia"));
     if(direcFarm) direcFarm.addEventListener('input', () => validateAddress(direcFarm));
-    if(nomGerenteFarm) nomGerenteFarm.addEventListener('input', () => validateOptionalNameField(nomGerenteFarm, "Nombre Gerente"));
+    if(nomGerenteFarm) nomGerenteFarm.addEventListener('input', () => validateNameField(nomGerenteFarm, "Nombre Gerente"));
     if(telFarm) telFarm.addEventListener('input', () => validatePhone(telFarm));
     if(correoFarm) correoFarm.addEventListener('input', () => validateEmail(correoFarm));
 
     if(nitEps) nitEps.addEventListener('input', () => validateNit(nitEps));
     if(nomEps) nomEps.addEventListener('input', () => validateNameField(nomEps, "Nombre EPS"));
     if(direcEps) direcEps.addEventListener('input', () => validateAddress(direcEps));
-    if(nomGerenteEps) nomGerenteEps.addEventListener('input', () => validateOptionalNameField(nomGerenteEps, "Nombre Gerente"));
+    if(nomGerenteEps) nomGerenteEps.addEventListener('input', () => validateNameField(nomGerenteEps, "Nombre Gerente"));
     if(telEps) telEps.addEventListener('input', () => validatePhone(telEps));
     if(correoEps) correoEps.addEventListener('input', () => validateEmail(correoEps));
     
@@ -250,16 +236,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if(direcIps) direcIps.addEventListener('input', () => validateAddress(direcIps, "Dirección (Detalle)"));
     if(depIpsSelect) depIpsSelect.addEventListener('change', () => validateSelect(depIpsSelect, 'Departamento'));
     if(munIpsSelect) munIpsSelect.addEventListener('change', () => validateSelect(munIpsSelect, 'Municipio'));
-    if(nomGerenteIps) nomGerenteIps.addEventListener('input', () => validateOptionalNameField(nomGerenteIps, "Nombre Gerente"));
+    if(nomGerenteIps) nomGerenteIps.addEventListener('input', () => validateNameField(nomGerenteIps, "Nombre Gerente"));
     if(telIps) telIps.addEventListener('input', () => validatePhone(telIps));
     if(correoIps) correoIps.addEventListener('input', () => validateEmail(correoIps));
 
     if (formCrearEntidad) {
         formCrearEntidad.addEventListener('submit', function(e) {
+            e.preventDefault(); 
             let isValid = true;
             const selectedType = tipoEntidadSelector.value;
             
-            if (globalMessagesContainer) globalMessagesContainer.innerHTML = '';
+            globalMessagesContainer.innerHTML = '';
 
             if (!validateSelect(tipoEntidadSelector, "Tipo de entidad")) isValid = false;
 
@@ -267,14 +254,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!validateNit(nitFarm)) isValid = false;
                 if (!validateNameField(nomFarm, "Nombre Farmacia")) isValid = false;
                 if (!validateAddress(direcFarm)) isValid = false;
-                if (!validateOptionalNameField(nomGerenteFarm, "Nombre Gerente")) isValid = false;
+                if (!validateNameField(nomGerenteFarm, "Nombre Gerente")) isValid = false;
                 if (!validatePhone(telFarm)) isValid = false;
                 if (!validateEmail(correoFarm)) isValid = false;
             } else if (selectedType === 'eps') {
                 if (!validateNit(nitEps)) isValid = false;
                 if (!validateNameField(nomEps, "Nombre EPS")) isValid = false;
                 if (!validateAddress(direcEps)) isValid = false;
-                if (!validateOptionalNameField(nomGerenteEps, "Nombre Gerente")) isValid = false;
+                if (!validateNameField(nomGerenteEps, "Nombre Gerente")) isValid = false;
                 if (!validatePhone(telEps)) isValid = false;
                 if (!validateEmail(correoEps)) isValid = false;
             } else if (selectedType === 'ips') {
@@ -283,29 +270,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!validateAddress(direcIps, "Dirección (Detalle)")) isValid = false;
                 if (!validateSelect(depIpsSelect, "Departamento Ubicación")) isValid = false;
                 if (!validateSelect(munIpsSelect, "Municipio Ubicación")) isValid = false;
-                if (!validateOptionalNameField(nomGerenteIps, "Nombre Gerente")) isValid = false;
+                if (!validateNameField(nomGerenteIps, "Nombre Gerente")) isValid = false;
                 if (!validatePhone(telIps)) isValid = false;
                 if (!validateEmail(correoIps)) isValid = false;
             }
 
             if (!isValid) {
-                e.preventDefault();
-                if (globalMessagesContainer) {
-                    globalMessagesContainer.innerHTML = '<div class="alert alert-danger">Por favor, corrija los campos marcados en rojo.</div>';
+                globalMessagesContainer.innerHTML = '<div class="alert alert-danger">Por favor, corrija los campos marcados en rojo.</div>';
+                const firstError = formCrearEntidad.querySelector('.is-invalid:not([disabled])');
+                if (firstError) {
+                    firstError.focus();
                 }
-                const primerError = formCrearEntidad.querySelector('.is-invalid:not([disabled])');
-                if (primerError) {
-                    primerError.focus();
-                     setTimeout(() => {
-                         primerError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 100);
-                }
-            } else {
-                if(submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
-                }
+                return;
             }
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+
+            const formData = new FormData(formCrearEntidad);
+
+            fetch('crear_entidad.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showResponseModal('success', '¡Éxito!', data.message);
+                    formCrearEntidad.reset();
+                    clearAllValidations();
+                    tipoEntidadSelector.dispatchEvent(new Event('change'));
+                } else {
+                    showResponseModal('error', 'Error', data.message || 'Ocurrió un error desconocido.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showResponseModal('error', 'Error de Conexión', 'No se pudo comunicar con el servidor. Revise su conexión a internet.');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Guardar Entidad <i class="bi bi-check-circle"></i>';
+            });
         });
     }
 });
