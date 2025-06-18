@@ -1,109 +1,145 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const modalConfirm = document.getElementById('modalConfirmacionAlianza');
-    const tituloModal = document.getElementById('tituloConfirmacionAlianza');
-    const mensajeModal = document.getElementById('mensajeModalConfirmacionAlianza');
-    const btnConfirmarAccion = document.getElementById('btnConfirmarAccionAlianza');
-    const btnCancelarAccion = document.getElementById('btnCancelarAccionAlianza');
-    let datosAccionActual = null;
+    const filtros = {
+        tipo: document.getElementById('filtro_tipo'),
+        estado: document.getElementById('filtro_estado'),
+        ordenFecha: document.getElementById('filtro_orden_fecha'),
+        nombreEps: document.getElementById('filtro_nombre_eps'),
+        entidadAliada: document.getElementById('filtro_nombre_entidad_aliada')
+    };
+    const btnLimpiar = document.getElementById('btn_limpiar_filtros');
+    const tablaBody = document.getElementById('tabla_alianzas_body');
+    const paginacionContainer = document.getElementById('paginacion_lista');
+    const responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
+    const modalVerAlianza = new bootstrap.Modal(document.getElementById('modalVerAlianza'));
+    let debounceTimer;
 
-    document.querySelectorAll('.btn-cambiar-estado-alianza').forEach(button => {
-        button.addEventListener('click', function() {
-            datosAccionActual = {
-                id_alianza: this.dataset.idAlianza,
-                tabla_origen: this.dataset.tablaOrigen,
-                nit_eps: this.dataset.nitEps,
-                nit_entidad: this.dataset.nitEntidad,
-                accion: this.dataset.accion, 
-                tipoOperacion: 'cambiarEstado'
-            };
-            const accionTexto = datosAccionActual.accion === 'activar' ? 'Activar' : 'Inactivar';
-            tituloModal.textContent = `${accionTexto} Alianza`;
-            mensajeModal.textContent = `¿Está seguro que desea ${datosAccionActual.accion.toLowerCase()} esta alianza?`;
-            btnConfirmarAccion.className = datosAccionActual.accion === 'activar' ? 'btn btn-success' : 'btn btn-warning';
-            btnConfirmarAccion.textContent = accionTexto;
-            modalConfirm.style.display = 'flex';
+    const showResponseModal = (status, title, message) => {
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const successIcon = `<svg class="modal-icon-svg checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>`;
+        const errorIcon = `<svg class="modal-icon-svg crossmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="crossmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="crossmark__line" fill="none" d="M16 16 36 36 M36 16 16 36"/></svg>`;
+        modalIcon.innerHTML = (status === 'success') ? successIcon : errorIcon;
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        responseModal.show();
+    };
+
+    function fetchAlianzas(pagina = 1) {
+        let params = new URLSearchParams({
+            pagina: pagina,
+            filtro_tipo: filtros.tipo.value,
+            filtro_estado: filtros.estado.value,
+            filtro_orden_fecha: filtros.ordenFecha.value,
+            filtro_nombre_eps: filtros.nombreEps.value.trim(),
+            filtro_nombre_entidad_aliada: filtros.entidadAliada.value.trim()
         });
-    });
-
-    document.querySelectorAll('.btn-eliminar-alianza').forEach(button => {
-        button.addEventListener('click', function() {
-            datosAccionActual = {
-                id_alianza: this.dataset.idAlianza,
-                tabla_origen: this.dataset.tablaOrigen,
-                nombre_eps: this.dataset.nombreEps,
-                nombre_entidad: this.dataset.nombreEntidad,
-                tipoOperacion: 'eliminar'
-            };
-            tituloModal.textContent = 'Confirmar Eliminación';
-            mensajeModal.innerHTML = `¿Está seguro que desea eliminar la alianza entre <strong>${datosAccionActual.nombre_eps}</strong> y <strong>${datosAccionActual.nombre_entidad}</strong>? Esta acción es irreversible.`;
-            btnConfirmarAccion.className = 'btn btn-danger';
-            btnConfirmarAccion.textContent = 'Eliminar';
-            modalConfirm.style.display = 'flex';
-        });
-    });
-
-    btnConfirmarAccion.addEventListener('click', function() {
-        if (!datosAccionActual) return;
-
-        const formData = new FormData();
-        formData.append('csrf_token', typeof csrfTokenAlianzas !== 'undefined' ? csrfTokenAlianzas : '');
-        formData.append('tabla_origen', datosAccionActual.tabla_origen);
-        
-        let urlFetch = '';
-
-        if (datosAccionActual.tipoOperacion === 'cambiarEstado') {
-            formData.append('nit_eps', datosAccionActual.nit_eps);
-            formData.append('nit_entidad', datosAccionActual.nit_entidad);
-            formData.append('accion_alianza', datosAccionActual.accion);
-            urlFetch = '../admi/cambiar_estado_alianza.php'; 
-        } else if (datosAccionActual.tipoOperacion === 'eliminar') {
-            formData.append('id_alianza', datosAccionActual.id_alianza);
-            urlFetch = '../admi/eliminar_alianza.php'; // AJUSTADO AQUÍ
-        }
-
-        fetch(urlFetch, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Error: ' + (data.message || 'No se pudo completar la acción.'));
-            }
-        })
-        .catch(error => {
-            console.error('Error en fetch:', error);
-            alert('Error de comunicación con el servidor.');
-        })
-        .finally(() => {
-            modalConfirm.style.display = 'none';
-            datosAccionActual = null;
-        });
-    });
-
-    btnCancelarAccion.addEventListener('click', () => {
-        modalConfirm.style.display = 'none';
-        datosAccionActual = null;
-    });
-    window.addEventListener('click', (event) => {
-        if (event.target === modalConfirm) {
-            modalConfirm.style.display = 'none';
-            datosAccionActual = null;
-        }
-    });
-
-    const pageContainer = document.getElementById('page-number-container'); 
-    if(pageContainer) {
-        const pageIS = pageContainer.querySelector('.page-number-display'); 
-        const pageIF = pageContainer.querySelector('.page-number-input-field'); 
-        if(pageIS && pageIF){ 
-            pageIS.addEventListener('click', () => { pageIS.style.display = 'none'; pageIF.style.display = 'inline-block'; pageIF.focus(); pageIF.select(); }); 
-            const goPg = () => { const tp = parseInt(pageIF.dataset.total, 10) || 1; let tgPg = parseInt(pageIF.value, 10); if (isNaN(tgPg) || tgPg < 1) tgPg = 1; else if (tgPg > tp) tgPg = tp; const curl = new URL(window.location.href); curl.searchParams.set('pagina', tgPg); window.location.href = curl.toString(); }; 
-            const hideInput = () => { const totalPgs = parseInt(pageIF.dataset.total, 10) || 1; const currentPageVal = parseInt(pageIF.value, 10); let displayPage; if (isNaN(currentPageVal) || currentPageVal < 1) { displayPage = pageIS.textContent.split(' / ')[0].trim(); pageIF.value = displayPage; } else if (currentPageVal > totalPgs) { displayPage = totalPgs; pageIF.value = totalPgs; } else { displayPage = pageIF.value; } pageIS.textContent = displayPage + ' / ' + totalPgs; pageIS.style.display = 'inline-block'; pageIF.style.display = 'none'; }; 
-            pageIF.addEventListener('blur', () => { setTimeout(hideInput, 150); }); 
-            pageIF.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); goPg(); } else if (e.key === 'Escape'){ pageIF.value = pageIS.textContent.split(' / ')[0].trim(); hideInput(); } }); 
-        }
+        fetch(`lista_alianzas.php?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.json())
+            .then(data => {
+                tablaBody.innerHTML = data.html_body;
+                actualizarPaginacion(data.paginacion);
+                inicializarListenersBotones();
+            }).catch(error => {
+                console.error('Error al cargar alianzas:', error);
+                tablaBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error de comunicación con el servidor.</td></tr>';
+            });
     }
+
+    function actualizarPaginacion({ actual, total }) {
+        paginacionContainer.innerHTML = '';
+        if (total <= 1) return;
+        let html = `<li class="page-item ${actual <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-pagina="${actual - 1}"><i class="bi bi-chevron-left"></i></a></li>`;
+        html += `<li class="page-item active"><a class="page-link" href="#">${actual} / ${total}</a></li>`;
+        html += `<li class="page-item ${actual >= total ? 'disabled' : ''}"><a class="page-link" href="#" data-pagina="${actual + 1}"><i class="bi bi-chevron-right"></i></a></li>`;
+        paginacionContainer.innerHTML = html;
+    }
+
+    function inicializarListenersBotones() {
+        document.querySelectorAll('.btn-cambiar-estado, .btn-eliminar-alianza').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const tabla = this.dataset.tabla;
+                const accion = this.dataset.accion || 'eliminar';
+                const info = this.dataset.info || `la alianza (ID: ${id})`;
+                const esEliminar = accion === 'eliminar';
+                const titulo = esEliminar ? '¿Confirmar Eliminación?' : `¿Confirmar ${accion === 'activar' ? 'Activación' : 'Inactivación'}?`;
+                const texto = esEliminar ? `¿Seguro que deseas eliminar ${info}?` : `¿Seguro que deseas ${accion} ${info}?`;
+
+                Swal.fire({
+                    title: titulo, html: texto, icon: 'warning', showCancelButton: true,
+                    confirmButtonColor: esEliminar ? '#e74c3c' : (accion === 'activar' ? '#28a745' : '#ffc107'),
+                    cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, ¡Confirmar!', cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) { gestionarAlianza(id, tabla, accion); }
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-ver-detalles-alianza').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const tabla = this.dataset.tabla;
+                const modalBody = document.getElementById('modalVerAlianzaBody');
+                modalBody.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p>Cargando detalles...</p></div>';
+                modalVerAlianza.show();
+                fetch(`ajax_detalle_alianza.php?id=${id}&tabla=${tabla}`)
+                    .then(response => response.text())
+                    .then(html => modalBody.innerHTML = html)
+                    .catch(error => {
+                        modalBody.innerHTML = '<div class="alert alert-danger">Error al cargar los detalles.</div>';
+                        console.error('Error:', error);
+                    });
+            });
+        });
+    }
+
+    function gestionarAlianza(id, tabla, accion) {
+        const formData = new FormData();
+        formData.append('id_alianza', id);
+        formData.append('tabla_origen', tabla);
+        formData.append('accion', accion);
+        formData.append('csrf_token', csrfTokenAlianzas);
+
+        fetch('ajax_gestionar_alianza.php', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                showResponseModal(data.success ? 'success' : 'error', data.success ? '¡Éxito!' : 'Error', data.message);
+                if (data.success) {
+                    const currentPage = parseInt(paginacionContainer.querySelector('.page-item.active .page-link')?.textContent.split(' ')[0] || '1', 10);
+                    fetchAlianzas(currentPage);
+                }
+            }).catch(error => {
+                console.error('Error en la operación:', error);
+                showResponseModal('error', 'Error de Conexión', 'No se pudo comunicar con el servidor.');
+            });
+    }
+    
+    // Carga inicial de paginación
+    fetchAlianzas(new URLSearchParams(window.location.search).get('pagina') || 1);
+
+    Object.values(filtros).forEach(filtro => {
+        const eventType = (filtro.tagName === 'SELECT') ? 'change' : 'input';
+        filtro.addEventListener(eventType, () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchAlianzas(1), 400);
+        });
+    });
+
+    btnLimpiar.addEventListener('click', () => {
+        filtros.tipo.value = 'todas';
+        filtros.estado.value = '';
+        filtros.ordenFecha.value = 'desc';
+        filtros.nombreEps.value = '';
+        filtros.entidadAliada.value = '';
+        fetchAlianzas(1);
+    });
+
+    paginacionContainer.addEventListener('click', (e) => {
+        e.preventDefault();
+        const link = e.target.closest('a.page-link');
+        if (link && !link.parentElement.classList.contains('disabled') && !link.parentElement.classList.contains('active')) {
+            fetchAlianzas(link.dataset.pagina);
+        }
+    });
 });
