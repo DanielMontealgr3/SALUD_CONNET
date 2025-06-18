@@ -25,28 +25,44 @@ if ($con) {
             $titulo_tabla = 'Todas las Entidades'; 
             $columnas_tabla = ['NIT', 'Nombre', 'Tipo', 'Teléfono', 'Correo', 'Acciones'];
             $params_union = [];
-            $where_clauses_union = [];
+            $where_clauses_union = ['farmacias' => '', 'eps' => '', 'ips' => ''];
+
             if (!empty($filtro_nombre_entidad)) {
-                $where_clauses_union['farmacias'] = "nom_farm LIKE :nombre_filtro";
-                $where_clauses_union['eps'] = "nombre_eps LIKE :nombre_filtro";
-                $where_clauses_union['ips'] = "nom_IPS LIKE :nombre_filtro";
-                $params_union[':nombre_filtro'] = "%" . $filtro_nombre_entidad . "%";
+                $filtro_valor = "%" . $filtro_nombre_entidad . "%";
+                $where_clauses_union['farmacias'] = "WHERE nom_farm LIKE :nombre_filtro_farm";
+                $where_clauses_union['eps'] = "WHERE nombre_eps LIKE :nombre_filtro_eps";
+                $where_clauses_union['ips'] = "WHERE nom_IPS LIKE :nombre_filtro_ips";
+                $params_union = [
+                    ':nombre_filtro_farm' => $filtro_valor,
+                    ':nombre_filtro_eps' => $filtro_valor,
+                    ':nombre_filtro_ips' => $filtro_valor,
+                ];
             }
-            $sql_farmacias = "(SELECT nit_farm as id, nom_farm as nombre, 'Farmacia' as tipo_display, tel_farm as telefono, correo_farm as correo, 'farmacias' as tipo_key FROM farmacias " . (!empty($where_clauses_union['farmacias']) ? "WHERE ".$where_clauses_union['farmacias'] : "") . ")";
-            $sql_eps = "(SELECT nit_eps as id, nombre_eps as nombre, 'EPS' as tipo_display, telefono, correo, 'eps' as tipo_key FROM eps " . (!empty($where_clauses_union['eps']) ? "WHERE ".$where_clauses_union['eps'] : "") . ")";
-            $sql_ips = "(SELECT Nit_IPS as id, nom_IPS as nombre, 'IPS' as tipo_display, tel_IPS as telefono, correo_IPS as correo, 'ips' as tipo_key FROM ips " . (!empty($where_clauses_union['ips']) ? "WHERE ".$where_clauses_union['ips'] : "") . ")";
+
+            $sql_farmacias = "(SELECT nit_farm as id, nom_farm as nombre, 'Farmacia' as tipo_display, tel_farm as telefono, correo_farm as correo, 'farmacias' as tipo_key FROM farmacias " . $where_clauses_union['farmacias'] . ")";
+            $sql_eps = "(SELECT nit_eps as id, nombre_eps as nombre, 'EPS' as tipo_display, telefono, correo, 'eps' as tipo_key FROM eps " . $where_clauses_union['eps'] . ")";
+            $sql_ips = "(SELECT Nit_IPS as id, nom_IPS as nombre, 'IPS' as tipo_display, tel_IPS as telefono, correo_IPS as correo, 'ips' as tipo_key FROM ips " . $where_clauses_union['ips'] . ")";
             
-            $count_sql = "SELECT SUM(count) as total FROM (SELECT COUNT(*) as count FROM farmacias " . (!empty($where_clauses_union['farmacias']) ? "WHERE ".$where_clauses_union['farmacias'] : "") . " UNION ALL SELECT COUNT(*) as count FROM eps " . (!empty($where_clauses_union['eps']) ? "WHERE ".$where_clauses_union['eps'] : "") . " UNION ALL SELECT COUNT(*) as count FROM ips " . (!empty($where_clauses_union['ips']) ? "WHERE ".$where_clauses_union['ips'] : "") . ") AS counts";
+            $count_sql = "SELECT SUM(count) as total FROM (
+                SELECT COUNT(*) as count FROM farmacias " . $where_clauses_union['farmacias'] . " UNION ALL 
+                SELECT COUNT(*) as count FROM eps " . $where_clauses_union['eps'] . " UNION ALL 
+                SELECT COUNT(*) as count FROM ips " . $where_clauses_union['ips'] . "
+            ) AS counts";
             
             $stmt_total = $con->prepare($count_sql);
-            if (!empty($params_union)) { $stmt_total->execute($params_union); } else { $stmt_total->execute(); }
+            $stmt_total->execute($params_union);
             $total_registros = (int)$stmt_total->fetchColumn();
 
             if ($total_registros > 0) {
                 $total_paginas = ceil($total_registros / $registros_por_pagina); if ($pagina_actual > $total_paginas) $pagina_actual = $total_paginas; if($total_paginas == 0) $total_paginas = 1; $offset = ($pagina_actual - 1) * $registros_por_pagina;
                 $sql_union = "$sql_farmacias UNION ALL $sql_eps UNION ALL $sql_ips ORDER BY nombre ASC LIMIT :limit OFFSET :offset_val";
                 $stmt = $con->prepare($sql_union);
-                if (!empty($params_union)) { foreach($params_union as $key => $val) { $stmt->bindValue($key, $val); } }
+                if (!empty($params_union)) { 
+                    foreach($params_union as $key => &$val) { 
+                        $stmt->bindParam($key, $val, PDO::PARAM_STR); 
+                    }
+                    unset($val);
+                }
                 $stmt->bindParam(':limit', $registros_por_pagina, PDO::PARAM_INT);
                 $stmt->bindParam(':offset_val', $offset, PDO::PARAM_INT);
                 $stmt->execute();
@@ -200,7 +216,12 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
-                <h3 id="titulo-de-tabla" class="titulo-lista-tabla"><?php echo htmlspecialchars($titulo_tabla); ?></h3>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 id="titulo-de-tabla" class="titulo-lista-tabla m-0 border-0 p-0"><?php echo htmlspecialchars($titulo_tabla); ?></h3>
+                    <a href="crear_entidad.php" class="btn btn-success btn-sm flex-shrink-0">
+                        <i class="bi bi-plus-circle-fill"></i> Nueva Entidad
+                    </a>
+                </div>
                 
                 <div class="filtros-tabla-container">
                     <div class="row g-3 align-items-end">
