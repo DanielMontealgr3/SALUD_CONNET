@@ -4,7 +4,7 @@ require_once '../../include/inactividad.php';
 require_once '../../include/conexion.php';
 
 function generarContenidoEntregas($con, $nit_farmacia_actual, &$total_registros_ref) {
-    $registros_por_pagina = 4;
+    $registros_por_pagina = 3;
     $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
     if ($pagina_actual < 1) $pagina_actual = 1;
 
@@ -96,7 +96,7 @@ function generarContenidoEntregas($con, $nit_farmacia_actual, &$total_registros_
     <?php endif;
     $paginacion_html = ob_get_clean();
 
-    return ['filas' => $filas_html, 'paginacion' => $paginacion_html];
+    return ['filas' => $filas_html, 'paginacion' => $paginacion_html, 'total_registros' => $total_registros_ref];
 }
 
 $db = new database();
@@ -129,6 +129,7 @@ if (isset($_GET['ajax_search'])) {
 $contenido_inicial = generarContenidoEntregas($con, $nit_farmacia_asignada_actual, $total_registros);
 $filas_html = $contenido_inicial['filas'];
 $paginacion_html = $contenido_inicial['paginacion'];
+$total_registros = $contenido_inicial['total_registros'];
 $pageTitle = "Historial de Entregas";
 ?>
 <!DOCTYPE html>
@@ -142,9 +143,10 @@ $pageTitle = "Historial de Entregas";
         .vista-datos-container { display: flex; flex-direction: column; flex-grow: 1; }
         .table-responsive { flex-grow: 1; }
         .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
-        .modal-body .alert {
-            background-color: #e9ecef; /* Un gris más oscuro */
-            border-color: #ced4da;
+        .modal-body .alert { background-color: #e9ecef; border-color: #ced4da; }
+        .is-invalid-date {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
         }
     </style>
 </head>
@@ -160,11 +162,11 @@ $pageTitle = "Historial de Entregas";
                         <div class="col-lg-2 col-md-6"><label for="filtro_doc" class="form-label"><i class="bi bi-person-badge"></i> Doc. Paciente:</label><input type="text" id="filtro_doc" class="form-control form-control-sm" placeholder="Buscar..."></div>
                         <div class="col-lg-2 col-md-6"><label for="filtro_id" class="form-label"><i class="bi bi-hash"></i> ID Entrega:</label><input type="text" id="filtro_id" class="form-control form-control-sm" placeholder="Buscar..."></div>
                         <div class="col-lg-2 col-md-6"><label for="filtro_orden_fecha" class="form-label"><i class="bi bi-sort-down"></i> Ordenar Fecha:</label><select id="filtro_orden_fecha" class="form-select form-select-sm"><option value="desc">Más Recientes</option><option value="asc">Más Antiguos</option></select></div>
-                        <div class="col-lg-2 col-md-6"><label for="filtro_fecha_inicio" class="form-label"><i class="bi bi-calendar-range"></i> Fecha Inicio:</label><input type="date" id="filtro_fecha_inicio" class="form-control form-control-sm"></div>
-                        <div class="col-lg-2 col-md-6"><label for="filtro_fecha_fin" class="form-label"><i class="bi bi-calendar-range-fill"></i> Fecha Fin:</label><input type="date" id="filtro_fecha_fin" class="form-control form-control-sm"></div>
+                        <div class="col-lg-2 col-md-6"><label for="filtro_fecha_inicio" class="form-label"><i class="bi bi-calendar-range"></i> Fecha Inicio:</label><input type="date" id="filtro_fecha_inicio" class="form-control form-control-sm" max="<?php echo date('Y-m-d'); ?>"></div>
+                        <div class="col-lg-2 col-md-6"><label for="filtro_fecha_fin" class="form-label"><i class="bi bi-calendar-range-fill"></i> Fecha Fin:</label><input type="date" id="filtro_fecha_fin" class="form-control form-control-sm" max="<?php echo date('Y-m-d'); ?>"></div>
                         <div class="col-lg-2 col-md-12 form-row-actions">
                             <button id="btnLimpiar" type="button" class="btn btn-sm btn-outline-secondary w-100">Limpiar</button>
-                            <button id="btnGenerarReporte" type="button" class="btn btn-sm btn-success w-100"><i class="bi bi-file-earmark-excel-fill"></i> Reporte</button>
+                            <button id="btnGenerarReporte" type="button" class="btn btn-sm btn-success w-100" <?php if ($total_registros === 0) echo 'disabled'; ?>><i class="bi bi-file-earmark-excel-fill"></i> Reporte</button>
                         </div>
                     </div>
                 </form>
@@ -179,7 +181,7 @@ $pageTitle = "Historial de Entregas";
             </div>
         </div>
     </main>
-
+    
     <div class="modal fade" id="modalVerDetalles" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">

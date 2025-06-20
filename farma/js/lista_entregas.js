@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnConfirmarGeneracion = document.getElementById('btnConfirmarGeneracion');
     let debounceTimer;
 
+    let hayResultados = false; // Variable para rastrear si hay datos en la tabla
+
     function cargarEntregas(pagina = 1) {
         const params = getCurrentFilters();
         params.set('ajax_search', 1);
@@ -27,10 +29,15 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 tbody.innerHTML = data.filas;
                 paginacionContainer.innerHTML = data.paginacion;
+
+                hayResultados = data.total_registros > 0;
+                actualizarEstadoBotonReporte(); // Actualizar el estado del botón
             })
             .catch(error => {
                 console.error('Error al cargar las entregas:', error);
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger p-4">Error al cargar los datos. Intente de nuevo.</td></tr>';
+                hayResultados = false;
+                actualizarEstadoBotonReporte();
             });
     }
 
@@ -49,18 +56,68 @@ document.addEventListener('DOMContentLoaded', function() {
         debounceTimer = setTimeout(() => cargarEntregas(1), 400);
     }
 
+    function validarFecha(inputElement) {
+        const fechaSeleccionada = inputElement.value;
+        let esValida = true;
+        
+        if (fechaSeleccionada) {
+            const hoy = new Date();
+            const fechaInput = new Date(fechaSeleccionada);
+            hoy.setHours(0, 0, 0, 0);
+            fechaInput.setMinutes(fechaInput.getMinutes() + fechaInput.getTimezoneOffset());
+
+            if (fechaInput > hoy) {
+                inputElement.classList.add('is-invalid-date');
+                esValida = false;
+            } else {
+                inputElement.classList.remove('is-invalid-date');
+            }
+        } else {
+            inputElement.classList.remove('is-invalid-date');
+        }
+        actualizarEstadoBotonReporte(); // Actualizar después de validar
+        return esValida;
+    }
+
+    // --- ¡NUEVA FUNCIÓN CLAVE! ---
+    function actualizarEstadoBotonReporte() {
+        const fechaInicioInvalida = filtroFechaInicioInput.classList.contains('is-invalid-date');
+        const fechaFinInvalida = filtroFechaFinInput.classList.contains('is-invalid-date');
+
+        if (hayResultados && !fechaInicioInvalida && !fechaFinInvalida) {
+            btnGenerarReporte.disabled = false;
+        } else {
+            btnGenerarReporte.disabled = true;
+        }
+    }
+    
     filtroDocInput.addEventListener('keyup', aplicarFiltros);
     filtroIdInput.addEventListener('keyup', aplicarFiltros);
     filtroOrdenFechaSelect.addEventListener('change', () => cargarEntregas(1));
-    filtroFechaInicioInput.addEventListener('change', () => cargarEntregas(1));
-    filtroFechaFinInput.addEventListener('change', () => cargarEntregas(1));
+    
+    filtroFechaInicioInput.addEventListener('change', function() {
+        validarFecha(this);
+        cargarEntregas(1);
+    });
+    filtroFechaFinInput.addEventListener('change', function() {
+        validarFecha(this);
+        cargarEntregas(1);
+    });
 
     btnLimpiar.addEventListener('click', () => {
         document.getElementById('formFiltros').reset();
+        filtroFechaInicioInput.classList.remove('is-invalid-date');
+        filtroFechaFinInput.classList.remove('is-invalid-date');
         cargarEntregas(1);
     });
     
     btnGenerarReporte.addEventListener('click', () => {
+        // La comprobación ahora está implícita porque el botón estará deshabilitado.
+        // Pero mantenemos esto como una doble seguridad.
+        if (btnGenerarReporte.disabled) {
+            return;
+        }
+
         let texto = "<ul>";
         let hayFiltros = false;
         
