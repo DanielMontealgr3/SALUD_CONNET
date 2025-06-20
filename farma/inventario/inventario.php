@@ -3,16 +3,14 @@ require_once '../../include/validar_sesion.php';
 require_once '../../include/inactividad.php';
 require_once '../../include/conexion.php';
 
-// (La función generarFilasInventario no cambia, la omito por brevedad)
 function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_ref)
 {
-    // ... tu función existente sin cambios ...
     $filtro_tipo = trim($_GET['filtro_tipo'] ?? 'todos');
     $filtro_nombre = trim($_GET['filtro_nombre'] ?? '');
     $filtro_estado_stock = trim($_GET['filtro_stock'] ?? 'todos');
     $filtro_orden = trim($_GET['filtro_orden'] ?? 'asc');
     $filtro_codigo_barras = trim($_GET['filtro_codigo_barras'] ?? '');
-    $registros_por_pagina = 15;
+    $registros_por_pagina = 6;
 
     $params = [':nit_farma' => $nit_farmacia_actual];
     $sql_where_conditions = [];
