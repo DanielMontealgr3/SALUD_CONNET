@@ -75,8 +75,8 @@ function generarContenidoEntregas($con, $nit_farmacia_actual, &$total_registros_
                 <td><strong><?php echo htmlspecialchars($entrega['nom_medicamento']); ?></strong><br><small class="text-muted">Cant: <?php echo htmlspecialchars($entrega['cantidad_entregada']); ?> | Lote: <?php echo htmlspecialchars($entrega['lote']); ?></small></td>
                 <td><strong><?php echo htmlspecialchars($entrega['nombre_farmaceuta']); ?></strong><br><small class="text-muted">Doc: <?php echo htmlspecialchars($entrega['doc_farmaceuta']); ?></small></td>
                 <td><?php echo htmlspecialchars($entrega['fecha_entrega']); ?></td>
-                <td><span class="badge bg-info"><?php echo htmlspecialchars($entrega['nom_est']); ?></span></td>
-                <td class="acciones-tabla"><button type="button" class="btn btn-info btn-sm btn-ver-detalles" data-id-entrega="<?php echo $entrega['id_entrega']; ?>" title="Ver Detalles"><i class="bi bi-eye-fill"></i> Ver</button></td>
+                <td><span class="badge bg-secondary"><?php echo htmlspecialchars($entrega['nom_est']); ?></span></td>
+                <td class="acciones-tabla"><button type="button" class="btn btn-primary btn-sm btn-ver-detalles" data-id-entrega="<?php echo $entrega['id_entrega']; ?>" title="Ver Detalles"><i class="bi bi-eye-fill"></i> Ver</button></td>
             </tr>
         <?php endforeach;
     else: ?>
@@ -142,6 +142,10 @@ $pageTitle = "Historial de Entregas";
         .vista-datos-container { display: flex; flex-direction: column; flex-grow: 1; }
         .table-responsive { flex-grow: 1; }
         .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
+        .modal-body .alert {
+            background-color: #e9ecef; /* Un gris más oscuro */
+            border-color: #ced4da;
+        }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -192,7 +196,7 @@ $pageTitle = "Historial de Entregas";
                 <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-excel-fill me-2"></i>Generar Reporte de Entregas</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <p>Se generará un reporte en Excel con los siguientes filtros aplicados:</p>
-                    <div id="confirmarReporteTexto" class="alert alert-info"></div>
+                    <div id="confirmarReporteTexto" class="alert"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

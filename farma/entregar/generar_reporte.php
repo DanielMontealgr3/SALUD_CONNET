@@ -5,28 +5,22 @@ require_once '../../include/SimpleXLSXGen.php';
 
 use Shuchkin\SimpleXLSXGen;
 
-// Conexión a la base de datos
 $db = new database();
 $con = $db->conectar();
 
-// Obtener el NIT de la farmacia actual desde la sesión
 $nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
 if (!$nit_farmacia_actual) {
-    // Si no hay NIT, no se puede generar el reporte.
-    // Podríamos mostrar un error, pero por ahora es mejor generar un Excel vacío con un aviso.
     $data_para_excel = [['Error: No se ha podido identificar la farmacia actual.']];
     SimpleXLSXGen::fromArray($data_para_excel)->downloadAs('error_reporte.xlsx');
     exit;
 }
 
-// Obtener filtros desde la URL
 $filtro_doc = trim($_GET['filtro_doc'] ?? '');
 $filtro_id = trim($_GET['filtro_id'] ?? '');
 $filtro_orden_fecha = trim($_GET['filtro_orden_fecha'] ?? 'desc');
 $filtro_fecha_inicio = trim($_GET['filtro_fecha_inicio'] ?? '');
 $filtro_fecha_fin = trim($_GET['filtro_fecha_fin'] ?? '');
 
-// Construcción de la consulta SQL
 $sql_base_from = "
     FROM entrega_medicamentos em
     JOIN usuarios far ON em.doc_farmaceuta = far.doc_usu
@@ -67,10 +61,8 @@ $entregas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
 
-// Se prepara el array final para el Excel
 $datos_para_excel = [];
 
-// Fila 1: Encabezados con estilo
 $header_texts = [
     'ID Entrega', 'Fecha Entrega', 'Doc. Paciente', 'Nombre Paciente', 'Medicamento',
     'Cantidad', 'Lote', 'Doc. Farmaceuta', 'Nombre Farmaceuta', 'Estado'
@@ -80,7 +72,6 @@ $styled_headers = array_map(function($text) {
 }, $header_texts);
 $datos_para_excel[] = $styled_headers;
 
-// Filas de datos
 if (empty($entregas)) {
     $datos_para_excel[] = ['No se encontraron registros con los filtros seleccionados.'];
 } else {
@@ -96,7 +87,6 @@ if (empty($entregas)) {
 
 $fileName = "reporte_entregas_" . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre_farmacia_asignada) . "_" . date('Y-m-d') . ".xlsx";
 
-// Generar y descargar el archivo
 $xlsx = SimpleXLSXGen::fromArray($datos_para_excel)
     ->setColWidth(3, 18)->setColWidth(4, 30)->setColWidth(5, 30)
     ->setColWidth(8, 18)->setColWidth(9, 30)
