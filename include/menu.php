@@ -177,7 +177,6 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'admi/gestion_farmaceutas') === 0 && in_array($currentPage, $paginas_gestion_farmaceutas)) ? 'active' : ''; ?>" href="#" id="navbarDropdownGestionFarmaceutas" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion Farmaceutas</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownGestionFarmaceutas">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_farmaceutas.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_farmaceutas/lista_farmaceutas.php">Lista Farmaceutas</a></li>
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'asignar_farmaceuta.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_farmaceutas/asignar_farmaceuta.php">Asignar Farmaceuta</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown">
@@ -186,7 +185,6 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'lista_medicos.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/lista_medicos.php">Lista Medicos</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'crear_horario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/crear_horario.php">Crear Horario</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/ver_horarios.php">Ver Horarios</a></li>
-                                    <li><a class="dropdown-item <?php echo ($currentPage === 'asignar_ips_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/asignar_ips_medico.php">Asignar IPS a Médico</a></li>
                                 </ul>
                             </li>
 
@@ -237,7 +235,8 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                         
                         <?php elseif ($rol_usuario == 3): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_pacientes.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/lista_pacientes.php">Lista pacientes</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_pacientes.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/lista_pacientes.php">Pacientes en Espera</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_entregas.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/lista_entregas.php">Historial entregas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'entregas_pendientes.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/entregas_pendientes.php">Entregas pendientes</a></li>
                             
                             <li class="nav-item dropdown">
@@ -245,6 +244,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownInventario">
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/inventario.php">Ver Inventario</a></li>
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'insertar_inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/insertar_inventario.php">Insertar en Inventario</a></li>
+                                    <li><a class="dropdown-item <?php echo ($currentPage === 'movimientos_inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/movimientos_inventario.php">Ver movimientos</a></li>
                                 </ul>
                             </li>
                             
