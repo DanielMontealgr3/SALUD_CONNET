@@ -15,6 +15,8 @@
 /** @noinspection PhpStrFunctionsInspection */
 /** @noinspection AccessModifierPresentedInspection */
 
+
+// excel
 namespace Shuchkin;
 /**
  * Class SimpleXLSXGen
