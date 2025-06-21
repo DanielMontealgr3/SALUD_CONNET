@@ -3,34 +3,99 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalLotesPlaceholder = document.getElementById('modal-lotes-placeholder');
     const modalSecundarioPlaceholder = document.getElementById('modal-secundario-placeholder');
     const modalDetallesElement = document.getElementById('modalDetallesMedicamento');
+    const formFiltros = document.getElementById('formFiltros');
+    
+    // Elementos para el reporte
+    const btnGenerarReporte = document.getElementById('btnGenerarReporte');
+    const btnLimpiar = document.getElementById('btnLimpiar');
+    const modalConfirmarReporte = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
+    const confirmarReporteTexto = document.getElementById('confirmarReporteTexto');
+    const btnConfirmarGeneracion = document.getElementById('btnConfirmarGeneracion');
 
     let activeLotesModal = null;
     let debounceTimer;
+    let hayResultados = !tableBody.querySelector('td[colspan="8"]');
 
     function renderBarcodes() {
         try { JsBarcode(".barcode").init(); } catch (e) {}
+    }
+    
+    function actualizarEstadoBotonReporte() {
+        btnGenerarReporte.disabled = !hayResultados;
     }
 
     function searchWithFilters() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            const form = document.getElementById('formFiltros');
-            if(!form) return;
-            const formData = new FormData(form);
+            if(!formFiltros) return;
+            const formData = new FormData(formFiltros);
             const params = new URLSearchParams(formData).toString();
+            
             fetch(`inventario.php?ajax_search=1&${params}`)
                 .then(response => response.text())
                 .then(html => {
                     if (tableBody) tableBody.innerHTML = html;
+                    hayResultados = !html.includes('colspan="8"');
+                    actualizarEstadoBotonReporte();
                     renderBarcodes();
+                })
+                .catch(error => {
+                    console.error('Error al filtrar el inventario:', error);
+                    tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger p-4">Error al cargar los datos.</td></tr>';
+                    hayResultados = false;
+                    actualizarEstadoBotonReporte();
                 });
         }, 300);
     }
     
     renderBarcodes();
+    actualizarEstadoBotonReporte();
 
-    document.getElementById('formFiltros')?.addEventListener('input', searchWithFilters);
-    document.getElementById('formFiltros')?.addEventListener('submit', e => e.preventDefault());
+    formFiltros?.addEventListener('input', searchWithFilters);
+    formFiltros?.addEventListener('submit', e => e.preventDefault());
+
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', () => {
+            formFiltros.reset();
+            searchWithFilters();
+        });
+    }
+    
+    if (btnGenerarReporte) {
+        btnGenerarReporte.addEventListener('click', () => {
+            if (btnGenerarReporte.disabled) return;
+
+            const filtroTipoSelect = document.getElementById('filtro_tipo');
+            const filtroStockSelect = document.getElementById('filtro_stock');
+            const filtroNombreInput = document.getElementById('filtro_nombre');
+            const filtroCodigoInput = document.getElementById('filtro_codigo_barras');
+
+            let texto = "<ul>";
+            let hayFiltros = false;
+            
+            if (filtroTipoSelect.value !== 'todos') { texto += `<li>Tipo: <strong>${filtroTipoSelect.options[filtroTipoSelect.selectedIndex].text}</strong></li>`; hayFiltros = true; }
+            if (filtroStockSelect.value !== 'todos') { texto += `<li>Estado Stock: <strong>${filtroStockSelect.options[filtroStockSelect.selectedIndex].text}</strong></li>`; hayFiltros = true; }
+            if (filtroNombreInput.value) { texto += `<li>Nombre: <strong>${filtroNombreInput.value}</strong></li>`; hayFiltros = true; }
+            if (filtroCodigoInput.value) { texto += `<li>Código: <strong>${filtroCodigoInput.value}</strong></li>`; hayFiltros = true; }
+            
+            if (!hayFiltros) {
+                texto += "<li><strong>Se incluirán TODOS los registros sin filtros.</strong></li>";
+            }
+            texto += "</ul>";
+
+            confirmarReporteTexto.innerHTML = texto;
+            modalConfirmarReporte.show();
+        });
+    }
+    
+    if (btnConfirmarGeneracion) {
+        btnConfirmarGeneracion.addEventListener('click', () => {
+            const params = new URLSearchParams(new FormData(formFiltros));
+            const urlReporte = `reporte_actual.php?${params.toString()}`;
+            window.location.href = urlReporte;
+            modalConfirmarReporte.hide();
+        });
+    }
 
     document.body.addEventListener('click', function(e) {
         const verLotesBtn = e.target.closest('.btn-ver-lotes');

@@ -48,7 +48,7 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
     $offset = ($pagina_actual - 1) * $registros_por_pagina;
 
     $order_by = ($filtro_orden === 'desc') ? "m.nom_medicamento DESC" : "m.nom_medicamento ASC";
-    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est " . $sql_from_join . " GROUP BY m.id_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
+    $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est, i.fecha_ultima_actualizacion " . $sql_from_join . " GROUP BY m.id_medicamento, tm.nom_tipo_medi, m.codigo_barras, i.cantidad_actual, e.nom_est, e.id_est, i.fecha_ultima_actualizacion ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset_val";
 
     $stmt_inventario = $con->prepare($sql_final);
     foreach ($params as $key => &$val) $stmt_inventario->bindParam($key, $val);
@@ -104,13 +104,14 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
                     ?>
                     <span class="badge <?php echo $clase_badge; ?>"><?php echo htmlspecialchars($item['nom_est']); ?></span>
                 </td>
+                <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($item['fecha_ultima_actualizacion']))); ?></td>
                 <td class="acciones-tabla">
                     <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalDetallesMedicamento" data-id-medicamento="<?php echo $item['id_medicamento']; ?>" title="Ver Detalles Completos"><i class="bi bi-info-circle-fill"></i> Ver</button>
                 </td>
             </tr>
         <?php endforeach;
     else: ?>
-        <tr><td colspan="7" class="text-center p-4">No se encontraron medicamentos que coincidan con los filtros.</td></tr>
+        <tr><td colspan="8" class="text-center p-4">No se encontraron medicamentos que coincidan con los filtros.</td></tr>
     <?php endif;
     return ob_get_clean();
 }
@@ -192,6 +193,8 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
             70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
         }
+         .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
+        .modal-body .alert { background-color: #e9ecef; border-color: #ced4da; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -214,7 +217,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
                 
-                <form id="formFiltros" class="mb-4 filtros-tabla-container">
+                <form id="formFiltros" class="mb-4 filtros-tabla-container" onsubmit="return false;">
                      <div class="row g-2 align-items-end">
                         <div class="col-lg-2 col-md-6">
                             <label for="filtro_tipo" class="form-label"><i class="bi bi-tag"></i>Tipo Medicamento:</label>
@@ -245,12 +248,13 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                             <label for="filtro_nombre" class="form-label"><i class="bi bi-search"></i>Buscar por Nombre:</label>
                             <input type="text" name="filtro_nombre" id="filtro_nombre" class="form-control form-control-sm" placeholder="Nombre..." autocomplete="off">
                         </div>
-                        <div class="col-lg-3 col-md-6">
+                        <div class="col-lg-2 col-md-6">
                             <label for="filtro_codigo_barras" class="form-label"><i class="bi bi-upc-scan"></i>Buscar por Código:</label>
                             <input type="text" name="filtro_codigo_barras" id="filtro_codigo_barras" class="form-control form-control-sm" placeholder="Escanear o escribir código..." autocomplete="off">
                         </div>
-                        <div class="col-lg-1 col-md-12">
-                            <a href="inventario.php" class="btn btn-sm btn-outline-secondary w-100">Limpiar</a>
+                        <div class="col-lg-2 col-md-12 form-row-actions">
+                            <button id="btnLimpiar" type="button" class="btn btn-sm btn-outline-secondary w-100">Limpiar</button>
+                            <button id="btnGenerarReporte" type="button" class="btn btn-sm btn-success w-100" <?php if ($total_registros === 0) echo 'disabled'; ?>><i class="bi bi-file-earmark-excel-fill"></i> Reporte</button>
                         </div>
                     </div>
                 </form>
@@ -265,6 +269,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Cantidad Total</th>
                                 <th>Lotes</th>
                                 <th>Estado</th>
+                                <th>Fecha Actualización</th>
                                 <th class="columna-acciones-fija">Acciones</th>
                             </tr>
                         </thead>
@@ -299,6 +304,22 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
     
+    <div class="modal fade" id="modalConfirmarReporte" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-excel-fill me-2"></i>Generar Reporte de Inventario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p>Se generará un reporte en Excel con los siguientes filtros aplicados:</p>
+                    <div id="confirmarReporteTexto" class="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmarGeneracion"><i class="bi bi-check-circle-fill"></i> Confirmar y Generar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include '../../include/footer.php'; ?>
     <script src="../js/gestion_inventario.js?v=<?php echo time(); ?>"></script>
     <script src="../js/alertas_dashboard.js?v=<?php echo time(); ?>"></script>
