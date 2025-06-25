@@ -39,7 +39,7 @@ if ($con) {
             <div class="vista-datos-container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="titulo-lista-tabla m-0 border-0 p-0">Lista de Pacientes</h3>
-                    <a href="../crear_usu.php?rol=2" class="btn btn-success btn-sm flex-shrink-0">
+                    <a href="../gestion_crear/crear_usu.php" class="btn btn-success btn-sm flex-shrink-0">
                         <i class="bi bi-plus-circle-fill"></i> Nuevo Paciente
                     </a>
                 </div>
