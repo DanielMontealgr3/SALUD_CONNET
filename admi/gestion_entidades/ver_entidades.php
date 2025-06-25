@@ -14,10 +14,11 @@ $filtro_nombre_entidad = trim($_GET['filtro_nombre'] ?? '');
 $datos_entidad = []; $columnas_tabla = []; $error_db = ''; $titulo_tabla = 'Entidades';
 $config_final = [];
 
+$total_registros = 0; 
 $registros_por_pagina = 4;
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
-$total_registros = 0; $total_paginas = 1;
+$total_paginas = 1;
 
 if ($con) {
     try {
@@ -118,7 +119,6 @@ if ($con) {
     } catch (PDOException $e) { $error_db = "Error al consultar BD: " . $e->getMessage(); error_log("PDO Ver Ent: ".$e->getMessage()); $datos_entidad = []; }
 } else { $error_db = "Error de conexión."; }
 
-
 function render_table_header($columnas) {
     ob_start();
     foreach ($columnas as $columna) {
@@ -195,20 +195,14 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="../img/loguito.png">
     <title>Ver Entidades - Administración</title>
     <style>
-        .columna-acciones-fija {
-            width: 220px;
-            min-width: 220px;
-            text-align: center;
-            vertical-align: middle;
-        }
-        .celda-acciones-fija {
-            justify-content: center !important;
-            align-items: center;
-            gap: 0.5rem;
-        }
+        .columna-acciones-fija { width: 220px; min-width: 220px; text-align: center; vertical-align: middle; }
+        .celda-acciones-fija { justify-content: center !important; align-items: center; gap: 0.5rem; }
+        #loaderBusqueda { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
     </style>
 </head>
 <body class="d-flex flex-column">
@@ -223,7 +217,7 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                     </a>
                 </div>
                 
-                <div class="filtros-tabla-container">
+                <div class="filtros-tabla-container mb-4">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
                             <label for="tipo_entidad_select" class="form-label"><i class="bi bi-filter-circle"></i> Filtrar por Tipo:</label>
@@ -242,7 +236,14 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                             </div>
                         </div>
                         <div class="col-md-3">
-                             <button type="button" id="btnLimpiarFiltros" class="btn btn-sm w-100"><i class="bi bi-eraser"></i> Limpiar Filtros</button>
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="button" id="btnLimpiarFiltros" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eraser"></i> Limpiar
+                                </button>
+                                <button id="btnGenerarReporte" type="button" class="btn btn-sm btn-success" <?php if ($total_registros === 0) echo 'disabled'; ?>>
+                                    <i class="bi bi-file-earmark-excel-fill"></i> Reporte
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -272,125 +273,40 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 
     <div class="modal fade" id="modalVerDetalles" tabindex="-1" aria-labelledby="modalVerDetallesLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalVerDetallesLabel"><i class="bi bi-info-circle-fill"></i> Detalles de la Entidad</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body" id="modalVerDetallesBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div></div>
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="modalVerDetallesLabel"><i class="bi bi-info-circle-fill"></i> Detalles de la Entidad</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body" id="modalVerDetallesBody"><div class="text-center p-4"><div class="spinner-border text-primary"></div><p>Cargando...</p></div></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+        </div>
       </div>
     </div>
     
+    <div class="modal fade" id="modalConfirmarReporte" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-excel-fill me-2"></i>Generar Reporte de Entidades</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p>Se generará un reporte en Excel con los siguientes filtros aplicados:</p>
+                    <div id="confirmarReporteTexto" class="alert alert-light border"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmarGeneracion"><i class="bi bi-check-circle-fill"></i> Confirmar y Generar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../js/editar_entidad.js?v=<?php echo time(); ?>"></script>
+    
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const filtroNombre = document.getElementById('filtro_nombre');
-        const filtroTipo = document.getElementById('tipo_entidad_select');
-        const tablaHeader = document.getElementById('tabla-entidades-header');
-        const tablaBody = document.getElementById('tabla-entidades-body');
-        const paginacionContainer = document.getElementById('paginacion-lista');
-        const loader = document.getElementById('loaderBusqueda');
-        const btnLimpiar = document.getElementById('btnLimpiarFiltros');
-        const tituloTabla = document.getElementById('titulo-de-tabla');
-        let modalDetalles = new bootstrap.Modal(document.getElementById('modalVerDetalles'));
-        let debounceTimer;
-
-        function fetchEntidades(pagina = 1) {
-            loader.style.display = 'block';
-            const nombre = filtroNombre.value.trim();
-            const tipo = filtroTipo.value;
-            const url = `ver_entidades.php?pagina=${pagina}&filtro_nombre=${encodeURIComponent(nombre)}&tipo_entidad=${encodeURIComponent(tipo)}`;
-            
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(response => response.json())
-            .then(data => {
-                tituloTabla.textContent = data.titulo_tabla;
-                tablaHeader.innerHTML = '<tr>' + data.html_header + '</tr>';
-                tablaBody.innerHTML = data.html_body;
-                actualizarPaginacion(data.paginacion.pagina_actual, data.paginacion.total_paginas);
-                actualizarURL(pagina, nombre, tipo);
-                inicializarListenersBotones();
-            })
-            .catch(error => {
-                console.error('Error al cargar entidades:', error);
-                tablaBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar los datos.</td></tr>';
-            })
-            .finally(() => { loader.style.display = 'none'; });
-        }
-
-        function actualizarPaginacion(actual, total) {
-            paginacionContainer.innerHTML = '';
-            if (total <= 1) return;
-
-            let html = `<li class="page-item ${actual <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-pagina="${actual - 1}"><i class="bi bi-chevron-left"></i></a></li>`;
-            html += `<li class="page-item active"><a class="page-link" href="#">${actual} / ${total}</a></li>`;
-            html += `<li class="page-item ${actual >= total ? 'disabled' : ''}"><a class="page-link" href="#" data-pagina="${actual + 1}"><i class="bi bi-chevron-right"></i></a></li>`;
-            
-            paginacionContainer.innerHTML = html;
-        }
-
-        function actualizarURL(pagina, nombre, tipo) {
-            const url = new URL(window.location);
-            url.searchParams.set('pagina', pagina);
-            url.searchParams.set('filtro_nombre', nombre);
-            url.searchParams.set('tipo_entidad', tipo);
-            window.history.pushState({}, '', url);
-        }
-
-        function inicializarListenersBotones() {
-            inicializarModalEdicionEntidad();
-
-            document.querySelectorAll('.btn-eliminar').forEach(button => {
-                button.addEventListener('click', function () {
-                    const id = this.dataset.id;
-                    const nombre = this.dataset.nombre;
-                    Swal.fire({
-                        title: '¿Confirmar Eliminación?',
-                        html: `¿Seguro que deseas eliminar <strong>${nombre}</strong> (ID: ${id})?`,
-                        icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c',
-                        cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, ¡Eliminar!', cancelButtonText: 'Cancelar'
-                    }).then((result) => { if (result.isConfirmed) { eliminarRegistro(this.dataset.id, this.dataset.tipo); } });
-                });
-            });
-
-            document.querySelectorAll('.btn-ver-detalles').forEach(button => {
-                button.addEventListener('click', function() {
-                    const id = this.dataset.id;
-                    const tipo = this.dataset.tipo;
-                    const modalBody = document.getElementById('modalVerDetallesBody');
-                    modalBody.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p>Cargando...</p></div>';
-                    modalDetalles.show();
-                    fetch(`ajax_detalle_entidad.php?id=${id}&tipo=${tipo}`).then(r => r.text()).then(h => modalBody.innerHTML = h);
-                });
-            });
-        }
-
-        function eliminarRegistro(id, tipo) {
-            const formData = new FormData();
-            formData.append('id_registro', id);
-            formData.append('tipo_registro', tipo);
-            formData.append('csrf_token', '<?php echo $csrf_token; ?>');
-            
-            fetch('eliminar_entidad.php', { method: 'POST', body: formData }).then(r => r.json()).then(data => {
-                Swal.fire({ title: data.success ? '¡Éxito!' : 'Error', text: data.message, icon: data.success ? 'success' : 'error' });
-                if (data.success) { 
-                    const currentPage = parseInt(document.querySelector('.page-item.active .page-link')?.textContent.split(' ')[0] || '1', 10);
-                    fetchEntidades(currentPage);
-                }
-            });
-        }
-        
-        filtroNombre.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => fetchEntidades(1), 350); });
-        filtroTipo.addEventListener('change', () => fetchEntidades(1));
-        btnLimpiar.addEventListener('click', () => { filtroNombre.value = ''; filtroTipo.value = 'todas'; fetchEntidades(1); });
-
-        paginacionContainer.addEventListener('click', (e) => {
-            e.preventDefault();
-            const link = e.target.closest('a');
-            if (link && !link.closest('.page-item').classList.contains('disabled') && !link.closest('.page-item').classList.contains('active')) {
-                fetchEntidades(link.dataset.pagina);
-            }
-        });
-        
-        actualizarPaginacion(<?php echo $pagina_actual; ?>, <?php echo $total_paginas; ?>);
-        inicializarListenersBotones();
-    });
+        const initialData = {
+            pagina_actual: <?php echo $pagina_actual; ?>,
+            total_paginas: <?php echo $total_paginas; ?>,
+            csrf_token: '<?php echo $csrf_token; ?>'
+        };
     </script>
+    <script src="../js/lista_entidades.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
