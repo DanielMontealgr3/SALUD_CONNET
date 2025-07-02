@@ -27,6 +27,21 @@ if ($con) {
 <head>
     <link rel="icon" type="image/png" href="../../img/loguito.png">
     <title>SaludConnect - Lista de Médicos</title>
+    <style>
+    .vista-datos-container {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        min-height: 0;
+    }
+    .table-responsive {
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+    .paginacion-tabla-container {
+        flex-shrink: 0;
+    }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include '../../include/menu.php'; ?>
@@ -35,16 +50,16 @@ if ($con) {
             <div class="vista-datos-container">
                  <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="titulo-lista-tabla m-0 border-0 p-0">Lista de Médicos</h3>
-                    <a href="../crear_usu.php?rol=4" class="btn btn-success btn-sm flex-shrink-0">
+                    <a href="../gestion_crear/crear_usu.php?rol=4" class="btn btn-success btn-sm flex-shrink-0">
                         <i class="bi bi-plus-circle-fill"></i> Nuevo Médico
                     </a>
                 </div>
                 <div id="feedback_container"></div>
                 <?php if (!empty($error_db)) : ?><div class="alert alert-danger"><?php echo htmlspecialchars($error_db); ?></div><?php endif; ?>
                 
-                <div class="filtros-tabla-container">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
+                <div class="filtros-tabla-container mb-4">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-lg col-md-4">
                             <label for="filtro_ips" class="form-label">Filtrar por Asignación IPS:</label>
                             <select id="filtro_ips" class="form-select form-select-sm">
                                 <option value="">Todas las Asignaciones</option>
@@ -57,11 +72,11 @@ if ($con) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg col-md-4">
                             <label for="filtro_doc_medico" class="form-label">Buscar por Documento:</label>
                             <input type="text" id="filtro_doc_medico" class="form-control form-control-sm" placeholder="Documento...">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg col-md-4">
                             <label for="filtro_estado_usuario" class="form-label">Estado Usuario:</label>
                             <select id="filtro_estado_usuario" class="form-select form-select-sm">
                                 <option value="">Todos (Excepto Eliminados)</option>
@@ -70,8 +85,11 @@ if ($con) {
                                 <option value="17">Eliminados</option>
                             </select>
                         </div>
-                        <div class="col-md-3 d-grid">
-                            <button type="button" id="btn_limpiar_filtros" class="btn btn-sm btn-outline-secondary">Limpiar Filtros</button>
+                        <div class="col-lg-auto col-md-12">
+                           <div class="d-flex gap-2">
+                                <button type="button" id="btn_limpiar_filtros" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eraser"></i> Limpiar</button>
+                                <button type="button" id="btn_generar_reporte_medicos" class="btn btn-sm btn-success" disabled><i class="bi bi-file-earmark-excel-fill"></i> Reporte</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -103,6 +121,27 @@ if ($con) {
     <?php include '../../include/footer.php'; ?>
     
     <div id="modalContainer"></div>
+    
+    <div class="modal fade" id="modalConfirmarReporteMedicos" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel-fill me-2"></i>Generar Reporte de Médicos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Se generará un reporte en Excel con los siguientes filtros aplicados:</p>
+                    <div id="confirmarReporteTextoMedicos" class="alert alert-light border"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmarGeneracionMedicos">
+                        <i class="bi bi-check-circle-fill"></i> Confirmar y Generar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>const csrfToken = '<?php echo $csrf_token; ?>';</script>

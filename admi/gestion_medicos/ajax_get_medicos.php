@@ -110,7 +110,7 @@ $offset = ($pagina_actual - 1) * $registros_por_pagina;
 $sql_medicos = "SELECT u.doc_usu, u.id_tipo_doc, u.nom_usu, u.correo_usu, u.id_est AS id_estado_usuario, est.nom_est AS nombre_estado_usuario, esp.nom_espe,
                    (SELECT GROUP_CONCAT(DISTINCT i_sub.nom_ips SEPARATOR ', ') 
                     FROM asignacion_medico am_ips_sub 
-                    JOIN ips i_sub ON am_ips_sub.nit_ips = i_sub.nit_ips 
+                    JOIN ips i_sub ON am_ips_sub.nit_ips = i_sub.Nit_IPS
                     WHERE am_ips_sub.doc_medico = u.doc_usu AND am_ips_sub.id_estado = 1) AS nombres_ips_activas
                  " . $sql_from . " " . $sql_where . "
                  GROUP BY u.doc_usu
@@ -124,5 +124,5 @@ $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $medicos_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-echo json_encode(['html_body' => render_medicos_body($medicos_list), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas]]);
+echo json_encode(['html_body' => render_medicos_body($medicos_list), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas, 'total_registros' => $total_registros]]);
 ?>
