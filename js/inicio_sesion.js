@@ -55,11 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let esValido = false;
         let mensaje = '';
         if (valor === "") {
-            mensaje = 'Documento es requerido.';
+            mensaje = 'El documento es requerido.';
         } else if (!/^\d+$/.test(valor)) {
-            mensaje = 'Solo números permitidos.';
+            mensaje = 'Solo se permiten números.';
         } else if (valor.length < 7 || valor.length > 11) {
-            mensaje = 'Debe tener 7-11 dígitos.';
+            mensaje = 'El documento debe tener entre 7 y 11 dígitos.';
         } else {
             esValido = true;
         }
@@ -73,11 +73,30 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     const validarContrasena = () => {
-        const esValido = contrasenaInput.value !== "";
+        const valor = contrasenaInput.value;
+        let esValido = false;
+        let mensaje = '';
+        
+        if (valor === "") {
+            mensaje = 'La contraseña es requerida.';
+        } else if (valor.length < 8) {
+            mensaje = 'Debe tener al menos 8 caracteres.';
+        } else if (!/[A-Z]/.test(valor)) {
+            mensaje = 'Debe incluir al menos una mayúscula.';
+        } else if (!/[a-z]/.test(valor)) {
+            mensaje = 'Debe incluir al menos una minúscula.';
+        } else if (!/\d/.test(valor)) {
+            mensaje = 'Debe incluir al menos un número.';
+        } else if (!/[\W_]/.test(valor)) {
+            mensaje = 'Debe incluir al menos un símbolo.';
+        } else {
+            esValido = true;
+        }
+        
         estadoValidacion.pass = esValido;
         if(contrasenaInput.dataset.interacted) {
             aplicarEstilo(contrasenaInput, esValido);
-            mostrarMensaje(errorPassSpan, esValido ? '' : 'Contraseña es requerida.');
+            mostrarMensaje(errorPassSpan, mensaje);
         }
         actualizarBoton();
         return esValido;
@@ -95,6 +114,9 @@ document.addEventListener('DOMContentLoaded', function() {
             el.dataset.interacted = true;
             fn();
         });
+        el.addEventListener('focus', () => { // Marcar como interactuado al entrar
+            el.dataset.interacted = true;
+        });
     });
 
     aceptoTerminosCheckbox.addEventListener('change', actualizarBoton);
@@ -105,6 +127,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!formValido || !aceptoTerminosCheckbox.checked) {
             e.preventDefault();
+            if (!aceptoTerminosCheckbox.checked && formValido) {
+                alert('Debe aceptar los Términos y Condiciones para continuar.');
+            }
             const primerError = formulario.querySelector('.input-error');
             if (primerError) {
                 primerError.focus();
@@ -112,18 +137,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    enlaceTerminos.addEventListener('click', (e) => {
-        e.preventDefault();
-        modalTerminos.classList.add('visible');
-    });
+    if (enlaceTerminos && modalTerminos && cerrarModalTerminos) {
+        enlaceTerminos.addEventListener('click', (e) => {
+            e.preventDefault();
+            modalTerminos.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        });
 
-    cerrarModalTerminos.addEventListener('click', () => {
-        modalTerminos.classList.remove('visible');
-    });
-
-    window.addEventListener('click', (e) => {
-        if (e.target === modalTerminos) {
+        const cerrarModal = () => {
             modalTerminos.classList.remove('visible');
-        }
-    });
+            document.body.style.overflow = '';
+        };
+
+        cerrarModalTerminos.addEventListener('click', cerrarModal);
+
+        window.addEventListener('click', (e) => {
+            if (e.target === modalTerminos) {
+                cerrarModal();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalTerminos.classList.contains('visible')) {
+                cerrarModal();
+            }
+        });
+    }
 });
