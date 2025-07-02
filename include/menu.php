@@ -151,7 +151,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                 <div class="collapse navbar-collapse" id="navbarNavSaludConnect">
                     <ul class="navbar-nav ms-auto align-items-center">
                         <?php if ($rol_usuario == 1): ?>
-                            <!-- MENÚ ADMINISTRADOR (Sin cambios) -->
+                            <!-- MENÚ ADMINISTRADOR-->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'admi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_usu.php' && strpos($path_inside_project_trimmed, 'admi/gestion_crear') === 0 && !$es_pagina_gestion_sistema_activa) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/crear_usu.php">Crear Usuario</a></li>
                             <li class="nav-item dropdown">
@@ -212,14 +212,14 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                             </li>
                         
                         <?php elseif ($rol_usuario == 2): ?>
-                            <!-- MENÚ PACIENTE (CORREGIDO) -->
+                            <!-- MENÚ PACIENTE -->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && strpos($path_inside_project_trimmed, 'paci') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo in_array($currentPage, ['citas.php', 'cita_medica.php', 'cita_examen.php']) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/citas.php">Agendar Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_actuales.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/citas_actuales.php">Mis Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/historial_medico.php">Historial Médico</a></li>
                         
                         <?php elseif ($rol_usuario == 3): ?>
-                            <!-- MENÚ FARMACEUTA (Sin cambios) -->
+                            <!-- MENÚ FARMACEUTA-->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_pacientes.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/lista_pacientes.php">Pacientes en Espera</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_entregas.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/lista_entregas.php">Historial entregas</a></li>
@@ -244,12 +244,10 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                             </li>
 
                         <?php elseif ($rol_usuario == 4): ?>
-                             <!-- MENÚ MÉDICO (Sin cambios) -->
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_hoy.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_hoy.php">Citas</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/crear_orden.php">Crear ordenes</a></li>
+                                            
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'ver_ordenes.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/ver_ordenes.php">Ver ordenes</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_paci.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/historial_paci.php">Historial paciente</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_citas.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/historial_citas.php">Historial Citas</a></li>
                         <?php endif; ?>
 
                         <?php if ($rol_usuario): ?>

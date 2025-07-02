@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
                             header('Location: farma/inicio.php');
                             exit;
                         } elseif ($rol_usuario == 4) {
-                            header('Location: medi/citas.php');
+                            header('Location: medi/citas_hoy.php');
                             exit;
                         } else {
                             $mensaje_error_servidor = "Acceso no configurado para este rol.";
