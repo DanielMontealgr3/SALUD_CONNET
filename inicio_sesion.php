@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
                             header('Location: farma/inicio.php');
                             exit;
                         } elseif ($rol_usuario == 4) {
-                            header('Location: medi/inicio.php');
+                            header('Location: medi/citas.php');
                             exit;
                         } else {
                             $mensaje_error_servidor = "Acceso no configurado para este rol.";
@@ -68,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
                     } else {
                         $mensaje_error_servidor = "La contraseña ingresada es incorrecta.";
                     }
-                } else { // Usuario inactivo
+                } else {
                     $mensaje_error_servidor = "Usted se encuentra inhabilitado. Comuníquese con el administrador.";
                     session_unset();
                     session_destroy();
                 }
-            } else { // Usuario no encontrado
+            } else {
                 $mensaje_error_servidor = "Tipo/número de documento no registrado.";
             }
 
@@ -87,35 +87,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
     }
 }
 ?>
-
+<!DOCTYPE html>
+<html lang="es">
 <head>
-    <title>Inicio de sesión</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio de sesión - Salud Connected</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/estilos_inicio.css">
 </head>
-
 <body class="index">
-
     <?php include 'menu_inicio.php'; ?>
-
     <div class="overlay"></div>
-
     <main>
         <div class="inicio_sesion">
             <div class="form-inicio">
                <form action="inicio_sesion.php" method="post" id="formulario-login" novalidate>
                    <ul>
                       <h1>Inicio de sesión</h1>
-
                       <?php
                           if (!empty($mensaje_alerta_sesion)) {
                               echo '<li class="mensaje-login-alerta">' . htmlspecialchars($mensaje_alerta_sesion) . '</li>';
                           }
-                      ?>
-                      <?php
                           if (!empty($mensaje_error_servidor)) {
                               echo '<li class="mensaje-login-servidor">' . htmlspecialchars($mensaje_error_servidor) . '</li>';
                           }
                       ?>
-
                       <li class="campo-contenedor">
                          <label for="id_tipo_doc">Tipo de documento</label>
                          <select name="id_tipo_doc" id="id_tipo_doc" tabindex="1">
@@ -136,38 +133,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
                          </select>
                          <span class="mensaje-error-cliente" id="error-tipo-doc"></span>
                      </li>
-
                      <li class="campo-contenedor">
                          <label for="doc_usu">Documento</label>
                          <input type="text" name="doc_usu" id="doc_usu" placeholder="Ingrese su documento" inputmode="numeric" pattern="\d*" tabindex="2" value="<?php echo isset($_POST['doc_usu']) ? htmlspecialchars($_POST['doc_usu']) : ''; ?>">
                          <span class="mensaje-error-cliente" id="error-doc-usu"></span>
                       </li>
-
                       <li class="campo-contenedor">
                          <label for="pass">Contraseña</label>
-                         <input type="password" name="pass" id="pass" value="" maxlength="15" minlength="6" placeholder="Ingrese su contraseña" tabindex="3">
+                         <input type="password" name="pass" id="pass" value="" maxlength="20" minlength="8" placeholder="Ingrese su contraseña" tabindex="3">
                          <span class="mensaje-error-cliente" id="error-pass"></span>
                       </li>
-
-                      <div class=links>
+                      <li class="campo-terminos">
+                          <input type="checkbox" id="acepto_terminos" name="acepto_terminos" tabindex="4">
+                          <label for="acepto_terminos">Acepto los <a href="#" id="enlace_terminos">Términos y Condiciones</a></label>
+                      </li>
+                      <div class="links">
                           <a href="include/olvide_contra.php">Olvidé mi contraseña</a>
                       </div>
-
                       <li>
-                          <input type="submit" name="enviar" id="boton-enviar" value="Ingresar" tabindex="4">
+                          <input type="submit" name="enviar" id="boton-enviar" value="Ingresar" tabindex="5" disabled>
                       </li>
-
                    </ul>
                </form>
             </div>
         </div>
     </main>
 
-    <?php include 'footer_inicio.php'; ?>
+    <?php include 'include/modal_terminos.php'; ?>
 
+    <?php include 'footer_inicio.php'; ?>
     <script src="js/inicio_sesion.js"></script>
     <script src="js/menu_responsivo.js"></script>
-
 </body>
-
 </html>
