@@ -1,140 +1,129 @@
 document.addEventListener('DOMContentLoaded', function() {
-
     const formulario = document.getElementById('formulario-login');
     const tipoDocumentoSelect = document.getElementById('id_tipo_doc');
     const documentoInput = document.getElementById('doc_usu');
     const contrasenaInput = document.getElementById('pass');
+    const aceptoTerminosCheckbox = document.getElementById('acepto_terminos');
+    const botonEnviar = document.getElementById('boton-enviar');
 
     const errorTipoDocSpan = document.getElementById('error-tipo-doc');
     const errorDocUsuSpan = document.getElementById('error-doc-usu');
     const errorPassSpan = document.getElementById('error-pass');
 
-    const aplicarEstilo = (elemento, clase) => {
-        elemento.classList.remove('input-error', 'input-success');
-        if (clase) {
-            elemento.classList.add(clase);
-        }
+    const modalTerminos = document.getElementById('modalTerminos');
+    const enlaceTerminos = document.getElementById('enlace_terminos');
+    const cerrarModalTerminos = document.getElementById('cerrarModalTerminos');
+
+    const estadoValidacion = {
+        tipoDoc: false,
+        docUsu: false,
+        pass: false
     };
 
-    const mostrarMensaje = (elementoSpan, mensaje) => {
-        elementoSpan.textContent = mensaje;
-        if (mensaje) {
-            elementoSpan.classList.add('visible'); 
-        } else {
-            elementoSpan.classList.remove('visible');
+    const aplicarEstilo = (elemento, esValido) => {
+        if (!elemento.dataset.interacted) {
+            elemento.classList.remove('input-error', 'input-success');
+            return;
         }
+        elemento.classList.toggle('input-error', !esValido);
+        elemento.classList.toggle('input-success', esValido);
+    };
+    
+    const mostrarMensaje = (span, mensaje) => {
+        span.textContent = mensaje;
+        span.classList.toggle('visible', !!mensaje);
     };
 
-    // --- Validación en tiempo real para TIPO DE DOCUMENTO ---
-    tipoDocumentoSelect.addEventListener('change', function() {
-        if (this.value === "") {
-            aplicarEstilo(this, 'input-error');
-            mostrarMensaje(errorTipoDocSpan, 'Seleccione un tipo de documento.');
-        } else {
-            aplicarEstilo(this, 'input-success');
-            mostrarMensaje(errorTipoDocSpan, '');
+    const actualizarBoton = () => {
+        const todoValido = Object.values(estadoValidacion).every(v => v);
+        botonEnviar.disabled = !(todoValido && aceptoTerminosCheckbox.checked);
+    };
+
+    const validarTipoDoc = () => {
+        const esValido = tipoDocumentoSelect.value !== "";
+        estadoValidacion.tipoDoc = esValido;
+        if (tipoDocumentoSelect.dataset.interacted) {
+            aplicarEstilo(tipoDocumentoSelect, esValido);
+            mostrarMensaje(errorTipoDocSpan, esValido ? '' : 'Seleccione un tipo de documento.');
         }
-    });
+        actualizarBoton();
+        return esValido;
+    };
 
-    // --- Validación en tiempo real para DOCUMENTO ---
-    documentoInput.addEventListener('input', function() {
-        const valor = this.value.trim();
-        const soloNumeros = /^\d+$/.test(valor);
-
+    const validarDocumento = () => {
+        const valor = documentoInput.value.trim();
+        let esValido = false;
+        let mensaje = '';
         if (valor === "") {
-            aplicarEstilo(this, null); 
-            mostrarMensaje(errorDocUsuSpan, '');
-        } else if (soloNumeros) {
-            aplicarEstilo(this, 'input-success');
-            mostrarMensaje(errorDocUsuSpan, '');
+            mensaje = 'Documento es requerido.';
+        } else if (!/^\d+$/.test(valor)) {
+            mensaje = 'Solo números permitidos.';
+        } else if (valor.length < 7 || valor.length > 11) {
+            mensaje = 'Debe tener 7-11 dígitos.';
         } else {
-            aplicarEstilo(this, 'input-error');
-            mostrarMensaje(errorDocUsuSpan, 'El documento solo debe contener números.');
+            esValido = true;
         }
+        estadoValidacion.docUsu = esValido;
+        if (documentoInput.dataset.interacted) {
+            aplicarEstilo(documentoInput, esValido);
+            mostrarMensaje(errorDocUsuSpan, mensaje);
+        }
+        actualizarBoton();
+        return esValido;
+    };
+    
+    const validarContrasena = () => {
+        const esValido = contrasenaInput.value !== "";
+        estadoValidacion.pass = esValido;
+        if(contrasenaInput.dataset.interacted) {
+            aplicarEstilo(contrasenaInput, esValido);
+            mostrarMensaje(errorPassSpan, esValido ? '' : 'Contraseña es requerida.');
+        }
+        actualizarBoton();
+        return esValido;
+    };
+
+    const campos = [
+        { el: tipoDocumentoSelect, fn: validarTipoDoc },
+        { el: documentoInput, fn: validarDocumento },
+        { el: contrasenaInput, fn: validarContrasena }
+    ];
+
+    campos.forEach(({ el, fn }) => {
+        const evento = el.tagName === 'SELECT' ? 'change' : 'input';
+        el.addEventListener(evento, () => {
+            el.dataset.interacted = true;
+            fn();
+        });
     });
 
-    // --- Validación en tiempo real para CONTRASEÑA ---
-    contrasenaInput.addEventListener('input', function() {
-        const valor = this.value;
-        if (valor === "") {
-            aplicarEstilo(this, null); 
-            mostrarMensaje(errorPassSpan, '');
-        } else if (valor.length >= 6) {
-            aplicarEstilo(this, 'input-success');
-            mostrarMensaje(errorPassSpan, '');
-        } else {
-            aplicarEstilo(this, 'input-error');
-            mostrarMensaje(errorPassSpan, 'La contraseña debe tener al menos 6 caracteres.');
-        }
-    });
+    aceptoTerminosCheckbox.addEventListener('change', actualizarBoton);
 
+    formulario.addEventListener('submit', function(e) {
+        campos.forEach(c => c.el.dataset.interacted = true);
+        const formValido = campos.every(c => c.fn());
 
-    formulario.addEventListener('submit', function(evento) {
-        let esValido = true;
-
-        // Validar Tipo Documento
-        if (tipoDocumentoSelect.value === "") {
-            aplicarEstilo(tipoDocumentoSelect, 'input-error');
-            mostrarMensaje(errorTipoDocSpan, 'Seleccione un tipo de documento.');
-            esValido = false;
-        } else {
-             if (!tipoDocumentoSelect.classList.contains('input-error')) {
-                 aplicarEstilo(tipoDocumentoSelect, 'input-success');
-             }
-             if (tipoDocumentoSelect.value !== "") {
-                mostrarMensaje(errorTipoDocSpan, '');
-             }
-        }
-
-        // Validar Documento
-        const docValor = documentoInput.value.trim();
-        if (docValor === "") {
-            aplicarEstilo(documentoInput, 'input-error');
-            mostrarMensaje(errorDocUsuSpan, 'Ingrese su número de documento.');
-            esValido = false;
-        } else if (!/^\d+$/.test(docValor)) {
-            aplicarEstilo(documentoInput, 'input-error');
-            mostrarMensaje(errorDocUsuSpan, 'El documento solo debe contener números.');
-            esValido = false;
-        } else {
-             if (!documentoInput.classList.contains('input-error')) {
-                 aplicarEstilo(documentoInput, 'input-success');
-             }
-             if (/^\d+$/.test(docValor)) {
-                 mostrarMensaje(errorDocUsuSpan, '');
-             }
-        }
-
-        // Validar Contraseña
-        const passValor = contrasenaInput.value;
-        if (passValor === "") {
-            aplicarEstilo(contrasenaInput, 'input-error');
-            mostrarMensaje(errorPassSpan, 'Ingrese su contraseña.');
-            esValido = false;
-        } else if (passValor.length < 6) {
-            aplicarEstilo(contrasenaInput, 'input-error');
-            mostrarMensaje(errorPassSpan, 'La contraseña debe tener al menos 6 caracteres.');
-            esValido = false;
-        } else {
-             if (!contrasenaInput.classList.contains('input-error')) {
-                aplicarEstilo(contrasenaInput, 'input-success');
-             }
-             if (passValor.length >= 6) {
-                mostrarMensaje(errorPassSpan, '');
-             }
-        }
-
-        // Si algo no es válido, previene el envío y enfoca el primer error
-        if (!esValido) {
-            evento.preventDefault();
-            console.log('Validación final fallida. Envío detenido.');
+        if (!formValido || !aceptoTerminosCheckbox.checked) {
+            e.preventDefault();
             const primerError = formulario.querySelector('.input-error');
-            if(primerError) {
+            if (primerError) {
                 primerError.focus();
             }
-        } else {
-            console.log('Validación final exitosa. Enviando formulario...');
         }
     });
 
+    enlaceTerminos.addEventListener('click', (e) => {
+        e.preventDefault();
+        modalTerminos.classList.add('visible');
+    });
+
+    cerrarModalTerminos.addEventListener('click', () => {
+        modalTerminos.classList.remove('visible');
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === modalTerminos) {
+            modalTerminos.classList.remove('visible');
+        }
+    });
 });
