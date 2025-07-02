@@ -6,7 +6,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const tablaBody = document.getElementById('tabla_farmaceutas_body');
     const paginacionContainer = document.getElementById('paginacion_lista');
     const modalContainer = document.getElementById('modalContainer');
-
+    const btnGenerarReporte = document.getElementById('btn_generar_reporte_farmaceutas');
+    const modalConfirmarReporte = new bootstrap.Modal(document.getElementById('modalConfirmarReporteFarmaceutas'));
+    const confirmarReporteTexto = document.getElementById('confirmarReporteTextoFarmaceutas');
+    const btnConfirmarGeneracion = document.getElementById('btnConfirmarGeneracionFarmaceutas');
+    
     let currentPage = 1;
     let debounceTimer;
 
@@ -25,10 +29,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 tablaBody.innerHTML = data.html_body || '<tr><td colspan="6" class="text-center">No se encontraron datos.</td></tr>';
                 renderizarPaginacion(data.paginacion);
+                btnGenerarReporte.disabled = (data.paginacion.total_registros === 0);
                 agregarEventListenersBotones();
             })
             .catch(error => {
                 tablaBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar los datos.</td></tr>`;
+                btnGenerarReporte.disabled = true;
             });
     }
 
@@ -37,31 +43,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!paginacion || paginacion.total <= 1) return;
 
         const { actual, total } = paginacion;
-        const crearItem = (texto, page, activo = false, disabled = false) => {
-            const li = document.createElement('li');
-            li.className = `page-item ${activo ? 'active' : ''} ${disabled ? 'disabled' : ''}`;
-            const a = document.createElement('a');
-            a.className = 'page-link';
-            a.href = '#';
-            a.dataset.page = page;
-            a.innerHTML = texto;
-            li.appendChild(a);
-            return li;
-        };
-
-        paginacionContainer.appendChild(crearItem('«', actual - 1, false, actual === 1));
-        for (let i = 1; i <= total; i++) {
-            paginacionContainer.appendChild(crearItem(i, i, i === actual));
-        }
-        paginacionContainer.appendChild(crearItem('»', actual + 1, false, actual === total));
-
-        paginacionContainer.querySelectorAll('.page-link').forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                const pageNum = this.dataset.page;
-                if (pageNum) cargarFarmaceutas(parseInt(pageNum, 10));
-            });
-        });
+        let html = `<li class="page-item ${actual <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${actual - 1}"><</a></li>`;
+        html += `<li class="page-item active" style="pointer-events: none;"><span class="page-link">${actual} / ${total}</span></li>`;
+        html += `<li class="page-item ${actual >= total ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${actual + 1}">></a></li>`;
+        paginacionContainer.innerHTML = html;
     }
 
     function agregarEventListenersBotones() {
@@ -78,7 +63,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         document.querySelectorAll('.btn-eliminar-farmaceuta').forEach(button => {
             button.addEventListener('click', function() {
                 const docUsu = this.dataset.docUsu;
@@ -111,7 +95,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         });
-        // --- FIN DE LA MODIFICACIÓN ---
         
         document.querySelectorAll('.btn-cambiar-estado').forEach(button => {
             button.addEventListener('click', function() {
@@ -189,6 +172,46 @@ document.addEventListener('DOMContentLoaded', function () {
         filtroDoc.value = '';
         filtroEstado.value = '';
         cargarFarmaceutas(1);
+    });
+    
+    paginacionContainer.addEventListener('click', function (e) {
+        e.preventDefault();
+        const link = e.target.closest('a.page-link');
+        if (link && link.dataset.page && !link.parentElement.classList.contains('disabled') && !link.parentElement.classList.contains('active')) {
+            cargarFarmaceutas(parseInt(link.dataset.page, 10));
+        }
+    });
+
+    btnGenerarReporte.addEventListener('click', () => {
+        if (btnGenerarReporte.disabled) return;
+        let texto = "<ul>";
+        
+        if (filtroFarmacia.value) {
+            texto += `<li>Asignación: <strong>${filtroFarmacia.options[filtroFarmacia.selectedIndex].text}</strong></li>`;
+        }
+        if (filtroDoc.value) {
+            texto += `<li>Documento: <strong>${filtroDoc.value}</strong></li>`;
+        }
+        if (filtroEstado.value) {
+            texto += `<li>Estado: <strong>${filtroEstado.options[filtroEstado.selectedIndex].text}</strong></li>`;
+        }
+
+        if (texto === "<ul>") {
+            texto += "<li>Se incluirán <strong>TODOS</strong> los farmaceutas (excepto eliminados).</li>";
+        }
+        texto += "</ul>";
+        confirmarReporteTexto.innerHTML = texto;
+        modalConfirmarReporte.show();
+    });
+
+    btnConfirmarGeneracion.addEventListener('click', () => {
+        const params = new URLSearchParams();
+        params.append('filtro_farmacia', filtroFarmacia.value);
+        params.append('filtro_doc_farmaceuta', filtroDoc.value);
+        params.append('filtro_estado_usuario', filtroEstado.value);
+
+        window.location.href = `reporte_farmaceutas.php?${params.toString()}`;
+        modalConfirmarReporte.hide();
     });
 
     cargarFarmaceutas(1);

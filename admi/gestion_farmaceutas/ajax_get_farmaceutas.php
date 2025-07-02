@@ -121,5 +121,5 @@ $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $farmaceutas_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-echo json_encode(['html_body' => render_farmaceutas_body($farmaceutas_list), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas]]);
+echo json_encode(['html_body' => render_farmaceutas_body($farmaceutas_list), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas, 'total_registros' => $total_registros]]);
 ?>
