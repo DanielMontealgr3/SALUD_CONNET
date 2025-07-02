@@ -117,5 +117,5 @@ $stmt_pacientes->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt_pacientes->execute();
 $pacientes_list = $stmt_pacientes->fetchAll(PDO::FETCH_ASSOC);
 
-echo json_encode(['html_body' => render_pacientes_body($pacientes_list, $filtro_estado), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas]]);
+echo json_encode(['html_body' => render_pacientes_body($pacientes_list, $filtro_estado), 'paginacion' => ['actual' => $pagina_actual, 'total' => $total_paginas, 'total_registros' => $total_registros]]);
 ?>
