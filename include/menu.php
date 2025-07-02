@@ -36,23 +36,20 @@ $path_to_include_folder_href = $base_href_to_project_root . "include/";
 
 $filesystem_project_root = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') . $project_uri_base;
 
+// Definiciones de páginas para Administrador y Farmaceuta (sin cambios)
 $paginas_gestion_entidades = ['ver_entidades.php', 'crear_entidad.php', 'editar_entidad.php', 'crear_alianza.php', 'lista_alianzas.php'];
 $paginas_gestion_pacientes = ['lista_pacientes.php'];
 $paginas_gestion_farmaceutas = ['lista_farmaceutas.php', 'asignar_farmaceuta.php'];
 $paginas_gestion_medicos = ['ver_horarios.php', 'crear_horario.php', 'lista_medicos.php', 'asignar_ips_medico.php'];
-
 $paginas_gestion_geografica_crear = ['crear_departamento.php', 'crear_municipio.php', 'crear_barrio.php'];
 $paginas_gestion_geografica_ver = ['ver_departamentos.php', 'ver_municipios.php', 'ver_barrios.php'];
 $paginas_gestion_geografica_todas = array_merge($paginas_gestion_geografica_crear, $paginas_gestion_geografica_ver);
-
 $paginas_gestion_enfermedades_crear = ['crear_enfermedad.php', 'crear_tipo_enfermedad.php'];
 $paginas_gestion_enfermedades_ver = ['ver_enfermedades.php', 'ver_tipos_enfermedad.php'];
 $paginas_gestion_enfermedades_todas = array_merge($paginas_gestion_enfermedades_crear, $paginas_gestion_enfermedades_ver);
-
 $paginas_gestion_roles_crear = ['crear_rol.php'];
 $paginas_gestion_roles_ver = ['ver_roles.php'];
 $paginas_gestion_roles_todas = array_merge($paginas_gestion_roles_crear, $paginas_gestion_roles_ver);
-
 $paginas_farma_gestion_medicamentos = ['crear_tipo_medi.php', 'crear_medicamento.php', 'ver_tipo_medi.php', 'ver_medicamento.php'];
 $paginas_farma_gestion_inventario = ['inventario.php', 'insertar_inventario.php'];
 
@@ -70,7 +67,6 @@ if (strpos($path_inside_project_trimmed, 'admi/gestion_crear') === 0 &&
 $es_pagina_config_geo_activa = (strpos($path_inside_project_trimmed, 'admi/gestion_crear/geografica') === 0 && in_array($currentPage, $paginas_gestion_geografica_todas));
 $es_pagina_gestion_enf_activa = (strpos($path_inside_project_trimmed, 'admi/gestion_crear/enfermedades') === 0 && in_array($currentPage, $paginas_gestion_enfermedades_todas));
 $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/gestion_crear/roles') === 0 && in_array($currentPage, $paginas_gestion_roles_todas));
-
 ?>
 <head>
     <meta charset="UTF-8">
@@ -155,9 +151,9 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                 <div class="collapse navbar-collapse" id="navbarNavSaludConnect">
                     <ul class="navbar-nav ms-auto align-items-center">
                         <?php if ($rol_usuario == 1): ?>
+                            <!-- MENÚ ADMINISTRADOR (Sin cambios) -->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'admi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_usu.php' && strpos($path_inside_project_trimmed, 'admi/gestion_crear') === 0 && !$es_pagina_gestion_sistema_activa) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_crear/crear_usu.php">Crear Usuario</a></li>
-
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'admi/gestion_entidades') === 0 && in_array($currentPage, $paginas_gestion_entidades)) ? 'active' : ''; ?>" href="#" id="navbarDropdownEntidades" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion Entidades</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownEntidades">
@@ -187,11 +183,8 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_horarios.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>admi/gestion_medicos/ver_horarios.php">Ver Horarios</a></li>
                                 </ul>
                             </li>
-
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle <?php echo $es_pagina_gestion_sistema_activa ? 'active' : ''; ?>" href="#" id="navbarDropdownGestionSistema" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Gestión Sistema
-                                </a>
+                                <a class="nav-link dropdown-toggle <?php echo $es_pagina_gestion_sistema_activa ? 'active' : ''; ?>" href="#" id="navbarDropdownGestionSistema" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestión Sistema</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownGestionSistema">
                                     <li class="dropdown-submenu <?php echo $es_pagina_config_geo_activa ? 'active-parent' : ''; ?>">
                                         <a class="dropdown-item dropdown-toggle-submenu <?php echo $es_pagina_config_geo_activa ? 'active' : ''; ?>" href="#" id="configGeoSubmenuToggle" aria-expanded="false">Config. Geográfica</a>
@@ -217,18 +210,20 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                     </li>
                                 </ul>
                             </li>
-
-                       <?php elseif ($rol_usuario == 2): ?>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>inicio.php">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas.php">Agendar Citas</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_actuales.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>citas_actuales.php">Mis Citas</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_path_role_pages; ?>historial_medico.php">Historiales Medico</a></li>
+                        
+                        <?php elseif ($rol_usuario == 2): ?>
+                            <!-- MENÚ PACIENTE (CORREGIDO) -->
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && strpos($path_inside_project_trimmed, 'paci') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/inicio.php">Inicio</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo in_array($currentPage, ['citas.php', 'cita_medica.php', 'cita_examen.php']) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/citas.php">Agendar Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_actuales.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/citas_actuales.php">Mis Citas</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'historial_medico.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>paci/historial_medico.php">Historial Médico</a></li>
+                        
                         <?php elseif ($rol_usuario == 3): ?>
+                            <!-- MENÚ FARMACEUTA (Sin cambios) -->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_pacientes.php' && $path_inside_project_trimmed === 'farma') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/lista_pacientes.php">Pacientes en Espera</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'lista_entregas.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/lista_entregas.php">Historial entregas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'entregas_pendientes.php' && strpos($path_inside_project_trimmed, 'farma/entregar') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/entregar/entregas_pendientes.php">Entregas pendientes</a></li>
-                            
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'farma/inventario') === 0 && in_array($currentPage, $paginas_farma_gestion_inventario)) ? 'active' : ''; ?>" href="#" id="navbarDropdownInventario" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestión Inventario</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownInventario">
@@ -237,7 +232,6 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'movimientos_inventario.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/inventario/movimientos_inventario.php">Ver movimientos</a></li>
                                 </ul>
                             </li>
-                            
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle <?php echo (strpos($path_inside_project_trimmed, 'farma/crear') === 0 && in_array($currentPage, $paginas_farma_gestion_medicamentos)) ? 'active' : ''; ?>" href="#" id="navbarDropdownMedicamentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestión Medicamentos</a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownMedicamentos">
@@ -250,6 +244,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                             </li>
 
                         <?php elseif ($rol_usuario == 4): ?>
+                             <!-- MENÚ MÉDICO (Sin cambios) -->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/inicio.php">Inicio</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_hoy.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_hoy.php">Citas</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'crear_orden.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/crear_orden.php">Crear ordenes</a></li>
@@ -258,6 +253,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                         <?php endif; ?>
 
                         <?php if ($rol_usuario): ?>
+                            <!-- MENÚ DE USUARIO LOGUEADO (Sin cambios) -->
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownUserMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-person-circle"></i></a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUserMenu">
@@ -268,6 +264,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                 </ul>
                             </li>
                         <?php else: ?>
+                            <!-- MENÚ PÚBLICO (Sin cambios) -->
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'inicio_sesion.php' && $path_inside_project_trimmed === '') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>inicio_sesion.php"><i class="bi bi-box-arrow-in-right me-1"></i>Iniciar Sesión</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'registro.php' && $path_inside_project_trimmed === '') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>registro.php"><i class="bi bi-person-plus me-1"></i>Registrarse</a></li>
                         <?php endif; ?>
@@ -277,10 +274,11 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
         </nav>
     </header>
     <div id="perfilModalPlaceholderContainerGlobal"></div>
-
+    <!-- TODO EL JAVASCRIPT SE MANTIENE IGUAL -->
     <script src="<?php echo $path_to_js_folder_href; ?>editar_perfil.js?v=<?php echo time(); ?>"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ... (Todo el código JS que ya tenías va aquí, no es necesario cambiarlo)
         const perfilLink = document.getElementById('abrirPerfilModalLink');
         const modalGlobalContainer = document.getElementById('perfilModalPlaceholderContainerGlobal');
         let finalFormValidator = null;
@@ -515,7 +513,6 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
         
         setTimeout(disableAllAutocomplete, 500);
         setTimeout(disableAllAutocomplete, 1500);
-
     });
     </script>
 </body>
