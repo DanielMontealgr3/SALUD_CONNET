@@ -1,35 +1,55 @@
 <?php
-require_once('conexion.php');
+// BLOQUE 1: CONFIGURACIÓN INICIAL
+// INCLUYE EL ARCHIVO DE CONFIGURACIÓN GLOBAL. ESTO ES CRUCIAL PARA ESTABLECER LA CONEXIÓN A LA BASE DE DATOS ($con).
+require_once __DIR__ . '/config.php';
 
-error_reporting(0);
-ini_set('display_errors', 0);
-
+// ESTABLECE LAS CABECERAS HTTP PARA INDICAR QUE LA RESPUESTA ES EN FORMATO JSON.
+// ESTO ES FUNDAMENTAL PARA QUE LAS LLAMADAS AJAX DESDE JAVASCRIPT FUNCIONEN CORRECTAMENTE.
 header('Content-Type: application/json');
-header('Cache-Control: no-cache, must-revalidate');
-header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+header('Cache-Control: no-cache, must-revalidate'); // EVITA QUE EL NAVEGADOR GUARDE EN CACHÉ LA RESPUESTA.
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // FECHA EN EL PASADO PARA FORZAR LA NO-CACHÉ.
+
+
+// BLOQUE 2: PROCESAMIENTO DE LA SOLICITUD
+// OBTIENE Y SANEPA EL 'id_mun' (ID DEL MUNICIPIO) ENVIADO DESDE LA URL.
 $id_mun = trim($_GET['id_mun'] ?? '');
+// INICIALIZA UN ARRAY VACÍO PARA GUARDAR LOS BARRIOS.
 $barrios = [];
 
+// VERIFICA QUE SE HAYA PROPORCIONADO UN ID DE MUNICIPIO.
 if ($id_mun !== '') {
-    $conex = null; $con = null;
     try {
-        $conex = new database(); $con = $conex->conectar();
-        if ($con) {
-            $sql = "SELECT id_barrio, nom_barrio FROM barrio WHERE id_mun = :id_mun ORDER BY nom_barrio ASC";
-            $stmt = $con->prepare($sql);
-             if ($stmt === false) { error_log("Fallo al preparar la consulta SQL de barrios."); $barrios = []; }
-             else {
-                $stmt->bindParam(':id_mun', $id_mun, PDO::PARAM_STR);
-                $stmt->execute();
-                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($result as $row) { $barrios[] = ['id' => $row['id_barrio'], 'nombre' => $row['nom_barrio']]; }
-                $stmt = null;
-             }
-        } else { error_log("Error conexión BD en get_barrios.php"); }
-    } catch (PDOException $e) { error_log("PDOException en get_barrios.php (id_mun=$id_mun): " . $e->getMessage()); $barrios = []; }
-    catch (Throwable $e) { error_log("Error general en get_barrios.php (id_mun=$id_mun): " . $e->getMessage()); $barrios = []; }
-    finally { if ($con) { $con = null; } }
+        // PREPARA LA CONSULTA SQL PARA OBTENER LOS BARRIOS CORRESPONDIENTES AL MUNICIPIO.
+        // SE USA LA VARIABLE DE CONEXIÓN '$con' QUE FUE CREADA EN 'config.php'.
+        $sql = "SELECT id_barrio, nom_barrio FROM barrio WHERE id_mun = :id_mun ORDER BY nom_barrio ASC";
+        $stmt = $con->prepare($sql);
+        
+        // ASOCIA EL PARÁMETRO ':id_mun' CON LA VARIABLE '$id_mun'.
+        $stmt->bindParam(':id_mun', $id_mun, PDO::PARAM_INT);
+        // EJECUTA LA CONSULTA.
+        $stmt->execute();
+        
+        // OBTIENE TODOS LOS RESULTADOS COMO UN ARRAY ASOCIATIVO.
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // FORMATEA LOS RESULTADOS EN UN NUEVO ARRAY MÁS LIMPIO ('id' y 'nombre') PARA ENVIAR COMO JSON.
+        foreach ($result as $row) {
+            $barrios[] = ['id' => $row['id_barrio'], 'nombre' => htmlspecialchars($row['nom_barrio'])];
+        }
+    } catch (PDOException $e) {
+        // MANEJO DE ERRORES: SI ALGO FALLA EN LA BASE DE DATOS, REGISTRA EL ERROR EN EL LOG DEL SERVIDOR.
+        // ESTO ES IMPORTANTE PARA DEPURACIÓN SIN EXPONER DETALLES AL USUARIO.
+        error_log("PDOException en get_barrios.php: " . $e->getMessage());
+        // SE ASEGURA DE QUE LA RESPUESTA JSON SEA UN ARRAY VACÍO EN CASO DE ERROR.
+        $barrios = []; 
+    }
 }
 
+// BLOQUE 3: RESPUESTA JSON
+// CONVIERTE EL ARRAY PHP '$barrios' A FORMATO JSON Y LO IMPRIME EN LA SALIDA.
+// ESTA SERÁ LA RESPUESTA QUE RECIBIRÁ LA LLAMADA AJAX.
 echo json_encode($barrios);
+
+// FINALIZA LA EJECUCIÓN DEL SCRIPT.
+exit();
 ?>

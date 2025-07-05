@@ -1,4 +1,6 @@
+// FUNCIÓN PRINCIPAL QUE INICIALIZA TODAS LAS VALIDACIONES Y EVENTOS DEL FORMULARIO DE PERFIL.
 function inicializarValidacionesPerfil() {
+    // SELECCIÓN DE TODOS LOS ELEMENTOS DEL DOM NECESARIOS.
     const form = document.getElementById('profileFormModalActual');
     if (!form) return;
 
@@ -19,10 +21,12 @@ function inicializarValidacionesPerfil() {
     const globalMessageDiv = document.getElementById('modalUpdateMessage');
     const tipoDocIdHidden = document.getElementById('tipo_doc_id_hidden');
     
+    // OBJETO PARA ALMACENAR EL ESTADO INICIAL DEL FORMULARIO Y DETECTAR CAMBIOS.
     let initialFormState = {};
     const ID_TIPO_DOC_CEDULA = 1;
     const ID_TIPO_DOC_TI = 2;
 
+    // GUARDA LOS VALORES INICIALES DE TODOS LOS CAMPOS DEL FORMULARIO.
     function storeInitialFormState() {
         initialFormState = {};
         const formData = new FormData(form);
@@ -33,6 +37,7 @@ function inicializarValidacionesPerfil() {
         }
     }
 
+    // VERIFICA SI SE HA REALIZADO ALGÚN CAMBIO EN EL FORMULARIO.
     function checkFormDirty() {
         if (fotoInput.files.length > 0) return true;
         for (const key in initialFormState) {
@@ -44,22 +49,19 @@ function inicializarValidacionesPerfil() {
         return false;
     }
 
+    // MUESTRA MENSAJES DE VALIDACIÓN Y APLICA ESTILOS DE ÉXITO/ERROR A LOS CAMPOS.
     function setValidationMessage(el, msg, isValid) {
-        const feedbackDiv = el.parentElement.querySelector('.invalid-feedback') || el.parentElement.parentElement.querySelector('.foto-feedback');
+        const feedbackDiv = el.parentElement.querySelector('.invalid-feedback');
         if (feedbackDiv) feedbackDiv.textContent = msg || '';
-        
         el.classList.remove('is-invalid', 'is-valid');
-
         if (!isValid) {
             el.classList.add('is-invalid');
-        } else {
-            const isDirty = (initialFormState[el.id] !== el.value) || (el.type === 'file' && el.files.length > 0);
-            if (isDirty && el.type !== 'file') {
-                el.classList.add('is-valid');
-            }
+        } else if (checkFormDirty()){
+             el.classList.add('is-valid');
         }
     }
     
+    // FUNCIÓN ESPECÍFICA PARA VALIDAR LA FECHA DE NACIMIENTO Y LA EDAD SEGÚN EL TIPO DE DOCUMENTO.
     function validateFechaNac(i) {
         if (!i.value && i.required) return { isValid: false, message: "Fecha requerida." };
         const hoy = new Date();
@@ -70,20 +72,15 @@ function inicializarValidacionesPerfil() {
         const tipoDocId = parseInt(tipoDocIdHidden.value);
         let edad = hoy.getFullYear() - fechaNacDate.getFullYear();
         const m = hoy.getMonth() - fechaNacDate.getMonth();
-        if (m < 0 || (m === 0 && hoy.getDate() < fechaNacDate.getDate())) {
-            edad--;
-        }
+        if (m < 0 || (m === 0 && hoy.getDate() < fechaNacDate.getDate())) edad--;
 
-        if (tipoDocId === ID_TIPO_DOC_CEDULA && edad < 18) return { isValid: false, message: "Con C.C. debe ser mayor de 18. Contacte al admin para actualizar su tipo de documento." };
-        if (tipoDocId === ID_TIPO_DOC_TI && edad >= 18) return { isValid: false, message: "Con T.I. debe ser menor de 18. Contacte al admin para actualizar su tipo de documento." };
+        if (tipoDocId === ID_TIPO_DOC_CEDULA && edad < 18) return { isValid: false, message: "Con C.C. debe ser mayor de 18." };
+        if (tipoDocId === ID_TIPO_DOC_TI && edad >= 18) return { isValid: false, message: "Con T.I. debe ser menor de 18." };
         
         return { isValid: true, message: "" };
     }
     
-    function validateFoto(i) {
-        return { isValid: true, message: "" };
-    }
-
+    // ARRAY DE CONFIGURACIÓN CON TODOS LOS CAMPOS Y SUS RESPECTIVAS FUNCIONES DE VALIDACIÓN.
     const inputsConfig = [
         { el: nomUsu, validator: (i) => /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]{5,100}$/.test(i.value.trim()) ? {isValid:true} : {isValid:false, message:"Solo letras, 5-100 car."}},
         { el: correoUsu, validator: (i) => /^\w+([.-_+]?\w+)*@\w+([.-]?\w+)*(\.\w{2,10})+$/.test(i.value.trim()) ? {isValid:true} : {isValid:false, message:"Correo inválido."}},
@@ -94,11 +91,11 @@ function inicializarValidacionesPerfil() {
         { el: selectMunicipio, validator: (i) => i.value !== '' ? {isValid:true} : {isValid:false, message:"Requerido."}},
         { el: selectBarrio, validator: (i) => i.value !== '' ? {isValid:true} : {isValid:false, message:"Requerido."}},
         { el: idGen, validator: (i) => i.value !== '' ? {isValid:true} : {isValid:false, message:"Requerido."}},
-        { el: fotoInput, validator: validateFoto },
         { el: newPass, validator: (i) => i.value===''||/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(i.value)?{isValid:true}:{isValid:false, message:"Mín 8 car, mayús, minús, núm, símb."}},
         { el: confirmPass, validator: (i) => i.value === newPass.value ? {isValid:true} : {isValid:false, message:"No coinciden."}}
     ];
 
+    // FUNCIÓN QUE EJECUTA TODAS LAS VALIDACIONES Y ACTUALIZA EL ESTADO DEL BOTÓN DE GUARDAR.
     function checkAllValidity() {
         let formIsValid = true;
         inputsConfig.forEach(conf => {
@@ -106,21 +103,17 @@ function inicializarValidacionesPerfil() {
                 const { isValid, message } = conf.validator(conf.el);
                 setValidationMessage(conf.el, message, isValid);
                 if (!isValid) formIsValid = false;
-            } else if (conf.el) {
-                setValidationMessage(conf.el, '', true);
-                conf.el.classList.remove('is-valid', 'is-invalid');
             }
         });
         if (saveButton) saveButton.disabled = !(formIsValid && checkFormDirty());
     }
 
+    // ASIGNA EVENTOS 'INPUT' O 'CHANGE' A CADA CAMPO PARA VALIDAR EN TIEMPO REAL.
     inputsConfig.forEach(conf => {
         if(conf.el){
-            const eventType = ['SELECT', 'DATE', 'FILE'].includes(conf.el.tagName) || ['date', 'file'].includes(conf.el.type) ? 'change' : 'input';
-            conf.el.addEventListener(eventType, () => {
+            conf.el.addEventListener(conf.el.tagName === 'SELECT' ? 'change' : 'input', () => {
                  if (conf.el === newPass) {
-                    const confirmConfig = inputsConfig.find(c => c.el === confirmPass);
-                    const {isValid, message} = confirmConfig.validator(confirmPass);
+                    const {isValid, message} = inputsConfig.find(c => c.el === confirmPass).validator(confirmPass);
                     setValidationMessage(confirmPass, message, isValid);
                  }
                  checkAllValidity();
@@ -128,8 +121,7 @@ function inicializarValidacionesPerfil() {
         }
     });
 
-    if(fotoInput && imagePreview) { fotoInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => imagePreview.src = ev.target.result; reader.readAsDataURL(file); } }); }
-    
+    // FUNCIÓN PARA CARGAR DINÁMICAMENTE LAS OPCIONES DE UN SELECT (MUNICIPIOS Y BARRIOS).
     function populateSelect(selectEl, url, placeholder, disabledPlaceholder) {
         selectEl.innerHTML = `<option value="">${placeholder}</option>`;
         selectEl.disabled = true;
@@ -146,71 +138,34 @@ function inicializarValidacionesPerfil() {
         }).catch(e => { console.error('Fetch error:', e); selectEl.innerHTML = `<option value="">Error al cargar</option>`; }).finally(checkAllValidity);
     }
     
+    // LÓGICA PARA CARGAR MUNICIPIOS CUANDO CAMBIA EL DEPARTAMENTO.
     if (selectDepartamento) {
         selectDepartamento.addEventListener('change', () => {
-            const idDep = selectDepartamento.value;
-            selectMunicipio.value = "";
-            selectMunicipio.innerHTML = `<option value="">Seleccione Departamento</option>`;
-            selectMunicipio.disabled = true;
-            selectBarrio.value = "";
+            if (selectDepartamento.value) {
+                // UTILIZA AppConfig.BASE_URL PARA CONSTRUIR LA RUTA DE LA API.
+                populateSelect(selectMunicipio, `${AppConfig.BASE_URL}/include/get_municipios.php?id_dep=${selectDepartamento.value}`, 'Cargando...', 'No hay Municipios');
+            }
             selectBarrio.innerHTML = `<option value="">Seleccione Municipio</option>`;
             selectBarrio.disabled = true;
-            
-            if (idDep) {
-                populateSelect(selectMunicipio, `/SALUDCONNECT/include/get_municipios.php?id_dep=${idDep}`, 'Cargando...', 'No hay Municipios');
-            }
             checkAllValidity();
         });
     }
 
+    // LÓGICA PARA CARGAR BARRIOS CUANDO CAMBIA EL MUNICIPIO.
     if (selectMunicipio) {
         selectMunicipio.addEventListener('change', () => {
-            const idMun = selectMunicipio.value;
-            selectBarrio.value = "";
-            selectBarrio.innerHTML = `<option value="">Seleccione Municipio</option>`;
-            selectBarrio.disabled = true;
-            if (idMun) {
-                populateSelect(selectBarrio, `/SALUDCONNECT/include/get_barrios.php?id_mun=${idMun}`, 'Cargando...', 'No hay Barrios');
+            if (selectMunicipio.value) {
+                // UTILIZA AppConfig.BASE_URL PARA CONSTRUIR LA RUTA DE LA API.
+                populateSelect(selectBarrio, `${AppConfig.BASE_URL}/include/get_barrios.php?id_mun=${selectMunicipio.value}`, 'Cargando...', 'No hay Barrios');
             }
             checkAllValidity();
         });
     }
 
+    // ALMACENA EL ESTADO INICIAL Y REALIZA LA PRIMERA VALIDACIÓN AL CARGAR.
     storeInitialFormState();
     checkAllValidity();
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        let isFormValid = true;
-        inputsConfig.forEach(conf => {
-            if (conf.el && !conf.el.disabled) {
-                const { isValid, message } = conf.validator(conf.el);
-                setValidationMessage(conf.el, message, isValid);
-                if (!isValid) isFormValid = false;
-            }
-        });
-
-        if (!isFormValid) {
-            if (globalMessageDiv) globalMessageDiv.innerHTML = '<div class="alert alert-warning">Por favor, corrija los errores del formulario.</div>';
-            return;
-        }
-
-        if (saveButton) saveButton.disabled = true;
-        if (globalMessageDiv) globalMessageDiv.innerHTML = '<div class="alert alert-info d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2"></div><span>Actualizando...</span></div>';
-        
-        fetch(form.action, { method: 'POST', body: new FormData(form) })
-        .then(r => r.json())
-        .then(data => {
-            if (globalMessageDiv) { globalMessageDiv.className = 'mt-3 alert ' + (data.success ? 'alert-success' : 'alert-danger'); globalMessageDiv.textContent = data.message; }
-            if (data.success) {
-                if (data.new_nom_usu) { const userNameOnMenu = document.getElementById('menuUserNameDisplay'); if (userNameOnMenu) userNameOnMenu.textContent = data.new_nom_usu; }
-                if (data.new_foto_usu_path_for_modal) { if (imagePreview) imagePreview.src = data.new_foto_usu_path_for_modal + '?' + new Date().getTime(); }
-                storeInitialFormState();
-                checkAllValidity();
-                setTimeout(() => { const modalEl = document.getElementById('userProfileModal'); if (modalEl) { const modalInstance = bootstrap.Modal.getInstance(modalEl); if (modalInstance) modalInstance.hide(); } }, 2500);
-            } else { if (saveButton) saveButton.disabled = false; }
-        }).catch(error => { if (globalMessageDiv) { globalMessageDiv.className = 'mt-3 alert alert-danger'; globalMessageDiv.textContent = 'Error de conexión: ' + error.message; } if (saveButton) saveButton.disabled = false; });
-    });
     
+    // DEVUELVE LA FUNCIÓN DE VALIDACIÓN PARA SER USADA DESDE OTROS SCRIPTS SI ES NECESARIO.
     return checkAllValidity;
 }
