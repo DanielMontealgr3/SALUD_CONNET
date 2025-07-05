@@ -1,28 +1,36 @@
 <?php
+// BLOQUE 0: MANEJO DE ERRORES (ÚTIL PARA DEPURACIÓN)
+ini_set('display_errors', 0); // Cambiar a 1 para ver errores en desarrollo
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
 
-// BLOQUE DE CONFIGURACIÓN DE RUTAS
-// DEFINE UNA CONSTANTE 'ROOT_PATH' QUE APUNTA A LA CARPETA RAÍZ DEL PROYECTO.
-// ESTO ES PARA EL SERVIDOR (PHP) Y SE USA EN 'REQUIRE' O 'INCLUDE' PARA NUNCA PERDER LA UBICACIÓN DE LOS ARCHIVOS.
+// BLOQUE 1: CONFIGURACIÓN DE RUTAS
 define('ROOT_PATH', __DIR__ . '/..');
 
-// DETECTA SI EL SITIO SE EJECUTA EN UN SERVIDOR LOCAL ('LOCALHOST') O EN EL SERVIDOR DE PRODUCCIÓN (EL DOMINIO REAL).
 if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
-    // SI ES LOCAL, DEFINE 'BASE_URL' CON EL NOMBRE DE LA CARPETA DEL PROYECTO. ESTO ES PARA EL NAVEGADOR (CSS, JS, IMÁGENES).
     define('BASE_URL', '/SALUDCONNECT');
+    $cookie_domain = 'localhost';
 } else {
-    // SI ES EN PRODUCCIÓN, LA RUTA BASE ES LA RAÍZ DEL DOMINIO, POR LO QUE SE DEJA VACÍA.
     define('BASE_URL', '');
+    $cookie_domain = '.saludconnected.com'; // El punto al inicio es importante para subdominios
 }
 
-// INICIA O REANUDA LA SESIÓN DEL USUARIO PARA PODER USAR VARIABLES DE SESIÓN (COMO $_SESSION).
+// BLOQUE 2: CONFIGURACIÓN ROBUSTA DE SESIONES
+// ESTO ASEGURA QUE LAS COOKIES DE SESIÓN FUNCIONEN CORRECTAMENTE EN HOSTINGER.
+session_set_cookie_params([
+    'lifetime' => 0, // La cookie dura hasta que se cierre el navegador
+    'path' => '/',
+    'domain' => $cookie_domain,
+    'secure' => isset($_SERVER['HTTPS']), // True si es HTTPS
+    'httponly' => true, // La cookie no es accesible por JavaScript
+    'samesite' => 'Lax' // Protección contra ataques CSRF
+]);
 session_start();
 
-// BLOQUE DE CONEXIÓN A LA BASE DE DATOS
-// INCLUYE EL ARCHIVO QUE CONTIENE LA LÓGICA DE CONEXIÓN.
-require_once ROOT_PATH . '/include/conexion.php';
 
-// CREA UNA NUEVA INSTANCIA DE LA CLASE 'DATABASE' Y ESTABLECE LA CONEXIÓN.
-// LA VARIABLE '$con' QUEDA DISPONIBLE PARA SER USADA EN CUALQUIER PÁGINA QUE INCLUYA ESTE ARCHIVO.
+// BLOQUE 3: CONEXIÓN A LA BASE DE DATOS
+require_once ROOT_PATH . '/include/conexion.php';
 $db = new Database();
 $con = $db->conectar();
+
 ?>
