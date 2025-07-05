@@ -1,41 +1,28 @@
 <?php
-// /include/config.php
 
-// 1. INICIAR SESIÓN
+// BLOQUE DE CONFIGURACIÓN DE RUTAS
+// DEFINE UNA CONSTANTE 'ROOT_PATH' QUE APUNTA A LA CARPETA RAÍZ DEL PROYECTO.
+// ESTO ES PARA EL SERVIDOR (PHP) Y SE USA EN 'REQUIRE' O 'INCLUDE' PARA NUNCA PERDER LA UBICACIÓN DE LOS ARCHIVOS.
+define('ROOT_PATH', __DIR__ . '/..');
+
+// DETECTA SI EL SITIO SE EJECUTA EN UN SERVIDOR LOCAL ('LOCALHOST') O EN EL SERVIDOR DE PRODUCCIÓN (EL DOMINIO REAL).
+if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
+    // SI ES LOCAL, DEFINE 'BASE_URL' CON EL NOMBRE DE LA CARPETA DEL PROYECTO. ESTO ES PARA EL NAVEGADOR (CSS, JS, IMÁGENES).
+    define('BASE_URL', '/SALUDCONNECT');
+} else {
+    // SI ES EN PRODUCCIÓN, LA RUTA BASE ES LA RAÍZ DEL DOMINIO, POR LO QUE SE DEJA VACÍA.
+    define('BASE_URL', '');
+}
+
+// INICIA O REANUDA LA SESIÓN DEL USUARIO PARA PODER USAR VARIABLES DE SESIÓN (COMO $_SESSION).
 session_start();
 
-// 2. DEFINIR LA RUTA BASE (BASE_URL)
-// Esta constante nos servirá para la "magia" del reemplazo.
-if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
-    // ESTÁS EN LOCALHOST
-    // Cambia 'SALUD_CONNET' por el nombre de tu carpeta de proyecto si es diferente.
-    define('BASE_URL', '/SALUD_CONNET'); 
-} else {
-    // ESTÁS EN PRODUCCIÓN (HOSTINGER)
-    // En el servidor la ruta base es la raíz, por eso va vacío.
-    define('BASE_URL', ''); 
-}
+// BLOQUE DE CONEXIÓN A LA BASE DE DATOS
+// INCLUYE EL ARCHIVO QUE CONTIENE LA LÓGICA DE CONEXIÓN.
+require_once ROOT_PATH . '/include/conexion.php';
 
-// 3. LA MAGIA: REEMPLAZO AUTOMÁTICO DE RUTAS
-// Esta función se ejecutará justo antes de que la página se envíe al navegador.
-function reemplazar_rutas($buffer) {
-    // Solo hacemos el reemplazo si BASE_URL no está vacía (es decir, si estamos en localhost).
-    if (BASE_URL !== '') {
-        // Busca todas las rutas relativas en href y src (que no empiecen con http, //, o #)
-        // y les añade el BASE_URL al principio.
-        $buffer = preg_replace('/(href|src)="(?!https?:\/\/|\/\/|#)([^"]*)"/', '$1="' . BASE_URL . '/$2"', $buffer);
-    }
-    return $buffer;
-}
-
-// Inicia el búfer de salida con nuestra función de reemplazo.
-ob_start("reemplazar_rutas");
-
-
-// 4. CONEXIÓN A LA BASE DE DATOS (el código inteligente que ya teníamos)
-require_once 'conexion.php';
-
+// CREA UNA NUEVA INSTANCIA DE LA CLASE 'DATABASE' Y ESTABLECE LA CONEXIÓN.
+// LA VARIABLE '$con' QUEDA DISPONIBLE PARA SER USADA EN CUALQUIER PÁGINA QUE INCLUYA ESTE ARCHIVO.
 $db = new Database();
 $con = $db->conectar();
-
 ?>
