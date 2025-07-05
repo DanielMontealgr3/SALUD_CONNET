@@ -12,7 +12,7 @@
 
     <div id="wrapper">
         <div id="logo-wrapper">
-            <a href="index.php"><img src="img/Loguito.png" alt="Logo Salud Connected"></a>
+            <a href="index.php"><img src="img/loguito.png" alt="Logo Salud Connected"></a>
         </div>
         <div id="menu-wrapper">
             <nav>
