@@ -1,36 +1,54 @@
 <?php
+// =================================================================
+// ARCHIVO DE CONFIGURACIÓN CENTRAL (config.php)
+// =================================================================
+
 // BLOQUE 0: MANEJO DE ERRORES (ÚTIL PARA DEPURACIÓN)
-ini_set('display_errors', 0); // Cambiar a 1 para ver errores en desarrollo
+// En producción, es mejor tener display_errors en 0 por seguridad.
+ini_set('display_errors', 0); 
 ini_set('log_errors', 1);
+// Opcional: define una ruta para el archivo de log de errores
+// ini_set('error_log', ROOT_PATH . '/php-errors.log');
 error_reporting(E_ALL);
 
 // BLOQUE 1: CONFIGURACIÓN DE RUTAS
+// Define la ruta raíz del proyecto en el servidor. __DIR__ es el directorio actual (include),
+// por lo que '/..' sube un nivel al directorio raíz del proyecto.
 define('ROOT_PATH', __DIR__ . '/..');
 
+// DETECCIÓN DEL ENTORNO (Local vs Producción)
 if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
-    define('BASE_URL', '/SALUDCONNECT');
+    // Entorno Local (XAMPP)
+    define('BASE_URL', '/SALUDCONNECT'); // Ruta base para URLs en HTML/JS
     $cookie_domain = 'localhost';
+    $cookie_secure = false; // HTTP en local
 } else {
-    define('BASE_URL', '');
-    $cookie_domain = '.saludconnected.com'; // El punto al inicio es importante para subdominios
+    // Entorno de Producción (Hostinger)
+    define('BASE_URL', ''); // En el dominio raíz, la base es vacía.
+    $cookie_domain = '.saludconnected.com'; // El punto inicial cubre www. y otros subdominios.
+    $cookie_secure = true; // Forzar HTTPS en producción.
 }
 
 // BLOQUE 2: CONFIGURACIÓN ROBUSTA DE SESIONES
-// ESTO ASEGURA QUE LAS COOKIES DE SESIÓN FUNCIONEN CORRECTAMENTE EN HOSTINGER.
+// Esto soluciona el problema de pérdida de sesión en llamadas AJAX en Hostinger.
 session_set_cookie_params([
-    'lifetime' => 0, // La cookie dura hasta que se cierre el navegador
-    'path' => '/',
-    'domain' => $cookie_domain,
-    'secure' => isset($_SERVER['HTTPS']), // True si es HTTPS
-    'httponly' => true, // La cookie no es accesible por JavaScript
-    'samesite' => 'Lax' // Protección contra ataques CSRF
+    'lifetime' => 0, // La cookie expira cuando se cierra el navegador.
+    'path' => '/',   // La cookie es válida para todo el sitio.
+    'domain' => $cookie_domain, // Dominio correcto para local o producción.
+    'secure' => $cookie_secure, // Debe ser `true` en producción (HTTPS).
+    'httponly' => true, // Protege contra ataques XSS.
+    'samesite' => 'Lax' // Buena protección contra CSRF.
 ]);
-session_start();
 
+// Inicia la sesión si no hay una activa.
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 // BLOQUE 3: CONEXIÓN A LA BASE DE DATOS
+// Requiere la clase de conexión y la instancia.
+// La variable $con estará disponible globalmente en los scripts que incluyan config.php.
 require_once ROOT_PATH . '/include/conexion.php';
 $db = new Database();
 $con = $db->conectar();
-
 ?>
