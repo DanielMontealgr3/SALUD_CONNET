@@ -78,6 +78,7 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
     <link rel="icon" type="image/png" href="<?php echo $path_to_img_folder_href; ?>loguito.png">
     <?php
     $estilo_rol_path_href = "";
@@ -242,6 +243,8 @@ $es_pagina_gestion_roles_activa = (strpos($path_inside_project_trimmed, 'admi/ge
                                     <li><a class="dropdown-item <?php echo ($currentPage === 'ver_tipo_medi.php') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/crear/ver_tipo_medi.php">Ver Tipos de Medicamento</a></li>
                                 </ul>
                             </li>
+                            
+                            <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'pantalla_tv.php' && strpos($path_inside_project_trimmed, 'farma/televisor') === 0) ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>farma/televisor/pantalla_tv.php">TV</a></li>
 
                         <?php elseif ($rol_usuario == 4): ?>
                             <li class="nav-item"><a class="nav-link <?php echo ($currentPage === 'citas_hoy.php' && $path_inside_project_trimmed === 'medi') ? 'active' : ''; ?>" href="<?php echo $base_href_to_project_root; ?>medi/citas_hoy.php">Citas</a></li>
