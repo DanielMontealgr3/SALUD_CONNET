@@ -1,25 +1,50 @@
 <?php
 // BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD
-// INCLUYE EL ARCHIVO DE CONFIGURACIÓN GLOBAL PARA LA CONEXIÓN A LA BD Y LAS CONSTANTES DE RUTA.
 require_once __DIR__ . '/config.php';
 
-// INICIALIZACIÓN DE VARIABLES.
-$usuario_data = null; $error_message = null; $departamentos = [];
-$municipios_del_depto_actual = []; $barrios_del_mun_actual = []; $generos = [];
+// INICIALIZACIÓN DE VARIABLES
+$usuario_data = null; 
+$error_message = null; 
+$departamentos = [];
+$municipios_del_depto_actual = []; 
+$barrios_del_mun_actual = []; 
+$generos = [];
 $default_avatar_path = 'img/perfiles/foto_por_defecto.webp';
 
-// VERIFICA SI HAY UN USUARIO LOGUEADO EN LA SESIÓN.
+// VERIFICA SI HAY UN USUARIO LOGUEADO
 if (isset($_SESSION['doc_usu'])) {
     $doc_usuario_actual = $_SESSION['doc_usu'];
     try {
         // BLOQUE 2: CONSULTAS A LA BASE DE DATOS
-        // SE OBTIENEN TODOS LOS DATOS DEL USUARIO LOGUEADO, INCLUYENDO INFORMACIÓN DE TABLAS RELACIONADAS.
-        $sql_usuario = "SELECT u.*, ti.id_tipo_doc AS id_tipo_documento, ti.nom_doc AS tipo_documento_nombre, b.id_barrio AS id_barrio_actual, b.nom_barrio AS barrio_nombre_actual, m.id_mun AS id_municipio_actual, m.nom_mun AS municipio_nombre_actual, d.id_dep AS id_departamento_actual, d.nom_dep AS departamento_nombre_actual, g.nom_gen AS genero_nombre_actual, e.nom_est AS estado_nombre_actual, e.id_est AS id_estado_actual, esp.id_espe AS id_especialidad, esp.nom_espe AS especialidad_nombre, r.nombre_rol AS rol_nombre FROM usuarios u LEFT JOIN tipo_identificacion ti ON u.id_tipo_doc = ti.id_tipo_doc LEFT JOIN barrio b ON u.id_barrio = b.id_barrio LEFT JOIN municipio m ON b.id_mun = m.id_mun LEFT JOIN departamento d ON m.id_dep = d.id_dep LEFT JOIN genero g ON u.id_gen = g.id_gen LEFT JOIN estado e ON u.id_est = e.id_est LEFT JOIN rol r ON u.id_rol = r.id_rol LEFT JOIN especialidad esp ON u.id_especialidad = esp.id_espe WHERE u.doc_usu = :doc_usu";
+        // Esta consulta ya es perfecta y trae todo lo necesario, incluyendo 'tipo_documento_nombre'.
+        $sql_usuario = "
+            SELECT 
+                u.*, 
+                ti.id_tipo_doc AS id_tipo_documento, 
+                ti.nom_doc AS tipo_documento_nombre, 
+                b.id_barrio AS id_barrio_actual, b.nom_barrio AS barrio_nombre_actual, 
+                m.id_mun AS id_municipio_actual, m.nom_mun AS municipio_nombre_actual, 
+                d.id_dep AS id_departamento_actual, d.nom_dep AS departamento_nombre_actual, 
+                g.nom_gen AS genero_nombre_actual, 
+                e.nom_est AS estado_nombre_actual, e.id_est AS id_estado_actual, 
+                esp.id_espe AS id_especialidad, esp.nom_espe AS especialidad_nombre, 
+                r.nombre_rol AS rol_nombre 
+            FROM usuarios u 
+            LEFT JOIN tipo_identificacion ti ON u.id_tipo_doc = ti.id_tipo_doc 
+            LEFT JOIN barrio b ON u.id_barrio = b.id_barrio 
+            LEFT JOIN municipio m ON b.id_mun = m.id_mun 
+            LEFT JOIN departamento d ON m.id_dep = d.id_dep 
+            LEFT JOIN genero g ON u.id_gen = g.id_gen 
+            LEFT JOIN estado e ON u.id_est = e.id_est 
+            LEFT JOIN rol r ON u.id_rol = r.id_rol 
+            LEFT JOIN especialidad esp ON u.id_especialidad = esp.id_espe 
+            WHERE u.doc_usu = :doc_usu
+        ";
         $q_usuario = $con->prepare($sql_usuario);
         $q_usuario->execute([':doc_usu' => $doc_usuario_actual]);
         $usuario_data = $q_usuario->fetch(PDO::FETCH_ASSOC);
         
-        // SI SE ENCUENTRAN DATOS DEL USUARIO, SE CARGAN LOS DATOS PARA LOS SELECTS (DEPARTAMENTOS, GÉNEROS, ETC.).
+        // Si se encuentran datos, se cargan los datos para los SELECTS.
         if ($usuario_data) {
             $departamentos = $con->query("SELECT id_dep, nom_dep FROM departamento ORDER BY nom_dep")->fetchAll();
             if (!empty($usuario_data['id_departamento_actual'])) {
@@ -33,18 +58,23 @@ if (isset($_SESSION['doc_usu'])) {
                 $barrios_del_mun_actual = $q_barrios->fetchAll();
             }
             $generos = $con->query("SELECT id_gen, nom_gen FROM genero ORDER BY nom_gen")->fetchAll();
-            $usuario_data['estado_a_mostrar'] = ($usuario_data['id_estado_actual'] == 1) ? "Activo" : "Inactivo";
-        } else { $error_message = "No se encontraron datos para el usuario."; }
-    } catch (PDOException $e) { $error_message = "Error de base de datos."; error_log("Error PDO en modal_perfil: " . $e->getMessage()); }
-} else { $error_message = "Sesión de usuario no encontrada."; }
+        } else { 
+            $error_message = "No se encontraron datos para el usuario."; 
+        }
+    } catch (PDOException $e) { 
+        $error_message = "Error de base de datos."; 
+        error_log("Error PDO en modal_perfil: " . $e->getMessage()); 
+    }
+} else { 
+    $error_message = "Sesión de usuario no encontrada."; 
+}
 
-// DETERMINA LA RUTA FINAL DE LA FOTO DE PERFIL, USANDO LA CONSTANTE 'BASE_URL'.
-$foto_relativa = isset($usuario_data['foto_usu']) && !empty($usuario_data['foto_usu']) ? $usuario_data['foto_usu'] : $default_avatar_path;
+// Determina la ruta final de la foto de perfil.
+$foto_relativa = !empty($usuario_data['foto_usu']) ? $usuario_data['foto_usu'] : $default_avatar_path;
 $foto_final_url = BASE_URL . '/' . $foto_relativa;
 ?>
 <!-- BLOQUE 3: RENDERIZADO DEL HTML DEL MODAL -->
-<!-- ESTILOS CSS EN LÍNEA ESPECÍFICOS PARA EL MODAL. -->
-<style>#userProfileModal .modal-content{background-color:#f0f2f5;border:3px solid #87CEEB;border-radius:.5rem}#userProfileModal .modal-header{background-color:#005A9C;color:white;border-bottom:1px solid #0047AB}#userProfileModal .modal-header .btn-close-white{filter:invert(1) grayscale(100%) brightness(200%)}#userProfileModal .modal-dialog{max-width:850px}.profile-photo-container{position:relative;width:150px;height:150px;margin:0 auto 1.5rem auto}#imagePreviewModal{width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}#upload-photo-label{position:absolute;bottom:5px;right:5px;width:40px;height:40px;background-color:#0d6efd;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;border:2px solid white;transition:background-color .2s ease-in-out}#upload-photo-label:hover{background-color:#0b5ed7}#foto_usu_modal{display:none}.invalid-feedback{display:block;width:100%;margin-top:.15rem;font-size:.80em;color:#dc3545}.form-control.is-valid,.form-select.is-valid{border-color:#198754!important;background-image:none!important;box-shadow:0 0 0 .25rem rgba(25,135,84,.25)!important}</style>
+<style>/* Estilos CSS específicos del modal (los mismos que tenías) */ #userProfileModal .modal-content{background-color:#f0f2f5;border:3px solid #87CEEB;border-radius:.5rem}#userProfileModal .modal-header{background-color:#005A9C;color:white;border-bottom:1px solid #0047AB}#userProfileModal .modal-header .btn-close-white{filter:invert(1) grayscale(100%) brightness(200%)}#userProfileModal .modal-dialog{max-width:850px}.profile-photo-container{position:relative;width:150px;height:150px;margin:0 auto 1.5rem auto}#imagePreviewModal{width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}#upload-photo-label{position:absolute;bottom:5px;right:5px;width:40px;height:40px;background-color:#0d6efd;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;border:2px solid white;transition:background-color .2s ease-in-out}#upload-photo-label:hover{background-color:#0b5ed7}#foto_usu_modal{display:none}.invalid-feedback{display:block;width:100%;margin-top:.15rem;font-size:.80em;color:#dc3545}.form-control.is-valid,.form-select.is-valid{border-color:#198754!important;background-image:none!important;box-shadow:0 0 0 .25rem rgba(25,135,84,.25)!important}</style>
 <div class="modal fade" id="userProfileModal" tabindex="-1" aria-labelledby="userProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -53,20 +83,46 @@ $foto_final_url = BASE_URL . '/' . $foto_relativa;
                 <?php if ($error_message): ?> <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($error_message); ?></div>
                 <?php elseif ($usuario_data): ?>
                     <form id="profileFormModalActual" method="POST" action="<?php echo BASE_URL; ?>/include/mi_perfil.php" enctype="multipart/form-data" novalidate>
+                        <!-- Campo oculto para pasar el ID del tipo de documento a JavaScript -->
                         <input type="hidden" id="tipo_doc_id_hidden" value="<?php echo htmlspecialchars($usuario_data['id_tipo_documento'] ?? ''); ?>">
+                        
                         <div class="row">
+                            <!-- Columna Izquierda: Foto y Datos Fijos -->
                             <div class="col-md-4 text-center">
                                 <div class="profile-photo-container">
-                                    <img src="<?php echo htmlspecialchars($foto_final_url); ?>" alt="Foto de Perfil" id="imagePreviewModal" onerror="this.onerror=null; this.src='<?php echo BASE_URL . '/' . $default_avatar_path; ?>';">
+                                    <img src="<?php echo htmlspecialchars($foto_final_url); ?>?t=<?php echo time(); ?>" alt="Foto de Perfil" id="imagePreviewModal" onerror="this.onerror=null; this.src='<?php echo BASE_URL . '/' . $default_avatar_path; ?>';">
                                     <input type="file" id="foto_usu_modal" name="foto_usu_modal" accept="image/*">
                                     <label for="foto_usu_modal" id="upload-photo-label" title="Cambiar foto"><i class="bi bi-camera-fill"></i></label>
                                 </div>
                                 <hr>
-                                <div class="mb-3"><label class="form-label">Documento:</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($usuario_data['doc_usu']); ?>" disabled></div>
-                                <div class="mb-3"><label class="form-label">Rol:</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($usuario_data['rol_nombre'] ?? 'N/A'); ?>" disabled></div>
-                                <?php if (isset($usuario_data['id_especialidad']) && $usuario_data['id_especialidad'] != 46 && !empty($usuario_data['especialidad_nombre'])): ?> <div class="mb-3"><label class="form-label">Especialidad:</label><input type="text" class="form-control" value="<?php echo htmlspecialchars($usuario_data['especialidad_nombre']); ?>" disabled></div> <?php endif; ?>
+                                
+                                <!-- CAMPO NUEVO: TIPO DE DOCUMENTO -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Tipo de Documento:</label>
+                                    <input type="text" class="form-control text-center" value="<?php echo htmlspecialchars($usuario_data['tipo_documento_nombre'] ?? 'No especificado'); ?>" disabled readonly>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Número de Documento:</label>
+                                    <input type="text" class="form-control text-center" value="<?php echo htmlspecialchars($usuario_data['doc_usu']); ?>" disabled readonly>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Rol:</label>
+                                    <input type="text" class="form-control text-center" value="<?php echo htmlspecialchars($usuario_data['rol_nombre'] ?? 'N/A'); ?>" disabled readonly>
+                                </div>
+                                
+                                <?php if (isset($usuario_data['id_especialidad']) && $usuario_data['id_especialidad'] != 46 && !empty($usuario_data['especialidad_nombre'])): ?> 
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Especialidad:</label>
+                                    <input type="text" class="form-control text-center" value="<?php echo htmlspecialchars($usuario_data['especialidad_nombre']); ?>" disabled readonly>
+                                </div> 
+                                <?php endif; ?>
                             </div>
+                            
+                            <!-- Columna Derecha: Formulario Editable -->
                             <div class="col-md-8">
+                                <!-- Resto del formulario (sin cambios) -->
                                 <div class="mb-3"> <label for="nom_usu_modal" class="form-label">Nombre Completo</label> <input type="text" class="form-control" id="nom_usu_modal" name="nom_usu_modal" value="<?php echo htmlspecialchars($usuario_data['nom_usu']); ?>" required> <div class="invalid-feedback"></div> </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3"> <label for="correo_usu_modal" class="form-label">Correo Electrónico</label> <input type="email" class="form-control" id="correo_usu_modal" name="correo_usu_modal" value="<?php echo htmlspecialchars($usuario_data['correo_usu']); ?>" required> <div class="invalid-feedback"></div> </div>
@@ -88,11 +144,19 @@ $foto_final_url = BASE_URL . '/' . $foto_relativa;
                                     <div class="col-md-6 mb-3"> <label for="confirm_pass_modal" class="form-label">Confirmar</label> <input type="password" class="form-control" id="confirm_pass_modal" name="confirm_pass_modal"> <div class="invalid-feedback"></div> </div>
                                 </div>
                             </div>
-                        </div> <div id="modalUpdateMessage" class="mt-3"></div>
+                        </div> 
+                        <div id="modalUpdateMessage" class="mt-3"></div>
                     </form>
-                <?php else: ?> <div class="alert alert-warning" role="alert">No se pudieron cargar los datos del perfil.</div> <?php endif; ?>
+                <?php else: ?> 
+                    <div class="alert alert-warning" role="alert">No se pudieron cargar los datos del perfil. Por favor, intente de nuevo.</div> 
+                <?php endif; ?>
             </div>
-            <div class="modal-footer"> <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button> <?php if ($usuario_data && !$error_message): ?> <button type="submit" class="btn btn-primary" form="profileFormModalActual" id="saveProfileChangesButton" disabled>Guardar Cambios</button> <?php endif; ?> </div>
+            <div class="modal-footer"> 
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button> 
+                <?php if ($usuario_data && !$error_message): ?> 
+                    <button type="submit" class="btn btn-primary" form="profileFormModalActual" id="saveProfileChangesButton" disabled>Guardar Cambios</button> 
+                <?php endif; ?> 
+            </div>
         </div>
     </div>
 </div>
