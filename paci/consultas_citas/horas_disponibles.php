@@ -1,7 +1,14 @@
 <?php
 // ARCHIVO: consultas_citas/horas_disponibles.php (Versión Corregida y Mejorada)
 
-require_once '../../include/conexion.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+// La ruta sube dos niveles porque se asume que este archivo está en un subdirectorio.
+require_once __DIR__ . '/../../include/config.php';
 
 // --- PASO 1: FIJAR LA ZONA HORARIA ---
 // Esto es CRUCIAL para que la comparación de "ahora" sea correcta.
@@ -9,13 +16,19 @@ date_default_timezone_set('America/Bogota');
 
 header('Content-Type: application/json');
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $doc_medico = $_POST['doc_med'] ?? '';
 $fecha_seleccionada_str = $_POST['fecha'] ?? '';
 
 if (empty($doc_medico) || empty($fecha_seleccionada_str)) {
+    http_response_code(400); // Bad Request
     echo json_encode(['error' => 'Faltan datos para la consulta.']);
     exit;
 }
@@ -81,6 +94,7 @@ try {
     echo json_encode($response);
 
 } catch (PDOException $e) {
+    http_response_code(500); // Internal Server Error
     error_log("Error en horas_disponibles.php: " . $e->getMessage());
     echo json_encode(['error' => 'Error al consultar la disponibilidad.']);
 }

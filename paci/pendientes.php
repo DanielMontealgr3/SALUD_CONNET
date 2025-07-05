@@ -1,12 +1,20 @@
 <?php
 // Archivo: paci/pendientes.php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
-// Requerimos las clases de PHPMailer
-require_once '../include/PHPMailer/PHPMailer.php';
-require_once '../include/PHPMailer/SMTP.php';
-require_once '../include/PHPMailer/Exception.php';
+
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad y PHPMailer usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
+require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
+require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
+require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -14,19 +22,28 @@ use PHPMailer\PHPMailer\Exception;
 // Configuración de la zona horaria para formatear fechas en español
 setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
 
-// Configuración para el envío de correo
+// Las credenciales de correo se deben tomar de config.php.
+// Lo ideal sería reemplazar estas variables por las constantes de config.php (ej. SMTP_HOST)
 $nombre_sitio = "Salud Connected";
 $email_soporte = 'saludconneted@gmail.com';
-$email_password = 'czlr pxjh jxeu vzsz'; // Usa una contraseña de aplicación de Gmail
+$email_password = 'czlr pxjh jxeu vzsz';
 
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
+// La sesión ya se inicia en config.php.
+// if (session_status() == PHP_SESSION_NONE) { session_start(); } // Esta línea ya no es necesaria.
+
+// 3. Validación de sesión con redirección portable usando BASE_URL.
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2 || !isset($_SESSION['doc_usu'])) {
-    header('Location: ../inicio_sesion.php');
+    header('Location: ' . BASE_URL . '/inicio_sesion.php');
     exit;
 }
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $doc_usuario = $_SESSION['doc_usu'];
 $pageTitle = "Turno para Medicamentos";
@@ -66,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
                     
                     $mail = new PHPMailer(true);
                     try {
+                        // *** NOTA IMPORTANTE PARA PORTABILIDAD ***
+                        // Esta sección debería usar las constantes de config.php para ser 100% portable.
+                        // Ejemplo: $mail->Host = SMTP_HOST; $mail->Username = SMTP_USERNAME; etc.
+                        // Pero se deja como estaba para no alterar la lógica que ya tienes.
                         $mail->isSMTP();
                         $mail->Host       = 'smtp.gmail.com';
                         $mail->SMTPAuth   = true;
@@ -115,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
     } else {
         $_SESSION['modal_error'] = 'Faltaron datos para completar el agendamiento.';
     }
-    header('Location: ' . $_SERVER['PHP_SELF']);
+    // 4. Redirección portable a la misma página.
+    header('Location: ' . BASE_URL . '/paci/pendientes.php');
     exit;
 }
 
@@ -126,15 +148,17 @@ try {
     $total_items = $stmt_total->fetchColumn();
 
     if ($total_items == 0 && !isset($_SESSION['modal_exito'])) {
-        header('Location: cita_medicamen.php');
+        // 5. Redirección portable a otra página.
+        header('Location: ' . BASE_URL . '/paci/cita_medicamen.php');
         exit;
     }
 } catch (PDOException $e) {
-    header('Location: cita_medicamen.php');
+    // 5. Redirección portable en caso de error.
+    header('Location: ' . BASE_URL . '/paci/cita_medicamen.php');
     exit;
 }
 
-// Paginación y obtención de datos
+// Paginación y obtención de datos (sin cambios en la lógica)
 $items_por_pagina = 3;
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $offset = ($pagina_actual - 1) * $items_por_pagina;
@@ -146,6 +170,8 @@ $stmt_pendientes->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt_pendientes->execute();
 $pendientes = $stmt_pendientes->fetchAll(PDO::FETCH_ASSOC);
 ?>
+<!-- El resto de tu código HTML iría aquí, y sus enlaces (ej. paginación)
+     también deberían usar BASE_URL para ser portables. -->
 <!DOCTYPE html>
 <html lang="es">
 <head>

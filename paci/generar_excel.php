@@ -1,13 +1,26 @@
 <?php
 // exportar citas examenes medicamentos a excel
 
-require_once '../include/validar_sesion.php';
-require_once '../include/conexion.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
 
-// inicializacion de conexion y sesion
-$conex = new Database();
-$con = $conex->conectar();
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión del script de validación de sesión usando ROOT_PATH.
+// (El script de inactividad no es necesario aquí ya que la página no espera interacción)
+require_once ROOT_PATH . '/include/validar_sesion.php';
+
+// La variable de conexión `$con` y la sesión ya están disponibles desde config.php.
+// No es necesario crear una nueva instancia de Database ni iniciar la sesión manualmente.
 $doc_usuario = $_SESSION['doc_usu'];
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 // filtros recibidos por get para filtrar resultados
 $filtro_especialidad = $_GET['especialidad'] ?? 'todos';
@@ -81,10 +94,43 @@ $stmt->execute($params);
 $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // encabezados para generar archivo excel
+// NOTA: Esta parte del código es inherentemente portable y no necesita cambios.
 header("Content-Type: application/vnd.ms-excel; charset=utf-8");
 header("Content-Disposition: attachment; filename=reporte_citas_" . date('Y-m-d') . ".xls");
 header("Pragma: no-cache");
 header("Expires: 0");
+
+// --- INICIO DEL CONTENIDO DEL ARCHIVO EXCEL ---
+// Se crea una tabla HTML que Excel interpretará.
+
+// Encabezados de la tabla
+echo mb_convert_encoding("<table>
+    <thead>
+        <tr>
+            <th>Tipo de Evento</th>
+            <th>Detalle</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>", 'UTF-16LE', 'UTF-8');
+
+// Filas con los datos
+foreach ($resultados as $fila) {
+    echo mb_convert_encoding("<tr>
+        <td>" . htmlspecialchars($fila['tipo_evento']) . "</td>
+        <td>" . htmlspecialchars($fila['detalle_evento']) . "</td>
+        <td>" . htmlspecialchars(date('d/m/Y', strtotime($fila['fecha_evento']))) . "</td>
+        <td>" . htmlspecialchars(date('h:i A', strtotime($fila['hora_evento']))) . "</td>
+        <td>" . htmlspecialchars($fila['estado_nombre']) . "</td>
+    </tr>", 'UTF-16LE', 'UTF-8');
+}
+
+// Cierre de la tabla
+echo mb_convert_encoding("</tbody></table>", 'UTF-16LE', 'UTF-8');
+
+exit;
 ?>
 <!DOCTYPE html>
 <html lang="es">

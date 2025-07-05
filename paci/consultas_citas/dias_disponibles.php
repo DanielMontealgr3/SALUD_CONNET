@@ -1,12 +1,25 @@
 <?php
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
 
-
-require_once '../../include/conexion.php';
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+// La ruta sube dos niveles porque se asume que este archivo está en un subdirectorio.
+require_once __DIR__ . '/../../include/config.php';
 
 header('Content-Type: application/json');
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
+
+// NOTA: Este script no valida la sesión. Si es necesario, se deberían añadir
+// las líneas de validación de sesión aquí. Por ahora, se omite para no alterar la lógica.
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $doc_medico = $_GET['medico'] ?? null;
 $start_str = $_GET['start'] ?? '';
@@ -62,9 +75,11 @@ try {
     echo json_encode($diasConHoras); // Devuelve un objeto { fecha: true/false }
 
 } catch (PDOException $e) {
+    http_response_code(500); // Internal Server Error
     error_log("Error en dias_disponibles.php (PDO): " . $e->getMessage());
     echo json_encode([]);
 } catch (Exception $e) {
+    http_response_code(500); // Internal Server Error
     error_log("Error general en dias_disponibles.php: " . $e->getMessage());
     echo json_encode([]);
 }

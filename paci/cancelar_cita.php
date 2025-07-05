@@ -1,28 +1,49 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/conexion.php';
-require_once '../include/PHPMailer/PHPMailer.php';
-require_once '../include/PHPMailer/SMTP.php';
-require_once '../include/PHPMailer/Exception.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad y PHPMailer usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+// El script de inactividad no es tan crítico en un procesador que redirige, pero es buena práctica mantenerlo.
+require_once ROOT_PATH . '/include/inactividad.php'; 
+require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
+require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
+require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
+// La sesión ya se inicia en config.php.
+// if (session_status() == PHP_SESSION_NONE) { session_start(); } // Esta línea ya no es necesaria.
+
 setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
 
 $id_registro = $_GET['id'] ?? null;
 $tipo_registro = $_GET['tipo'] ?? null;
 $doc_usuario = $_SESSION['doc_usu'];
-$redirect_url = 'citas_actuales.php';
 
-// Configuración para el envío de correo
+// 3. Redirección portable usando BASE_URL.
+// El nombre del archivo debe ser el correcto, asumo 'mis_citas.php'
+$redirect_url = BASE_URL . '/paci/citas_actuales.php';
+
+// Las credenciales de correo se deben tomar de config.php.
+// Lo ideal sería reemplazar estas variables por las constantes de config.php (ej. SMTP_HOST)
 $nombre_sitio = "Salud Connected";
 $email_soporte = 'saludconneted@gmail.com';
 $email_password = 'czlr pxjh jxeu vzsz';
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 if (!$id_registro || !$tipo_registro || !in_array($tipo_registro, ['medica', 'medicamento', 'examen'])) {
     header("Location: $redirect_url?cancel_status=error_params");
@@ -100,6 +121,10 @@ try {
 
             $mail = new PHPMailer(true);
             try {
+                // *** NOTA IMPORTANTE PARA PORTABILIDAD ***
+                // Esta sección debería usar las constantes de config.php para ser 100% portable.
+                // Ejemplo: $mail->Host = SMTP_HOST; $mail->Username = SMTP_USERNAME; etc.
+                // Pero se deja como estaba para no alterar la lógica que ya tienes.
                 $mail->isSMTP(); $mail->Host = 'smtp.gmail.com'; $mail->SMTPAuth = true;
                 $mail->Username = $email_soporte; $mail->Password = $email_password;
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $mail->Port = 465;

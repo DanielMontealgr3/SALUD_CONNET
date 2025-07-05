@@ -1,14 +1,29 @@
 <?php
 // Archivo: paci/consultas_citas/get_horarios.php
+
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+// La ruta sube dos niveles porque se asume que este archivo está en un subdirectorio.
+require_once __DIR__ . '/../../include/config.php';
+
 header('Content-Type: application/json');
-require_once '../../include/conexion.php'; 
+
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $response = ['success' => false, 'horarios' => []];
 
 if (isset($_POST['fecha'])) {
     $fecha_seleccionada = $_POST['fecha'];
-    $conex = new Database();
-    $con = $conex->conectar();
     
     try {
         // 1. Obtener TODOS los horarios disponibles para el día
@@ -77,10 +92,12 @@ if (isset($_POST['fecha'])) {
         $response['success'] = true;
         
     } catch (Exception $e) { // Usamos Exception genérico para capturar errores de DateTime también
-        $response['message'] = 'Error interno del servidor: ' . $e->getMessage();
+        http_response_code(500); // Internal Server Error
+        $response['message'] = 'Error interno del servidor.'; // Mensaje genérico para el usuario
         error_log("Error en get_horarios.php: " . $e->getMessage());
     }
 } else {
+    http_response_code(400); // Bad Request
     $response['message'] = 'No se proporcionó una fecha.';
 }
 

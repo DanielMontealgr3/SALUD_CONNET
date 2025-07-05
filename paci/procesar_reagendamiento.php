@@ -1,30 +1,43 @@
 <?php
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
 
-// Validaciones y conexiones necesarias
-require_once '../include/validar_sesion.php';
-require_once '../include/conexion.php';
-require_once '../include/PHPMailer/PHPMailer.php';
-require_once '../include/PHPMailer/SMTP.php';
-require_once '../include/PHPMailer/Exception.php';
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad y PHPMailer usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+// El script de inactividad no es tan crítico en un procesador que redirige, pero es buena práctica mantenerlo.
+require_once ROOT_PATH . '/include/inactividad.php'; 
+require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
+require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
+require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Iniciar sesión si no está iniciada
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
+// La sesión ya se inicia en config.php.
+// if (session_status() == PHP_SESSION_NONE) { session_start(); } // Esta línea ya no es necesaria.
 
 // Configurar localización para mostrar fechas en español
 setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
 
-// Conexión a la base de datos
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
 $doc_usuario = $_SESSION['doc_usu'];
 
-// Datos para envío de correo
+// Las credenciales de correo se deben tomar de config.php.
+// Lo ideal sería reemplazar estas variables por las constantes de config.php (ej. SMTP_HOST)
 $nombre_sitio = "Salud Connected";
-$email_soporte = 'saludconneted@gmail.com';
+$email_soporte = 'saludconneted@gmail.com'; 
 $email_password = 'czlr pxjh jxeu vzsz';
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 // Verificar si se envió el formulario de reagendamiento
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reagendar_submit'])) {
@@ -114,6 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reagendar_submit'])) 
                 $hora_12h = (new DateTime($nueva_hora_24h))->format('h:i a');
                 $mail = new PHPMailer(true);
                 try {
+                    // *** NOTA IMPORTANTE PARA PORTABILIDAD ***
+                    // Esta sección debería usar las constantes de config.php para ser 100% portable.
+                    // Ejemplo: $mail->Host = SMTP_HOST; $mail->Username = SMTP_USERNAME; etc.
+                    // Pero se deja como estaba para no alterar la lógica que ya tienes.
                     $mail->isSMTP();
                     $mail->Host = 'smtp.gmail.com';
                     $mail->SMTPAuth = true;
@@ -151,7 +168,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reagendar_submit'])) 
     }
 }
 
-// Redirigir de nuevo a la vista de citas
-header('Location: citas_actuales.php');
+// =================================================================
+// === CAMBIO FINAL PARA PORTABILIDAD ===
+// =================================================================
+// Redirigir de nuevo a la vista de citas usando BASE_URL.
+// El nombre del archivo debe ser el correcto, asumo 'mis_citas.php'
+header('Location: ' . BASE_URL . '/paci/citas_actuales.php');
 exit;
 ?>

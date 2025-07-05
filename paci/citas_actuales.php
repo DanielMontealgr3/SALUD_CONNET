@@ -1,15 +1,29 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
 setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
 $doc_usuario = $_SESSION['doc_usu'];
 
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
+// La sesión ya se inicia en config.php.
+// if (session_status() == PHP_SESSION_NONE) { session_start(); } // Esta línea ya no es necesaria.
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $mensaje_alerta = '';
 $tipo_alerta = '';

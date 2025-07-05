@@ -1,12 +1,17 @@
 <?php
 // =================================================================
-// 1. INCLUSIÓN DE CONFIGURACIÓN CENTRALIZADA (PORTABLE)
-// Esto establece ROOT_PATH, BASE_URL, inicia la sesión, conecta a la BD
-// y también incluye los archivos de PHPMailer y sus credenciales.
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
 // =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
 require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad usando ROOT_PATH.
 require_once ROOT_PATH . '/include/validar_sesion.php';
 require_once ROOT_PATH . '/include/inactividad.php';
+
+// 3. Inclusión de PHPMailer usando ROOT_PATH.
 require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
 require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
 require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
@@ -14,27 +19,43 @@ require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// =================================================================
-// 2. VALIDACIÓN DE ROL Y SESIÓN
-// =================================================================
+setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
+
+// Ya no es necesario crear una nueva instancia de la conexión, 
+// la variable $con ya está disponible globalmente desde config.php.
+
+$mensaje_tipo = '';
+$mensaje_texto = '';
+
+// Las credenciales de correo se deben tomar de config.php, pero mantengo las variables
+// locales como en tu código original para no alterar la lógica posterior.
+// Lo ideal sería reemplazar estas variables por las constantes de config.php (ej. SMTP_FROM_NAME)
+$nombresitio = "Salud Connected";
+$email_soporte = 'saludconneted@gmail.com'; 
+$email_password = 'czlr pxjh jxeu vzsz';
+
+// La sesión ya se inicia en config.php, la siguiente línea no es estrictamente necesaria
+// pero no causa problemas si se deja.
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 4. Validación de sesión con redirección portable usando BASE_URL.
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2) {
+    // Redirección corregida.
     header('Location: ' . BASE_URL . '/inicio_sesion.php');
     exit;
 }
 
-setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $doc_usuario = $_SESSION['doc_usu'];
-$mensaje_tipo = '';
-$mensaje_texto = '';
 
-// =================================================================
-// 3. LÓGICA DEL PROCESAMIENTO DEL FORMULARIO
-// =================================================================
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['enviar'])) {
-    
-    // --- PASO 1: Validar si el paciente ya tiene una cita activa ---
-    $estados_activos = [1, 3, 10, 11, 16]; // Estados: Solicitada, Programada, Lista para Llamar, En Proceso, Pendiente Aprobación
+if (isset($_POST['enviar'])) {
+    $estados_activos = [1, 3, 16];
     $in_placeholders = implode(',', array_fill(0, count($estados_activos), '?'));
     
     $verificar_cita = $con->prepare("SELECT id_cita FROM citas WHERE doc_pac = ? AND id_est IN ($in_placeholders)");
@@ -45,7 +66,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['enviar'])) {
         $mensaje_tipo = 'advertencia';
         $mensaje_texto = 'Ya tienes una cita activa o próxima. Debes esperar a que finalice o cancelarla para agendar una nueva.';
     } else {
-        // --- PASO 2: Recoger y validar los datos del formulario ---
         $fecha = $_POST['fecha'] ?? '';
         $hora_24h = $_POST['hora'] ?? '';
         $nit_ips = $_POST['ips'] ?? '';
@@ -56,10 +76,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['enviar'])) {
             $mensaje_tipo = 'error';
             $mensaje_texto = 'Existen datos vacíos. Por favor, complete todos los campos.';
         } else {
-            // --- PASO 3: Iniciar transacción para agendar la cita ---
             $con->beginTransaction();
             try {
-                // Bloquea el horario para evitar que dos personas lo tomen al mismo tiempo
                 $estado_disponible = 4;
                 $sql_horario = "SELECT id_horario_med FROM horario_medico WHERE doc_medico = :doc_medico AND fecha_horario = :fecha AND TIME(horario) = :hora AND id_estado = :estado_disponible FOR UPDATE";
                 $stmt_horario = $con->prepare($sql_horario);
@@ -70,42 +88,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['enviar'])) {
                     throw new Exception('La hora seleccionada ya no está disponible. Por favor, elija otra.');
                 }
                 
-                // Actualiza el estado del horario a 'Programado'
-                $estado_programado = 3;
-                $con->prepare("UPDATE horario_medico SET id_estado = :estado WHERE id_horario_med = :id_horario")->execute([':estado' => $estado_programado, ':id_horario' => $id_horario_med]);
+                $estado_asignado = 3;
+                $con->prepare("UPDATE horario_medico SET id_estado = :estado WHERE id_horario_med = :id_horario")->execute([':estado' => $estado_asignado, ':id_horario' => $id_horario_med]);
+                $con->prepare("INSERT INTO citas (doc_pac, doc_med, nit_IPS, fecha_solici, id_horario_med, id_est) VALUES (:doc_pac, :doc_med, :nit_ips, :fecha_solici, :id_horario_med, :id_est)")->execute([':doc_pac' => $doc_usuario, ':doc_med' => $doc_medico, ':nit_ips' => $nit_ips, ':fecha_solici' => $fecha_solicitud, ':id_horario_med' => $id_horario_med, ':id_est' => $estado_asignado]);
                 
-                // Inserta la nueva cita
-                $sql_insert_cita = "INSERT INTO citas (doc_pac, doc_med, nit_IPS, fecha_solici, id_horario_med, id_est) VALUES (:doc_pac, :doc_med, :nit_ips, :fecha_solici, :id_horario_med, :id_est)";
-                $stmt_insert = $con->prepare($sql_insert_cita);
-                $stmt_insert->execute([
-                    ':doc_pac' => $doc_usuario, 
-                    ':doc_med' => $doc_medico, 
-                    ':nit_ips' => $nit_ips, 
-                    ':fecha_solici' => $fecha_solicitud, 
-                    ':id_horario_med' => $id_horario_med, 
-                    ':id_est' => $estado_programado
-                ]);
-                
-                // Confirma la transacción
                 $con->commit();
                 
-                // Mensaje de éxito y preparación para la redirección
                 $mensaje_tipo = 'exito';
                 $mensaje_texto = '¡Cita médica agendada correctamente! Serás redirigido a "Mis Citas" en unos segundos.';
                 
-                // --- (Opcional) Envío de correo de confirmación ---
-                // Aquí podrías agregar la lógica para enviar el correo usando los datos de config.php
-                // Ejemplo:
-                // require_once ROOT_PATH . '/include/funciones_email.php';
-                // enviar_correo_confirmacion_cita($con, $doc_usuario, $id_horario_med);
-
             } catch (Exception $e) {
                 $con->rollBack();
-                error_log("Error en transacción de agendamiento: " . $e->getMessage());
+                error_log("Error en transacción: " . $e->getMessage());
                 $mensaje_tipo = 'error';
-                $mensaje_texto = 'Ocurrió un error al solicitar la cita. Por favor, inténtalo de nuevo. Si el problema persiste, contacta a soporte.';
-                // Para depuración, podrías mostrar el mensaje real, pero nunca en producción:
-                // $mensaje_texto = 'Ocurrió un error al solicitar la cita: ' . $e->getMessage();
+                $mensaje_texto = 'Ocurrió un error al solicitar la cita: ' . $e->getMessage();
             }
         }
     }

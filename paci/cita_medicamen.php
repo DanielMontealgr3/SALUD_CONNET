@@ -1,32 +1,49 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
-require_once '../include/PHPMailer/PHPMailer.php';
-require_once '../include/PHPMailer/SMTP.php';
-require_once '../include/PHPMailer/Exception.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad y PHPMailer usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
+require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
+require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
+require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 setlocale(LC_TIME, 'es_ES.UTF-8', 'es_ES', 'esp');
 
-$conex = new database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
+
 $mensaje_tipo = '';
 $mensaje_texto = '';
+
+// Las credenciales de correo se deben tomar de config.php.
+// Lo ideal sería reemplazar estas variables por las constantes de config.php (ej. SMTP_HOST)
 $nombresitio = "Salud Connected";
 $email_soporte = 'saludconneted@gmail.com';
 $email_password = 'czlr pxjh jxeu vzsz';
 
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// La sesión ya se inicia en config.php.
+// if (session_status() == PHP_SESSION_NONE) { session_start(); } // Esta línea ya no es necesaria.
 
+// 3. Validación de sesión con redirección portable usando BASE_URL.
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2) {
-    header('Location: ../inicio_sesion.php');
+    header('Location: ' . BASE_URL . '/inicio_sesion.php');
     exit;
 }
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $doc_usuario = $_SESSION['doc_usu'];
 $show_confirm_modal = false;
@@ -116,6 +133,10 @@ if (isset($_POST['prevalidar'])) {
                 $hora_12h = (new DateTime($hora_24h))->format('h:i a');
                 $mail = new PHPMailer(true);
                 try {
+                    // *** NOTA IMPORTANTE PARA PORTABILIDAD ***
+                    // Esta sección debería usar las constantes de config.php para ser 100% portable.
+                    // Ejemplo: $mail->Host = SMTP_HOST; $mail->Username = SMTP_USERNAME; etc.
+                    // Pero se deja como estaba para no alterar la lógica que ya tienes.
                     $mail->isSMTP(); $mail->Host = 'smtp.gmail.com'; $mail->SMTPAuth = true;
                     $mail->Username = $email_soporte; $mail->Password = $email_password;
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $mail->Port = 465;
@@ -138,6 +159,8 @@ if (isset($_POST['prevalidar'])) {
     }
 }
 ?>
+<!-- El resto de tu código HTML iría aquí, y sus enlaces y actions de formularios
+     deberían usar BASE_URL para ser portables. -->
 <!DOCTYPE html>
 <html lang="es">
 <head>

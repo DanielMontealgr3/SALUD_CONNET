@@ -1,24 +1,40 @@
 <?php
-// Archivo: reagendar_cita.php
-require_once '../include/validar_sesion.php';
-require_once '../include/conexion.php';
-require '../include/PHPMailer/PHPMailer.php';
-require '../include/PHPMailer/Exception.php';
-require '../include/PHPMailer/SMTP.php';
+// =================================================================
+// === INICIO DEL BLOQUE CORREGIDO (PORTABILIDAD) ===
+// =================================================================
+
+// 1. Inclusión de la configuración centralizada.
+// Esto establece ROOT_PATH, BASE_URL, inicia sesión y conecta a la BD.
+require_once __DIR__ . '/../include/config.php';
+
+// 2. Inclusión de los scripts de seguridad y PHPMailer usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php'; // Se añade por consistencia
+require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
+require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
+require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-$conex = new Database();
-$con = $conex->conectar();
+// La variable de conexión `$con` ya está disponible desde config.php.
+// No es necesario crear una nueva instancia de Database.
+
+// =================================================================
+// === FIN DEL BLOQUE CORREGIDO ===
+// El resto del código permanece exactamente igual.
+// =================================================================
 
 $id_registro = $_POST['id_registro'] ?? 0;
 $tipo = $_POST['tipo'] ?? '';
 $nueva_fecha = $_POST['fecha'] ?? '';
 $nueva_hora_24h = $_POST['hora'] ?? '';
 
+// 3. Redirección portable usando BASE_URL.
+$redirect_url_base = BASE_URL . '/paci/citas_actuales.php';
+
 if (empty($id_registro) || empty($tipo) || empty($nueva_fecha) || empty($nueva_hora_24h)) {
-    header('Location: citas_actuales.php?reagenda_status=error_datos');
+    header('Location: ' . $redirect_url_base . '?reagenda_status=error_datos');
     exit;
 }
 
@@ -70,13 +86,13 @@ try {
 
     // Lógica para enviar correos de notificación de reagendamiento...
 
-    header('Location: citas_actuales.php?reagenda_status=exito');
+    header('Location: ' . $redirect_url_base . '?reagenda_status=exito');
     exit;
 
 } catch (Exception $e) {
     $con->rollBack();
     error_log("Error al reagendar: " . $e->getMessage());
-    header('Location: citas_actuales.php?reagenda_status=error_db');
+    header('Location: ' . $redirect_url_base . '?reagenda_status=error_db');
     exit;
 }
 ?>
