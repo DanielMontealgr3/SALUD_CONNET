@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])){
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inicio de sesión - Salud Connected</title>
     <!-- ICONO DE LA PESTAÑA DEL NAVEGADOR. -->
-    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/Loguito.png">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
     <!-- ENLACES A HOJAS DE ESTILO. -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/estilos_inicio.css">

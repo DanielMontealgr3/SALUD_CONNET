@@ -16,7 +16,7 @@ $pageTitle = 'Sobre Nosotros'; // Añadido para consistencia
     <!-- ENLACE A LIBRERÍA EXTERNA DE ICONOS. -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
-    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/Loguito.png">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
 </head>
 
 <body class="index">

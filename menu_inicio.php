@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- ICONO DE LA PESTAÑA DEL NAVEGADOR (FAVICON). USA 'BASE_URL' PARA QUE LA RUTA SEA UNIVERSAL. -->
-    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/Loguito.png">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
 
     <!-- ENLACE A LA HOJA DE ESTILOS CSS. USA 'BASE_URL' PARA QUE LA RUTA FUNCIONE TANTO EN LOCAL COMO EN EL HOSTING. -->
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/estilo_inicio.css">
@@ -23,7 +23,7 @@
 
         <!-- SECCIÓN DEL LOGOTIPO. USA 'BASE_URL' PARA ASEGURAR QUE EL ENLACE Y LA IMAGEN APUNTEN A LA RAÍZ. -->
         <div id="logo-wrapper">
-            <a href="<?php echo BASE_URL; ?>/index.php"><img src="<?php echo BASE_URL; ?>/img/Loguito.png" alt="Logo Salud Connected"></a>
+            <a href="<?php echo BASE_URL; ?>/index.php"><img src="<?php echo BASE_URL; ?>/img/loguito.png" alt="Logo Salud Connected"></a>
         </div>
 
         <!-- SECCIÓN DEL MENÚ DE NAVEGACIÓN. USA 'BASE_URL' EN TODOS LOS ENLACES. -->
