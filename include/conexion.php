@@ -12,7 +12,7 @@ class Database {
         if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
             //LOCALHOST
             $this->hostname = "localhost";
-            $this->database = "salud_connet"; 
+            $this->database = "salud"; 
             $this->username = "root";
             $this->password = ""; 
         } else {
