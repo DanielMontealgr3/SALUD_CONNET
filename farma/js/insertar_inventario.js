@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // --- 1. SELECCIÓN DE ELEMENTOS Y CONFIGURACIÓN ---
     const formBusqueda = document.getElementById('formBusquedaInicial');
     const inputCodigo = document.getElementById('codigo_barras_scan');
     const errorBusqueda = document.getElementById('busqueda-error');
@@ -17,19 +16,19 @@ document.addEventListener('DOMContentLoaded', function () {
         fecha_vencimiento: document.getElementById('fecha_vencimiento')
     };
 
-    // MEJORA: Se obtienen las rutas y el token CSRF del DOM.
-    const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '/SALUDCONNECT/farma/';
-    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-    // --- 2. FUNCIONES AUXILIARES ---
-
     function mostrarAreaRegistro(mostrar) {
-        if(areaRegistro) areaRegistro.classList.toggle('d-none', !mostrar);
-        if(areaPlaceholder) areaPlaceholder.classList.toggle('d-none', mostrar);
+        areaRegistro.classList.toggle('d-none', !mostrar);
+        areaPlaceholder.classList.toggle('d-none', mostrar);
     }
 
+    inputCodigo.addEventListener('input', function() {
+        if (inputCodigo.value.trim() === '') {
+            mostrarAreaRegistro(false);
+            errorBusqueda.textContent = '';
+        }
+    });
+
     function validarCampo(input) {
-        if (!input) return false;
         let esValido = false;
         const valor = input.value.trim();
         
@@ -43,14 +42,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 break;
             case 'lote':
-                esValido = valor.length >= 4; // Umbral común para un lote
+                esValido = valor.length >= 5;
                 break;
             case 'fecha_vencimiento':
                 if (valor) {
                     const fechaSeleccionada = new Date(valor + "T00:00:00");
                     const fechaMinima = new Date();
                     fechaMinima.setHours(0, 0, 0, 0);
-                    fechaMinima.setMonth(fechaMinima.getMonth() + 3); // Mínimo 3 meses de vigencia
+                    fechaMinima.setMonth(fechaMinima.getMonth() + 3);
                     esValido = fechaSeleccionada >= fechaMinima;
                 }
                 break;
@@ -62,8 +61,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function comprobarEstadoFormulario() {
         const todosValidos = Object.values(camposAValidar).every(input => validarCampo(input));
-        if (btnGuardar) btnGuardar.disabled = !todosValidos;
+        btnGuardar.disabled = !todosValidos;
     }
+
+    Object.values(camposAValidar).forEach(input => {
+        input.addEventListener('input', () => {
+            validarCampo(input);
+            comprobarEstadoFormulario();
+        });
+    });
 
     function buscarMedicamento() {
         const codigo = inputCodigo.value.trim();
@@ -74,8 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         errorBusqueda.textContent = '';
 
-        // MEJORA: URL dinámica
-        fetch(`${API_BASE_URL}inventario/ajax_buscar_medicamento.php?codigo_barras=${encodeURIComponent(codigo)}`)
+        fetch(`../inventario/ajax_buscar_medicamento.php?codigo_barras=${codigo}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -84,14 +89,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     infoStock.textContent = med.stock_actual;
                     inputIdMedicamento.value = med.id_medicamento;
                     
-                    if(formRegistro) formRegistro.reset();
+                    formRegistro.reset();
                     mostrarAreaRegistro(true);
 
-                    document.getElementById('cantidad_entrada')?.focus();
+                    document.getElementById('cantidad_entrada').focus();
                     Object.values(camposAValidar).forEach(input => {
-                        input?.classList.remove('is-valid', 'is-invalid');
+                        input.classList.remove('is-valid', 'is-invalid');
                     });
-                    if (btnGuardar) btnGuardar.disabled = true;
+                    btnGuardar.disabled = true;
                 } else {
                     errorBusqueda.textContent = data.message;
                     mostrarAreaRegistro(false);
@@ -99,34 +104,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => {
-                console.error("Error buscando medicamento:", error);
                 errorBusqueda.textContent = 'Error de conexión al buscar el medicamento.';
                 mostrarAreaRegistro(false);
             });
     }
 
-    // --- 3. INICIALIZACIÓN DE EVENTOS ---
-
-    inputCodigo?.addEventListener('input', function() {
-        if (inputCodigo.value.trim() === '') {
-            mostrarAreaRegistro(false);
-            if(errorBusqueda) errorBusqueda.textContent = '';
-        }
-    });
-
-    Object.values(camposAValidar).forEach(input => {
-        input?.addEventListener('input', () => {
-            validarCampo(input);
-            comprobarEstadoFormulario();
-        });
-    });
-
-    formBusqueda?.addEventListener('submit', function (e) {
+    formBusqueda.addEventListener('submit', function (e) {
         e.preventDefault();
         buscarMedicamento();
     });
 
-    formRegistro?.addEventListener('submit', function (e) {
+    formRegistro.addEventListener('submit', function (e) {
         e.preventDefault();
         comprobarEstadoFormulario();
         if (btnGuardar.disabled) return;
@@ -135,10 +123,8 @@ document.addEventListener('DOMContentLoaded', function () {
         btnGuardar.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
 
         const formData = new FormData(formRegistro);
-        formData.append('csrf_token', CSRF_TOKEN); // MEJORA: Añadir token de seguridad
 
-        // MEJORA: URL dinámica
-        fetch(`${API_BASE_URL}inventario/ajax_registrar_entrada.php`, { 
+        fetch('../inventario/ajax_registrar_entrada.php', { 
             method: 'POST', 
             body: formData 
         })
@@ -154,14 +140,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     showConfirmButton: false,
                 }).then(() => {
                     if (data.pendientes_cubiertos && data.pendientes_cubiertos.length > 0) {
-                        let listaHtml = '<ul class="list-group text-start">';
+                        let listaHtml = '<ul class="list-group">';
                         data.pendientes_cubiertos.forEach(p => {
                             listaHtml += `<li class="list-group-item">Paciente <strong>${p.nom_usu}</strong> necesita <strong>${p.can_medica}</strong> unidades.</li>`;
                         });
                         listaHtml += '</ul>';
-                        
-                        // MEJORA: La URL de redirección es ahora dinámica.
-                        const urlPendientes = `${API_BASE_URL.replace(/\/farma\/?$/, '')}/farma/entregar/entregas_pendientes.php`;
 
                         Swal.fire({
                             icon: 'info',
@@ -171,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             confirmButtonColor: '#28a745'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                window.location.href = urlPendientes;
+                                window.location.href = '../entregar/entregas_pendientes.php';
                             }
                         });
                     }
@@ -186,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .catch(error => {
-            console.error("Error registrando entrada:", error);
             Swal.fire('Error de Conexión', 'No se pudo completar la solicitud.', 'error');
         })
         .finally(() => {
@@ -195,6 +177,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Estado inicial
     mostrarAreaRegistro(false);
 });

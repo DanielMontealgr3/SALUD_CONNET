@@ -1,19 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     const cuerpoTabla = document.getElementById('cuerpo-tabla-pacientes');
-    const modalNoAsistioElem = document.getElementById('modalNoAsistio');
-    const noAsistioModal = modalNoAsistioElem ? new bootstrap.Modal(modalNoAsistioElem) : null;
+    const noAsistioModal = new bootstrap.Modal(document.getElementById('modalNoAsistio'));
     const contadorPacientesBadge = document.getElementById('contador-pacientes');
-
-    // CORRECCIÓN: Se obtienen las rutas desde el objeto AppConfig global
-    const API_URL = window.AppConfig?.API_URL || '/SALUDCONNECT/farma/';
-    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
     const intervalos = {};
-    const INTERVALO_REFRESCO = 5000;
-
-    if (!cuerpoTabla) {
-        return;
-    }
 
     function mostrarNotificacionTurnoVencido(paciente) {
         const toastContainer = document.querySelector('.toast-container');
@@ -30,14 +19,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
                 <div class="toast-body">
-                    El turno de <strong>${paciente.nombre_paciente}</strong> ha pasado su hora programada.
-                    <br><small>Turno #${paciente.id_turno_ent}</small>
+                    El turno de <strong>${paciente.celdas[2]}</strong> ha pasado su hora programada.
+                    <br>
+                    <small>Turno #${paciente.id_turno_ent}</small>
                 </div>
-            </div>`;
+            </div>
+        `;
         
         toastContainer.insertAdjacentHTML('beforeend', toastHTML);
         const toastElement = document.getElementById(toastId);
-        toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+        
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            this.remove();
+        });
+
         const toast = new bootstrap.Toast(toastElement, { autohide: false });
         toast.show();
     }
@@ -58,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let tiempo = tiempoInicial;
 
-        const actualizarContador = () => {
+        function actualizarContador() {
             if (tiempo < 0) {
                 detenerTimer(idTurno);
                 marcarComoNoAsistido(idTurno);
@@ -68,61 +63,84 @@ document.addEventListener('DOMContentLoaded', function () {
             const seg = tiempo % 60;
             contadorSpan.textContent = `${min}:${seg < 10 ? '0' : ''}${seg}`;
             tiempo--;
-        };
+        }
         
         actualizarContador();
         intervalos[idTurno] = setInterval(actualizarContador, 1000);
     }
+
+    function asignarListeners(elemento) {
+        elemento.querySelectorAll('.btn-llamar-paciente').forEach(btn => {
+            btn.onclick = function (e) {
+                e.preventDefault();
+                this.disabled = true;
+                llamarPaciente(this.closest('td').dataset.idturno);
+            };
+        });
+
+        elemento.querySelectorAll('.btn-paciente-llego').forEach(btn => {
+            btn.onclick = function (e) {
+                e.preventDefault();
+                this.disabled = true;
+                confirmarLlegada(this.closest('td').dataset.idturno);
+            };
+        });
+
+        elemento.querySelectorAll('.btn-entregar-medicamentos').forEach(btn => {
+            btn.onclick = function(e) {
+                 e.preventDefault();
+                 const fila = this.closest('tr');
+                 const idTurno = this.closest('td').dataset.idturno;
+                 const idHistoria = fila.dataset.idhistoria;
+
+                 if (!idHistoria) {
+                     Swal.fire('Error', 'No se pudo obtener la información del paciente para la entrega.', 'error');
+                     return;
+                 }
+                 
+                 const placeholder = document.getElementById('modal-entrega-placeholder');
+                 if (!placeholder) {
+                     console.error("El contenedor 'modal-entrega-placeholder' no existe.");
+                     return;
+                 }
+
+                 placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+                 
+                 fetch(`entregar/modal_entrega.php?id_historia=${idHistoria}&id_turno=${idTurno}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        placeholder.innerHTML = html;
+                        const modalElement = document.getElementById('modalRealizarEntrega');
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                        
+                        if (typeof inicializarLogicaEntrega === 'function') {
+                            inicializarLogicaEntrega(modalElement);
+                        } else {
+                            console.error("Error: inicializarLogicaEntrega() no está definida.");
+                        }
+                    })
+                    .catch(error => {
+                        placeholder.innerHTML = '';
+                        console.error('Error al cargar el modal de entrega:', error);
+                        Swal.fire('Error', 'No se pudo cargar la interfaz de entrega.', 'error');
+                    });
+            };
+        });
+    }
     
-    function llamarPaciente(idTurno) {
-        const formData = new FormData();
-        formData.append('accion', 'llamar_paciente');
-        formData.append('id_turno', idTurno);
-        formData.append('csrf_token', CSRF_TOKEN);
-        
-        fetch(`${API_URL}ajax_gestion_turnos.php`, { method: 'POST', body: formData })
-            .then(() => actualizarTablaEnTiempoReal());
-    }
-
-    function confirmarLlegada(idTurno) {
-        detenerTimer(idTurno);
-        const formData = new FormData();
-        formData.append('accion', 'paciente_llego');
-        formData.append('id_turno', idTurno);
-        formData.append('csrf_token', CSRF_TOKEN);
-        
-        fetch(`${API_URL}ajax_gestion_turnos.php`, { method: 'POST', body: formData })
-            .then(() => actualizarTablaEnTiempoReal());
-    }
-
-    function marcarComoNoAsistido(idTurno) {
-        const formData = new FormData();
-        formData.append('accion', 'marcar_no_asistido');
-        formData.append('id_turno', idTurno);
-        formData.append('csrf_token', CSRF_TOKEN);
-        
-        fetch(`${API_URL}ajax_gestion_turnos.php`, { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && noAsistioModal) {
-                    noAsistioModal.show();
-                    actualizarTablaEnTiempoReal();
-                }
-            });
-    }
-
     async function actualizarTablaEnTiempoReal() {
         if (document.hidden) return;
 
         try {
-            const response = await fetch(`${API_URL}lista_pacientes.php?json=1&cache_bust=${Date.now()}`);
-            if (!response.ok) {
-                return;
-            }
+            const response = await fetch('lista_pacientes.php?json=1');
+            if (!response.ok) return;
 
             const data = await response.json();
             
-            if (contadorPacientesBadge) contadorPacientesBadge.textContent = data.total;
+            if (contadorPacientesBadge) {
+                contadorPacientesBadge.textContent = data.total;
+            }
 
             const filasActuales = new Map([...cuerpoTabla.querySelectorAll('tr')].map(tr => [tr.id, tr]));
             const idsRecibidos = new Set();
@@ -142,12 +160,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     `<td class="acciones-tabla" data-idturno="${paciente.id_turno_ent}">${paciente.acciones_html}</td>`;
                 
                 const idHistoriaActual = paciente.id_historia.toString();
-
                 if (fila.innerHTML !== celdasHTML || fila.className !== paciente.clase_fila || fila.dataset.idhistoria !== idHistoriaActual) {
                     fila.className = paciente.clase_fila;
                     fila.dataset.estado = paciente.estado_llamado;
                     fila.dataset.idhistoria = idHistoriaActual;
                     fila.innerHTML = celdasHTML;
+                    asignarListeners(fila);
                 }
                 
                 if (cuerpoTabla.children[index] !== fila) {
@@ -190,58 +208,53 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         } catch (error) {
-            console.error(error);
+            console.error("Error actualizando la tabla:", error);
         }
     }
-    
-    cuerpoTabla.addEventListener('click', function(e) {
-        const target = e.target;
-        const btnLlamar = target.closest('.btn-llamar-paciente');
-        const btnLlego = target.closest('.btn-paciente-llego');
-        const btnEntregar = target.closest('.btn-entregar-medicamentos');
 
-        if (btnLlamar) {
-            e.preventDefault();
-            btnLlamar.disabled = true;
-            llamarPaciente(btnLlamar.closest('td').dataset.idturno);
-        } else if (btnLlego) {
-            e.preventDefault();
-            btnLlego.disabled = true;
-            confirmarLlegada(btnLlego.closest('td').dataset.idturno);
-        } else if (btnEntregar) {
-            e.preventDefault();
-            const fila = target.closest('tr');
-            const idTurno = target.closest('td').dataset.idturno;
-            const idHistoria = fila.dataset.idhistoria;
-            const placeholder = document.getElementById('modal-entrega-placeholder');
+    function llamarPaciente(idTurno) {
+        const formData = new FormData();
+        formData.append('accion', 'llamar_paciente');
+        formData.append('id_turno', idTurno);
+        formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
+            .then(() => actualizarTablaEnTiempoReal());
+    }
 
-            if (!idHistoria || !placeholder) {
-                Swal.fire('Error', 'No se pudo obtener la información necesaria para la entrega.', 'error');
-                return;
+    function confirmarLlegada(idTurno) {
+        detenerTimer(idTurno);
+        const formData = new FormData();
+        formData.append('accion', 'paciente_llego');
+        formData.append('id_turno', idTurno);
+        formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
+            .then(() => actualizarTablaEnTiempoReal());
+    }
+
+    function marcarComoNoAsistido(idTurno) {
+        const formData = new FormData();
+        formData.append('accion', 'marcar_no_asistido');
+        formData.append('id_turno', idTurno);
+        formData.append('csrf_token', csrfTokenListaPacientesGlobal);
+        fetch('ajax_gestion_turnos.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if(noAsistioModal) noAsistioModal.show();
+                actualizarTablaEnTiempoReal();
             }
-            
-            placeholder.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
-            
-            fetch(`${API_URL}entregar/modal_entrega.php?id_historia=${idHistoria}&id_turno=${idTurno}`)
-               .then(response => response.text())
-               .then(html => {
-                   placeholder.innerHTML = html;
-                   const modalElement = document.getElementById('modalRealizarEntrega');
-                   if (modalElement) {
-                       const modal = new bootstrap.Modal(modalElement);
-                       modal.show();
-                       if (typeof inicializarLogicaEntrega === 'function') {
-                           inicializarLogicaEntrega(modalElement);
-                       }
-                   }
-               })
-               .catch(error => {
-                   placeholder.innerHTML = '';
-                   Swal.fire('Error', 'No se pudo cargar la interfaz de entrega.', 'error');
-               });
-        }
-    });
+        });
+    }
 
-    setInterval(actualizarTablaEnTiempoReal, INTERVALO_REFRESCO);
-    actualizarTablaEnTiempoReal();
+    if (cuerpoTabla) {
+        asignarListeners(cuerpoTabla);
+        cuerpoTabla.querySelectorAll('tr').forEach(tr => {
+            const tiempo = tr.querySelector('td.acciones-tabla')?.dataset.tiempoRestante;
+            if (tiempo && parseInt(tiempo, 10) > 0) {
+                iniciarTimer(tr, parseInt(tiempo, 10));
+            }
+        });
+        setInterval(actualizarTablaEnTiempoReal, 4000);
+        actualizarTablaEnTiempoReal();
+    }
 });
