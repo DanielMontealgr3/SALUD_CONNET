@@ -116,7 +116,6 @@ $pdf->SetAutoPageBreak(TRUE, 25);
 $pdf->AddPage();
 $pdf->SetFont('helvetica', '', 9);
 
-// --- Construcción de la tabla HTML ---
 $mainBlueHex = '#005A9C';
 $html = <<<EOD
 <style>

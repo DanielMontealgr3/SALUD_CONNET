@@ -2,7 +2,6 @@
 // Usamos el config.php central para acceder a las constantes y la conexión.
 require_once __DIR__ . '/config.php';
 
-// Incluimos la librería PHPMailer usando la ruta absoluta definida en config.php
 require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
 require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
