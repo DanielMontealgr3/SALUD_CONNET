@@ -1,87 +1,104 @@
 <?php
-// ARCHIVO: consultas_citas/horas_disponibles.php (Versión Corregida y Mejorada)
+// =======================================================================================
+// BLOQUE 1: CONFIGURACIÓN CENTRAL
+// Incluye el config.php para la conexión a la BD ($con).
+// =======================================================================================
+require_once __DIR__ . '/../../include/config.php';
 
-require_once '../../include/conexion.php';
-
-// --- PASO 1: FIJAR LA ZONA HORARIA ---
-// Esto es CRUCIAL para que la comparación de "ahora" sea correcta.
-date_default_timezone_set('America/Bogota'); 
-
+// Configuración de la zona horaria y el tipo de contenido de la respuesta.
+date_default_timezone_set('America/Bogota');
 header('Content-Type: application/json');
 
-$conex = new Database();
-$con = $conex->conectar();
-
+// =======================================================================================
+// BLOQUE 2: OBTENCIÓN Y VALIDACIÓN DE PARÁMETROS
+// Se recuperan los datos enviados por POST desde la llamada AJAX.
+// =======================================================================================
 $doc_medico = $_POST['doc_med'] ?? '';
 $fecha_seleccionada_str = $_POST['fecha'] ?? '';
 
+// =======================================================================================
+// ¡¡NUEVO BLOQUE DE DEPURACIÓN!!
+// Esto guardará en tu archivo de log de errores (error_log) los datos que recibe el script.
+// Así sabremos con certeza qué está llegando desde el JavaScript.
+// =======================================================================================
+error_log("horas_disponibles.php recibió: Medico -> {$doc_medico}, Fecha -> {$fecha_seleccionada_str}");
+
+// Validación de los datos recibidos
 if (empty($doc_medico) || empty($fecha_seleccionada_str)) {
+    error_log("Error: Datos incompletos. Medico o Fecha vacíos.");
     echo json_encode(['error' => 'Faltan datos para la consulta.']);
     exit;
 }
 
+// =======================================================================================
+// BLOQUE 3: LÓGICA DE CONSULTA Y FILTRADO (CORREGIDA)
+// Se obtienen las horas disponibles y se filtran si la cita es para el día actual.
+// =======================================================================================
 try {
-    // --- PASO 2: CONSULTA A LA BASE DE DATOS (SIN CAMBIOS, ESTABA BIEN) ---
-    $estado_disponible = 4;
-    // He quitado la columna `meridiano` porque no la usas y es mejor calcular AM/PM con date().
-    $sql = "SELECT horario FROM horario_medico 
+    // La consulta SQL está bien, el problema es cómo se le pasan los datos.
+    // Usar placeholders como :fecha es la forma correcta y segura.
+    $sql = "SELECT horario, meridiano FROM horario_medico 
             WHERE doc_medico = :doc_medico 
             AND fecha_horario = :fecha
-            AND id_estado = :id_estado
-            ORDER BY horario ASC";
-
+            AND id_estado = 4
+            ORDER BY meridiano, horario ASC"; // Ordenamos por meridiano y luego por hora
+            
     $stmt = $con->prepare($sql);
+
+    // El método execute se encarga de poner las comillas y escapar los valores.
+    // Aquí nos aseguramos de que todo se pase como debe ser.
     $stmt->execute([
         ':doc_medico' => $doc_medico,
-        ':fecha' => $fecha_seleccionada_str,
-        ':id_estado' => $estado_disponible
+        ':fecha' => $fecha_seleccionada_str, // PDO se encarga de tratarlo como string con comillas.
     ]);
+    
+    $horas_db = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $horas_disponibles_db = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Log para saber qué devolvió la base de datos
+    error_log("La consulta a la BD devolvió: " . count($horas_db) . " filas.");
+
     $horas_formateadas = [];
     
-    foreach ($horas_disponibles_db as $row) {
-        $time24_str = $row['horario']; // e.g., "14:30:00"
-        $time_obj = new DateTime($time24_str);
+    foreach ($horas_db as $row) {
+        $time_obj = new DateTime($row['horario']);
         
+        // La corrección clave para el meridiano:
+        if ($row['meridiano'] == 2 && $time_obj->format('H') < 12) {
+            $time_obj->add(new DateInterval('PT12H'));
+        }
+
         $horas_formateadas[] = [
-            'horario' => $time_obj->format('H:i'), // Formato 24h para el valor (14:30)
-            'hora12' => $time_obj->format('h:i A') // Formato 12h para mostrar (02:30 PM)
+            'horario' => $time_obj->format('H:i'), 
+            'hora12'  => $time_obj->format('h:i A')
         ];
     }
 
-    // --- PASO 3: LÓGICA DE FILTRADO PARA EL DÍA DE HOY ---
-    $ahora = new DateTime(); // Hora actual de Colombia
+    // Lógica de filtrado para el día de hoy.
+    $ahora = new DateTime();
     $fecha_seleccionada_obj = new DateTime($fecha_seleccionada_str);
     $response = [];
 
-    // Comparamos si la fecha seleccionada es el día de hoy
     if ($ahora->format('Y-m-d') === $fecha_seleccionada_obj->format('Y-m-d')) {
         $horas_futuras = [];
         $margen_minutos = 30;
-        
-        // Calculamos la hora límite: la hora actual + 30 minutos
         $hora_limite = (clone $ahora)->add(new DateInterval("PT{$margen_minutos}M"));
 
         foreach ($horas_formateadas as $hora) {
-            // Creamos un objeto DateTime para la hora de la cita
             $hora_cita_obj = new DateTime($fecha_seleccionada_str . ' ' . $hora['horario']);
-            
-            // Solo incluimos la hora si es posterior a la hora límite
             if ($hora_cita_obj > $hora_limite) {
                 $horas_futuras[] = $hora;
             }
         }
         $response['hours'] = $horas_futuras;
     } else {
-        // Si no es hoy, se muestran todas las horas disponibles sin filtrar
         $response['hours'] = $horas_formateadas;
     }
     
+    // Se devuelve el resultado final en formato JSON.
     echo json_encode($response);
 
 } catch (PDOException $e) {
-    error_log("Error en horas_disponibles.php: " . $e->getMessage());
+    error_log("Error de PDO en horas_disponibles.php: " . $e->getMessage());
     echo json_encode(['error' => 'Error al consultar la disponibilidad.']);
 }
 ?>

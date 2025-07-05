@@ -1,4 +1,20 @@
 <?php
+
+// ... (tu código existente de config.php: session_start, define BASE_URL, ROOT_PATH, conexión a BD) ...
+
+// =================================================================
+// ===     CONFIGURACIÓN CENTRALIZADA DE ENVÍO DE CORREOS (SMTP)   ===
+// =================================================================
+// Coloca aquí las credenciales del servidor de correo que quieres usar.
+// Si estás en Hostinger, usa las de Hostinger. Si quieres probar con Gmail, usa las de Gmail.
+define('SMTP_HOST', 'smtp.hostinger.com');      // Para Hostinger. Para Gmail: 'smtp.gmail.com'
+define('SMTP_PORT', 465);                      // Para Hostinger (SSL). Para Gmail (TLS): 587
+define('SMTP_USERNAME', 'soporte@saludconnected.com'); // Tu correo real
+define('SMTP_PASSWORD', 'Saludconnected2025*');     // Tu contraseña real o de aplicación
+define('SMTP_SECURE', 'ssl');                  // Para Hostinger. Para Gmail: 'tls'
+define('SMTP_FROM_EMAIL', 'soporte@saludconnected.com'); // El correo que aparecerá como remitente
+define('SMTP_FROM_NAME', 'Soporte Salud Connected'); // El nombre que aparecerá como remitente
+
 // =================================================================
 // ARCHIVO DE CONFIGURACIÓN CENTRAL (config.php)
 // =================================================================

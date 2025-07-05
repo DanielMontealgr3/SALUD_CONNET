@@ -7,14 +7,12 @@ require_once ROOT_PATH . '/include/PHPMailer/Exception.php';
 require_once ROOT_PATH . '/include/PHPMailer/PHPMailer.php';
 require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
 
-// Importamos las clases de PHPMailer al espacio de nombres global para usarlas sin prefijo.
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use PHPMailer\PHPMailer\SMTP;
 
 /**
  * Función centralizada para enviar correos electrónicos.
- * Detecta el entorno (local o producción) y utiliza la configuración SMTP adecuada.
+ * Utiliza la configuración SMTP definida en config.php.
  *
  * @param string $destinatario_email El correo del destinatario.
  * @param string $destinatario_nombre El nombre del destinatario.
@@ -27,42 +25,22 @@ function enviarEmail(string $destinatario_email, string $destinatario_nombre, st
     $mail = new PHPMailer(true);
 
     try {
-        // =================================================================
-        // ===        BLOQUE DE CONFIGURACIÓN SMTP INTELIGENTE         ===
-        // =================================================================
-        
-        // El script detecta si está en el servidor de producción o en localhost
-        if (BASE_URL === '') { 
-            // ----- CONFIGURACIÓN PARA HOSTINGER (PRODUCCIÓN) -----
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.hostinger.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'soporte@saludconnected.com'; // Tu correo real en Hostinger
-            $mail->Password   = 'Saludconnected2025*';       // Tu contraseña real
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = 465;
-            $mail->setFrom('soporte@saludconnected.com', 'Soporte Salud Connected');
+        // --- CONFIGURACIÓN SMTP DESDE config.php ---
+        $mail->isSMTP();
+        $mail->Host       = SMTP_HOST;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = SMTP_USERNAME;
+        $mail->Password   = SMTP_PASSWORD;
+        $mail->SMTPSecure = SMTP_SECURE; // 'ssl' o 'tls'
+        $mail->Port       = SMTP_PORT;
 
-        } else {
-            // ----- CONFIGURACIÓN PARA GMAIL (LOCALHOST) -----
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'saludconneted@gmail.com';     // Tu correo de Gmail
-            $mail->Password   = 'czlr pxjh jxeu vzsz';         // Tu contraseña de aplicación de Gmail
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-            $mail->setFrom('saludconneted@gmail.com', 'Soporte Salud Connected');
-        }
-
-        // =================================================================
-        // ===        CONFIGURACIÓN GENERAL Y ENVÍO DEL CORREO         ===
-        // =================================================================
-        
-        $mail->CharSet = 'UTF-8';
+        // --- REMITENTE Y DESTINATARIO ---
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($destinatario_email, $destinatario_nombre);
-        $mail->isHTML(true);
 
+        // --- CONTENIDO DEL CORREO ---
+        $mail->isHTML(true);
+        $mail->CharSet = 'UTF-8';
         $mail->Subject = $asunto;
         $mail->Body    = $cuerpo_html;
         $mail->AltBody = $cuerpo_texto;
@@ -71,25 +49,28 @@ function enviarEmail(string $destinatario_email, string $destinatario_nombre, st
         return true;
 
     } catch (Exception $e) {
-        // En caso de error, lo registramos en el log del servidor para depuración.
+        // Registra el error detallado para depuración en el servidor
         error_log("Error de PHPMailer al enviar a {$destinatario_email}: " . $mail->ErrorInfo);
         return false;
     }
 }
 
-
 /**
  * Prepara y envía el correo de confirmación de turno de farmacia.
- * Utiliza la función genérica enviarEmail().
  *
  * @param array $datos - Array con ['email_paciente', 'nombre_paciente', 'fecha_turno', 'hora_turno', 'medicamentos_str']
- * @return bool - True si se envió, false si hubo un error.
+ * @return bool
  */
 function enviarCorreoConfirmacionTurno(array $datos): bool {
     $asunto = '✅ Confirmación de tu turno para entrega de medicamentos';
+    $plantilla_path = ROOT_PATH . '/include/templates/turno_template.html';
 
-    // Obtenemos la plantilla HTML y reemplazamos los placeholders
-    $plantilla_html = file_get_contents(ROOT_PATH . '/include/templates/turno_template.html');
+    if (!file_exists($plantilla_path)) {
+        error_log("No se encontró la plantilla de correo: " . $plantilla_path);
+        return false;
+    }
+
+    $plantilla_html = file_get_contents($plantilla_path);
     $cuerpo_html = str_replace(
         ['{{nombre_paciente}}', '{{fecha_turno}}', '{{hora_turno}}', '{{medicamentos}}', '{{year}}'],
         [
@@ -102,51 +83,42 @@ function enviarCorreoConfirmacionTurno(array $datos): bool {
         $plantilla_html
     );
 
-    // Creamos la versión en texto plano
     $cuerpo_texto = "Hola, " . $datos['nombre_paciente'] . ".\n\n"
-                  . "Tu turno para la entrega de medicamentos ha sido agendado con éxito. Aquí están los detalles:\n"
+                  . "Tu turno para la entrega de medicamentos ha sido agendado:\n"
                   . "Fecha: " . $datos['fecha_turno'] . "\n"
                   . "Hora: " . $datos['hora_turno'] . "\n\n"
-                  . "Medicamentos a reclamar:\n" . $datos['medicamentos_str'] . "\n\n"
-                  . "Por favor, preséntate puntualmente con tu documento de identidad.\n\n"
+                  . "Medicamentos: " . $datos['medicamentos_str'] . "\n\n"
                   . "Atentamente,\nEl equipo de Salud Connected";
 
-    // Llamamos a la función principal de envío
-    return enviarEmail(
-        $datos['email_paciente'],
-        $datos['nombre_paciente'],
-        $asunto,
-        $cuerpo_html,
-        $cuerpo_texto
-    );
+    return enviarEmail($datos['email_paciente'], $datos['nombre_paciente'], $asunto, $cuerpo_html, $cuerpo_texto);
 }
-
 
 /**
  * Prepara y envía el correo de recuperación de contraseña.
- * Utiliza la función genérica enviarEmail().
  *
  * @param string $email El correo del usuario.
  * @param string $token El token de recuperación.
- * @return bool - True si se envió, false si hubo un error.
+ * @return bool
  */
 function enviarCorreoRecuperacion(string $email, string $token): bool {
     $asunto = 'Recuperación de contraseña - Salud Connected';
-    $reset_link = (BASE_URL === '' ? 'https://saludconnected.com' : 'http://localhost/SALUDCONNECT') . "/include/change.php?token=" . urlencode($token);
+    $reset_link = rtrim(BASE_URL, '/') . "/include/change.php?token=" . urlencode($token);
+    $plantilla_path = ROOT_PATH . '/include/templates/recuperacion_template.html';
 
-    // Obtenemos la plantilla HTML y reemplazamos los placeholders
-    $plantilla_html = file_get_contents(ROOT_PATH . '/include/templates/recuperacion_template.html');
+    if (!file_exists($plantilla_path)) {
+        error_log("No se encontró la plantilla de recuperación: " . $plantilla_path);
+        return false;
+    }
+    
+    $plantilla_html = file_get_contents($plantilla_path);
     $cuerpo_html = str_replace(
         ['{{reset_link}}', '{{year}}'],
         [$reset_link, date('Y')],
         $plantilla_html
     );
 
-    // Creamos la versión en texto plano
-    $cuerpo_texto = "Hola,\n\nPara restablecer tu contraseña, copia y pega el siguiente enlace en tu navegador:\n" . $reset_link . "\n\nEste enlace es válido por 3 horas.";
+    $cuerpo_texto = "Hola,\n\nPara restablecer tu contraseña, usa el siguiente enlace:\n" . $reset_link . "\n\nEste enlace es válido por 3 horas.";
 
-    // Llamamos a la función principal de envío. El nombre del destinatario puede ser el propio email si no lo tenemos a mano.
     return enviarEmail($email, $email, $asunto, $cuerpo_html, $cuerpo_texto);
 }
-
 ?>
