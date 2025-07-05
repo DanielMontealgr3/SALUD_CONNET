@@ -68,6 +68,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // CREA UNA NUEVA INSTANCIA DE PHPMailer.
     $mail = new PHPMailer(true);
     try {
+        // ***** CAMBIO 1: SE ACTIVA EL MODO DEBUG PARA VER LOS ERRORES DETALLADOS *****
+        $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+
         // ***** INICIO DEL BLOQUE DE CONFIGURACIÓN SMTP INTELIGENTE *****
 
         // DETECTA SI ESTAMOS EN EL SERVIDOR DE PRODUCCIÓN.
@@ -160,8 +163,10 @@ HTML;
         error_log("Error al enviar correo: " . $mail->ErrorInfo);
         $_SESSION['flash_message'] = 'Error al enviar el correo. Inténtalo más tarde o contacta a soporte.';
         $_SESSION['flash_type'] = 'error';
-        header('Location: ' . BASE_URL . '/include/olvide_contra.php');
-        exit;
+
+        // ***** CAMBIO 2: SE DESACTIVA LA REDIRECCIÓN PARA VER EL MENSAJE DE ERROR EN PANTALLA *****
+        // header('Location: ' . BASE_URL . '/include/olvide_contra.php');
+        // exit;
     }
 
 } else {

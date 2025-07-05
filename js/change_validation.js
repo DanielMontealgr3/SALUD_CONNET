@@ -1,5 +1,7 @@
+// ESPERA A QUE TODO EL CONTENIDO HTML DE LA PÁGINA HAYA CARGADO ANTES DE EJECUTAR EL SCRIPT.
 document.addEventListener('DOMContentLoaded', function() {
 
+    // SELECCIÓN DE TODOS LOS ELEMENTOS DEL DOM (FORMULARIO, INPUTS, ETC.) CON LOS QUE SE VA A INTERACTUAR.
     const formulario = document.getElementById('formulario-change');
     const passInput = document.getElementById('pass');
     const pass2Input = document.getElementById('pass2');
@@ -15,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     const submitButton = document.getElementById('submit-btn');
 
+    // FUNCIÓN PARA APLICAR ESTILOS CSS (BORDE ROJO O VERDE) A UN CAMPO.
     const aplicarEstilo = (elemento, clase) => {
         elemento.classList.remove('input-error', 'input-success');
         if (clase) {
@@ -22,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // FUNCIÓN PARA MOSTRAR U OCULTAR UN MENSAJE DE ERROR.
     const mostrarMensaje = (elementoSpan, mensaje) => {
         if (elementoSpan) {
             elementoSpan.textContent = mensaje;
@@ -29,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // FUNCIÓN QUE VERIFICA SI UNA CONTRASEÑA CUMPLE CON TODOS LOS REQUISITOS DE SEGURIDAD.
     const validarRequisitosPassword = (password) => {
         const requisitos = {
             length: password.length >= 8,
@@ -40,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return requisitos;
     };
 
+    // FUNCIÓN QUE ACTUALIZA VISUALMENTE LA LISTA DE REQUISITOS (TACHANDO LOS QUE SE CUMPLEN).
     const actualizarVistaRequisitos = (requisitos) => {
         for (const key in reqItems) {
             if (reqItems[key]) {
@@ -54,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // FUNCIÓN QUE VERIFICA SI LOS DOS CAMPOS DE CONTRASEÑA COINCIDEN.
     const validarCoincidenciaPasswords = () => {
         const pass1 = passInput.value;
         const pass2 = pass2Input.value;
@@ -62,7 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (pass2 === "") {
             aplicarEstilo(pass2Input, null);
             mostrarMensaje(errorPass2Span, '');
-            // No se considera inválido si está vacío aún
         } else if (pass1 !== pass2) {
             aplicarEstilo(pass2Input, 'input-error');
             mostrarMensaje(errorPass2Span, 'Las contraseñas no coinciden.');
@@ -74,57 +80,49 @@ document.addEventListener('DOMContentLoaded', function() {
         return coinciden;
     };
 
+    // FUNCIÓN PARA OCULTAR LOS MENSAJES DE ERROR QUE VIENEN DEL SERVIDOR CUANDO EL USUARIO EMPIEZA A CORREGIR.
      const ocultarMensajesServidor = () => {
         const serverMessages = formulario.querySelectorAll('.mensaje-login-servidor, .mensaje-login-alerta, .mensaje-login-exito');
         serverMessages.forEach(msg => msg.remove());
     };
 
-
+    // FUNCIÓN PRINCIPAL DE VALIDACIÓN QUE ORQUESTA TODAS LAS DEMÁS Y ACTUALIZA EL BOTÓN DE ENVÍO.
     const validarFormularioCompleto = () => {
         const password = passInput.value;
         const requisitos = validarRequisitosPassword(password);
         actualizarVistaRequisitos(requisitos);
-
         const todosRequisitosCumplidos = Object.values(requisitos).every(val => val === true);
 
         if (password === "") {
              aplicarEstilo(passInput, null);
         } else if (todosRequisitosCumplidos) {
             aplicarEstilo(passInput, 'input-success');
-            mostrarMensaje(errorPassSpan, ''); // Ocultar mensaje de error si ahora es válido
+            mostrarMensaje(errorPassSpan, '');
         } else {
              aplicarEstilo(passInput, 'input-error');
-             // No mostramos mensaje aquí, la lista de requisitos es suficiente
         }
 
-
         const coinciden = validarCoincidenciaPasswords();
-
-        // Habilitar botón solo si todos los requisitos se cumplen Y las contraseñas coinciden
         submitButton.disabled = !(todosRequisitosCumplidos && coinciden);
     };
 
-
+    // ASIGNACIÓN DE EVENTOS A LOS INPUTS PARA VALIDAR EN TIEMPO REAL.
     passInput.addEventListener('input', () => {
         ocultarMensajesServidor();
         validarFormularioCompleto();
     });
-
     pass2Input.addEventListener('input', () => {
         ocultarMensajesServidor();
         validarFormularioCompleto();
     });
-
-    // Validar al perder foco para asegurar estilos correctos
     passInput.addEventListener('blur', validarFormularioCompleto);
     pass2Input.addEventListener('blur', validarFormularioCompleto);
 
-
+    // GESTIONA EL ENVÍO DEL FORMULARIO PARA UNA ÚLTIMA VALIDACIÓN ANTES DE ENVIAR.
     formulario.addEventListener('submit', function(evento) {
-        validarFormularioCompleto(); // Última validación
+        validarFormularioCompleto(); 
         if (submitButton.disabled) {
             evento.preventDefault();
-             // Opcional: poner foco en el primer campo inválido
              if (!Object.values(validarRequisitosPassword(passInput.value)).every(val => val === true)) {
                  passInput.focus();
              } else if (passInput.value !== pass2Input.value) {
@@ -133,6 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Estado inicial
+    // EJECUTA LA VALIDACIÓN UNA VEZ AL CARGAR LA PÁGINA PARA ESTABLECER EL ESTADO INICIAL DEL BOTÓN.
     validarFormularioCompleto();
 });
