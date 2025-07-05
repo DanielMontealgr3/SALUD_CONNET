@@ -10,6 +10,7 @@ require_once ROOT_PATH . '/include/PHPMailer/SMTP.php';
 // IMPORTA LAS CLASES DE PHPMailer AL ESPACIO DE NOMBRES GLOBAL.
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
 
 // VERIFICA QUE LA SOLICITUD SEA MEDIANTE EL MÉTODO POST.
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -68,9 +69,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // CREA UNA NUEVA INSTANCIA DE PHPMailer.
     $mail = new PHPMailer(true);
     try {
-        // ***** CAMBIO 1: SE ACTIVA EL MODO DEBUG PARA VER LOS ERRORES DETALLADOS *****
-        $mail->SMTPDebug = SMTP::DEBUG_SERVER;
-
         // ***** INICIO DEL BLOQUE DE CONFIGURACIÓN SMTP INTELIGENTE *****
 
         // DETECTA SI ESTAMOS EN EL SERVIDOR DE PRODUCCIÓN.
@@ -79,13 +77,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $mail->isSMTP();
             $mail->Host       = 'smtp.hostinger.com';
             $mail->SMTPAuth   = true;
-            // ¡¡IMPORTANTE!! REEMPLAZA ESTOS DATOS CON TU CUENTA DE CORREO CREADA EN HOSTINGER.
-            $mail->Username   = 'no-responder@saludconnected.com'; // EJEMPLO: no-responder@saludconnected.com
-            $mail->Password   = 'LA_CONTRASEÑA_DE_TU_EMAIL_DE_HOSTINGER'; // LA CONTRASEÑA DE ESE CORREO
+            $mail->Username   = 'soporte@saludconnected.com'; // TU CORREO CREADO EN HOSTINGER
+            $mail->Password   = 'Saludconnected2025*'; // ¡¡ACCIÓN IMPORTANTE!!
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             $mail->Port       = 465;
-            // LA DIRECCIÓN DEL REMITENTE DEBE SER LA MISMA QUE EL USERNAME.
-            $mail->setFrom($mail->Username, 'Soporte Salud Connected');
+            $mail->setFrom('soporte@saludconnected.com', 'Soporte Salud Connected');
         } else {
             // CONFIGURACIÓN PARA GMAIL (LOCALHOST)
             $mail->isSMTP();
@@ -95,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $mail->Password = 'czlr pxjh jxeu vzsz'; // Tu contraseña de aplicación de Gmail
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
-            $mail->setFrom($mail->Username, 'Soporte Salud Connected');
+            $mail->setFrom('saludconneted@gmail.com', 'Soporte Salud Connected');
         }
 
         // ***** FIN DEL BLOQUE DE CONFIGURACIÓN SMTP INTELIGENTE *****
@@ -163,10 +159,8 @@ HTML;
         error_log("Error al enviar correo: " . $mail->ErrorInfo);
         $_SESSION['flash_message'] = 'Error al enviar el correo. Inténtalo más tarde o contacta a soporte.';
         $_SESSION['flash_type'] = 'error';
-
-        // ***** CAMBIO 2: SE DESACTIVA LA REDIRECCIÓN PARA VER EL MENSAJE DE ERROR EN PANTALLA *****
-        // header('Location: ' . BASE_URL . '/include/olvide_contra.php');
-        // exit;
+        header('Location: ' . BASE_URL . '/include/olvide_contra.php');
+        exit;
     }
 
 } else {
