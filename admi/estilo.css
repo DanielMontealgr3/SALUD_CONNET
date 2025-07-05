@@ -755,3 +755,94 @@ input[type="text"]:disabled, .form-control:disabled,
     margin-bottom: 2px;
     color: #6c757d;
 }
+
+
+/* ================================================== */
+/* ==   ESTILOS PARA EL MODAL DE PERFIL DE USUARIO   == */
+/* ================================================== */
+
+/* --- Contenedor y Encabezado del Modal --- */
+#userProfileModal .modal-content {
+    background-color: #f0f2f5;
+    border: 3px solid #87CEEB; /* Un azul claro para el borde */
+    border-radius: .5rem;
+}
+
+#userProfileModal .modal-header {
+    background-color: #005A9C; /* Azul oscuro corporativo */
+    color: white;
+    border-bottom: 1px solid #0047AB;
+}
+
+#userProfileModal .modal-header .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#userProfileModal .modal-dialog {
+    max-width: 850px; /* Ancho máximo del modal */
+}
+
+
+/* --- Foto de Perfil y Botón de Subida --- */
+#userProfileModal .profile-photo-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 1.5rem auto;
+}
+
+#userProfileModal #imagePreviewModal {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover; /* Asegura que la imagen cubra el círculo sin deformarse */
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+#userProfileModal #upload-photo-label {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 40px;
+    height: 40px;
+    background-color: #0d6efd; /* Azul de Bootstrap */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border: 2px solid white;
+    transition: background-color .2s ease-in-out;
+}
+
+#userProfileModal #upload-photo-label:hover {
+    background-color: #0b5ed7; /* Azul más oscuro al pasar el ratón */
+}
+
+/* Oculta el input de tipo 'file' por defecto */
+#userProfileModal #foto_usu_modal {
+    display: none;
+}
+
+
+/* --- Estilos para la Validación de Formularios (Mensajes y Bordes) --- */
+#userProfileModal .invalid-feedback {
+    display: none; /* Oculto por defecto */
+    width: 100%;
+    margin-top: .15rem;
+    font-size: .80em;
+    color: #dc3545; /* Rojo de Bootstrap para errores */
+}
+
+/* Muestra el mensaje de error cuando el input es inválido y ha sido interactuado */
+#userProfileModal .form-control.is-invalid ~ .invalid-feedback,
+#userProfileModal .form-select.is-invalid ~ .invalid-feedback {
+    display: block;
+}
+
+/* El estilo del borde rojo y verde ya está incluido en los estilos de Bootstrap 5
+   que hemos importado, por lo que no es necesario duplicarlos aquí.
+   Las clases '.is-valid' e '.is-invalid' de Bootstrap se encargarán de ello. */
