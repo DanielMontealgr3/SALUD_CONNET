@@ -1,18 +1,20 @@
 <?php
-// Usar rutas absolutas definidas en config.php es la clave para la portabilidad
+// Se usan las rutas absolutas definidas en config.php para máxima portabilidad.
 require_once __DIR__ . '/../include/config.php';
 require_once ROOT_PATH . '/include/validar_sesion.php';
 require_once ROOT_PATH . '/include/inactividad.php';
-require_once ROOT_PATH . '/include/tcpdf/tcpdf.php'; // RUTA CORREGIDA
+require_once ROOT_PATH . '/include/tcpdf/tcpdf.php'; // RUTA CORREGIDA Y ROBUSTA
 
+// Verificación de rol.
 if (!in_array($_SESSION['id_rol'], [1, 4])) {
     http_response_code(403);
     die('Acceso no autorizado para generar PDF.');
 }
 
+// Se obtiene el médico logueado para filtrar sus citas.
 $doc_medico_actual = $_SESSION['doc_usu'];
 
-// --- Lógica de filtros (sin cambios) ---
+// --- Lógica de filtros (consistente con la página del historial) ---
 $filtros_estado_disponibles = [
     'todas'          => ['label' => 'Todas (Historial)', 'ids' => [3, 5, 6, 7, 8]],
     'activas'        => ['label' => 'Activas/Asignadas', 'ids' => [3]],
@@ -23,12 +25,12 @@ $filtros_estado_disponibles = [
 $filtro_actual_key = isset($_GET['filtro_estado']) && array_key_exists($_GET['filtro_estado'], $filtros_estado_disponibles) ? $_GET['filtro_estado'] : 'todas';
 $ids_estado_filtrar = $filtros_estado_disponibles[$filtro_actual_key]['ids'];
 $report_filter_label = "Mis Citas: " . $filtros_estado_disponibles[$filtro_actual_key]['label'];
+
 $busqueda = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
 $fecha_desde = isset($_GET['fecha_desde']) ? trim($_GET['fecha_desde']) : '';
 $fecha_hasta = isset($_GET['fecha_hasta']) ? trim($_GET['fecha_hasta']) : '';
 
-
-// --- Consulta SQL (simplificada y corregida) ---
+// --- Construcción de la Consulta SQL (Corregida y Simplificada) ---
 $sql_base = "SELECT c.id_cita, up.nom_usu AS nom_paciente, c.doc_pac, 
                     c.fecha_solici, hm.fecha_horario AS fecha_cita_programada, 
                     hm.horario AS hora_cita_programada, e.nom_est 
@@ -37,7 +39,7 @@ $sql_base = "SELECT c.id_cita, up.nom_usu AS nom_paciente, c.doc_pac,
              LEFT JOIN horario_medico hm ON c.id_horario_med = hm.id_horario_med
              LEFT JOIN usuarios up ON c.doc_pac = up.doc_usu";
 
-$where_clauses = ["hm.doc_medico = ?"];
+$where_clauses = ["hm.doc_medico = ?"]; // Filtro obligatorio por médico
 $query_params = [$doc_medico_actual];
 
 if (!empty($ids_estado_filtrar)) {
@@ -45,13 +47,11 @@ if (!empty($ids_estado_filtrar)) {
     $where_clauses[] = "c.id_est IN ($placeholders)";
     $query_params = array_merge($query_params, $ids_estado_filtrar);
 }
-
 if ($busqueda !== '') {
     $likeBusqueda = "%$busqueda%";
     $where_clauses[] = "(up.nom_usu LIKE ? OR c.doc_pac LIKE ? OR c.id_cita LIKE ?)";
     array_push($query_params, $likeBusqueda, $likeBusqueda, $likeBusqueda);
 }
-
 if ($fecha_desde && $fecha_hasta) {
     $where_clauses[] = "hm.fecha_horario BETWEEN ? AND ?";
     array_push($query_params, $fecha_desde, $fecha_hasta);
@@ -65,13 +65,13 @@ $stmt_data->execute($query_params);
 $citas = $stmt_data->fetchAll(PDO::FETCH_ASSOC);
 
 
-// --- Clase PDF (simplificada para legibilidad) ---
+// --- Clase PDF Personalizada ---
 class MYPDF extends TCPDF {
     public $reportFilterLabel = '';
     public $reportSearchTerm = '';
 
     public function Header() {
-        $logoPath = ROOT_PATH . '/img/logo.png';
+        $logoPath = ROOT_PATH . '/img/logo.png'; // RUTA ROBUSTA
         if (file_exists($logoPath)) {
             $this->Image($logoPath, 15, 8, 30);
         }
@@ -96,19 +96,17 @@ class MYPDF extends TCPDF {
         $this->SetFont('helvetica', 'I', 8);
         $this->SetTextColor(128);
         $this->Cell(0, 10, 'Página ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, false, 'C', 0, '', 0, false, 'T', 'M');
-        $this->Cell(0, 10, '© ' . date('Y') . ' SaludConnect', 0, false, 'R', 0, '', 0, false, 'T', 'M');
+        $this->Cell(0, 10, '© ' . date('Y') . ' SaludConnect. Todos los derechos reservados.', 0, false, 'R', 0, '', 0, false, 'T', 'M');
     }
 }
 
-// --- Creación y configuración del PDF ---
+// --- Creación y Configuración del PDF ---
 $pdf = new MYPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-
 $pdf->SetCreator('SaludConnect');
 $pdf->SetAuthor($_SESSION['nombre_usuario'] ?? 'Sistema');
 $pdf->SetTitle($report_filter_label);
 $pdf->reportFilterLabel = $report_filter_label;
 $pdf->reportSearchTerm = $busqueda;
-
 $pdf->SetMargins(15, 40, 15);
 $pdf->SetHeaderMargin(5);
 $pdf->SetFooterMargin(15);
@@ -116,6 +114,7 @@ $pdf->SetAutoPageBreak(TRUE, 25);
 $pdf->AddPage();
 $pdf->SetFont('helvetica', '', 9);
 
+// --- Construcción de la tabla HTML para el PDF ---
 $mainBlueHex = '#005A9C';
 $html = <<<EOD
 <style>
