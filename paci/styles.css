@@ -1,0 +1,76 @@
+/*
+ * Archivo: estilos_examen.css
+ * Estilos para la página de agendamiento de exámenes (versión corregida).
+*/
+
+/* --- Contenedor Principal y Tarjeta --- */
+.card {
+    border: none;
+    border-radius: 0.75rem;
+}
+
+/* --- Estilos del Calendario (FullCalendar) --- */
+
+#calendar {
+    /* 
+     * ¡AQUÍ ESTÁ EL AJUSTE!
+     * 1em es el tamaño normal. Lo hemos restaurado.
+     * Si después de guardar todavía lo ves muy grande, puedes reducirlo
+     * un poco, por ejemplo a "0.95em". ¡No bajes de 0.9em!
+    */
+    font-size: 0.5em; 
+    max-width: 500px; /* Le ponemos un ancho máximo para que no se estire demasiado en pantallas grandes */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Título del mes/año en la barra de herramientas */
+.fc .fc-toolbar-title {
+    font-size: 1.4em;
+    color: #004a99;
+}
+
+/* Botones de navegación (mes anterior/siguiente) */
+.fc .fc-button {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+.fc .fc-button:hover {
+    background-color: #004a99;
+    border-color: #004a99;
+}
+
+/* Día deshabilitado (ej. fines de semana o días pasados) */
+.fc-day-disabled {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+}
+.fc-day-disabled .fc-daygrid-day-number {
+    color: #ced4da;
+}
+
+/* --- Estilos de los Modales --- */
+
+#horas-container .hour-btn {
+    min-width: 100px;
+}
+
+#notificationModal .modal-content {
+    border-radius: 0.5rem;
+}
+#notificationModalLabel {
+    color: #004a99;
+    font-weight: 500;
+}
+.calendar-scaler {
+        transform: scale(0.85); /* escala el contenido */
+        transform-origin: top left; /* evita que se deforme desde el centro */
+        width: 100%; 
+        overflow: hidden;
+    }
+
+
+.fc-theme-standard th,
+.fc-theme-standard td {
+    border: 1px solid #343a40 !important; /* gris oscuro, puedes usar #000 para negro puro */
+}
