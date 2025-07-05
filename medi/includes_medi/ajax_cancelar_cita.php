@@ -1,48 +1,43 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+require_once __DIR__ . '/../../include/config.php';
 
-// Asegurar que la salida sea siempre JSON
 header('Content-Type: application/json');
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 4) {
+if (!isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 4) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Acceso no autorizado']);
     exit;
 }
 
-$id_cita = isset($_POST['id_cita']) ? (int)$_POST['id_cita'] : 0;
-
-if ($id_cita <= 0) {
+$id_cita = filter_input(INPUT_POST, 'id_cita', FILTER_VALIDATE_INT);
+if (!$id_cita) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'ID de cita inválido.']);
     exit;
 }
 
+define('ID_ESTADO_NO_ASISTIO', 8);
+define('ID_ESTADO_HORARIO_DISPONIBLE', 4);
+
 try {
-    $db = new Database();
-    $pdo = $db->conectar();
-    $pdo->beginTransaction();
+    $con->beginTransaction();
 
-    // Estado 8 = No Asistió
-    $sql_cita = "UPDATE citas SET id_est = 8 WHERE id_cita = ?";
-    $stmt_cita = $pdo->prepare($sql_cita);
-    $stmt_cita->execute([$id_cita]);
+    $sql_cita = "UPDATE citas SET id_est = ? WHERE id_cita = ?";
+    $stmt_cita = $con->prepare($sql_cita);
+    $stmt_cita->execute([ID_ESTADO_NO_ASISTIO, $id_cita]);
 
-    // Estado 4 = Disponible/No asignada
-    $sql_horario = "UPDATE horario_medico SET id_estado = 4 WHERE id_horario_med = (SELECT id_horario_med FROM citas WHERE id_cita = ?)";
-    $stmt_horario = $pdo->prepare($sql_horario);
-    $stmt_horario->execute([$id_cita]);
+    $sql_horario = "UPDATE horario_medico SET id_estado = ? WHERE id_horario_med = (SELECT id_horario_med FROM citas WHERE id_cita = ?)";
+    $stmt_horario = $con->prepare($sql_horario);
+    $stmt_horario->execute([ID_ESTADO_HORARIO_DISPONIBLE, $id_cita]);
     
-    $pdo->commit();
+    $con->commit();
     echo json_encode(['success' => true]);
 
 } catch (PDOException $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
+    if ($con->inTransaction()) {
+        $con->rollBack();
     }
     http_response_code(500);
     error_log("Error en ajax_cancelar_cita: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Error de base de datos.']);
+    echo json_encode(['success' => false, 'message' => 'Error de base de datos al cancelar la cita.']);
 }

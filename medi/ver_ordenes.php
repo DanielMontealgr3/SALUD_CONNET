@@ -1,45 +1,36 @@
 <?php
-// BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD
-// INCLUYE EL ARCHIVO DE CONFIGURACIÓN GLOBAL. ESTA DEBE SER SIEMPRE LA PRIMERA LÍNEA.
-// 'config.php' INICIA LA SESIÓN, DEFINE LAS RUTAS (BASE_URL, ROOT_PATH) Y CONECTA A LA BASE DE DATOS ($con).
 require_once __DIR__ . '/../include/config.php';
-
-// INCLUYE EL SCRIPT PARA VALIDAR QUE EL USUARIO TENGA UNA SESIÓN ACTIVA Y SEA DEL ROL CORRECTO.
 require_once ROOT_PATH . '/include/validar_sesion.php';
-// INCLUYE EL SCRIPT QUE MANEJA LA INACTIVIDAD DE LA SESIÓN.
 require_once ROOT_PATH . '/include/inactividad.php';
 
-// VERIFICACIÓN ESPECÍFICA DEL ROL. SI EL USUARIO NO ES MÉDICO (ROL 4), SE LE REDIRIGE.
 if ($_SESSION['id_rol'] != 4) {
     header('Location: ' . BASE_URL . '/inicio_sesion.php');
     exit;
 }
 
-// BLOQUE 2: LÓGICA DE PAGINACIÓN Y BÚSQUEDA
-// DEFINE CUÁNTOS REGISTROS SE MOSTRARÁN POR PÁGINA.
-define('REGISTROS_POR_PAGINA_DETALLES', 5);
+$doc_medico_actual = $_SESSION['doc_usu'];
 
-// OBTIENE LA PÁGINA ACTUAL Y EL TÉRMINO DE BÚSQUEDA DESDE LA URL.
+define('REGISTROS_POR_PAGINA_DETALLES', 5);
 $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina_actual < 1) $pagina_actual = 1;
 $busqueda = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
 
-// BLOQUE 3: CONSTRUCCIÓN DE LA CONSULTA SQL
-// ARMA LA PARTE BASE DEL QUERY CON LAS UNIONES NECESARIAS ENTRE TABLAS.
 $sql_base = "FROM detalles_histo_clini dh
              INNER JOIN historia_clinica hc ON dh.id_historia = hc.id_historia
-             INNER JOIN citas ci ON hc.id_cita = ci.id_cita         
+             INNER JOIN citas ci ON hc.id_cita = ci.id_cita
+             INNER JOIN horario_medico hm ON ci.id_horario_med = hm.id_horario_med
              INNER JOIN usuarios u_pac ON ci.doc_pac = u_pac.doc_usu 
              LEFT JOIN diagnostico d ON dh.id_diagnostico = d.id_diagnos
              LEFT JOIN enfermedades e ON dh.id_enferme = e.id_enferme
              LEFT JOIN medicamentos m ON dh.id_medicam = m.id_medicamento
              LEFT JOIN procedimientos p ON dh.id_proced = p.id_proced";
 
-// INICIALIZA CLÁUSULAS WHERE Y PARÁMETROS DEL QUERY.
 $where_clauses = [];
 $query_params = [];
 
-// SI SE INGRESÓ UNA BÚSQUEDA, AGREGA CONDICIONES DINÁMICAS CON LIKE.
+$where_clauses[] = "hm.doc_medico = ?";
+$query_params[] = $doc_medico_actual;
+
 if ($busqueda != '') {
     $likeBusqueda = "%$busqueda%";
     $where_clauses[] = "(
@@ -52,52 +43,53 @@ if ($busqueda != '') {
     }
 }
 
-$final_where_sql = !empty($where_clauses) ? " WHERE " . implode(" AND ", $where_clauses) : "";
+$final_where_sql = " WHERE " . implode(" AND ", $where_clauses);
 
-// CONSTRUYE Y EJECUTA EL QUERY PARA CONTAR EL TOTAL DE REGISTROS.
 $count_sql = "SELECT COUNT(dh.id_detalle) " . $sql_base . $final_where_sql;
 $stmt_count = $con->prepare($count_sql);
 $stmt_count->execute($query_params);
 $total_registros = (int)$stmt_count->fetchColumn();
 $total_paginas = ceil($total_registros / REGISTROS_POR_PAGINA_DETALLES);
 
-// AJUSTA LA PÁGINA ACTUAL SI EXCEDE EL TOTAL Y CALCULA EL OFFSET.
 if ($pagina_actual > $total_paginas && $total_paginas > 0) $pagina_actual = $total_paginas;
 $offset = ($pagina_actual - 1) * REGISTROS_POR_PAGINA_DETALLES;
 
-// CONSTRUYE Y EJECUTA EL QUERY FINAL PARA OBTENER LOS DATOS PAGINADOS.
 $sql_data = "SELECT dh.id_detalle, hc.id_historia, u_pac.nom_usu AS nombre_paciente, u_pac.doc_usu AS documento_paciente, d.diagnostico, e.nom_enfer, m.nom_medicamento, dh.can_medica, p.procedimiento, dh.cant_proced, dh.prescripcion " 
             . $sql_base . $final_where_sql 
             . " ORDER BY dh.id_detalle DESC LIMIT ? OFFSET ?";
 
-$data_query_params = array_merge($query_params, [$offset, REGISTROS_POR_PAGINA_DETALLES]);
+$data_query_params = $query_params;
+$data_query_params[] = REGISTROS_POR_PAGINA_DETALLES;
+$data_query_params[] = $offset;
+
 $stmt_data = $con->prepare($sql_data);
-// EJECUTA LA CONSULTA CON LOS PARÁMETROS.
-$stmt_data->execute($data_query_params);
+
+$param_index = 1;
+foreach ($data_query_params as $param_value) {
+    $param_type = is_int($param_value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+    $stmt_data->bindValue($param_index++, $param_value, $param_type);
+}
+
+$stmt_data->execute();
 $detalles = $stmt_data->fetchAll(PDO::FETCH_ASSOC);
 
-// ESTABLECE EL TÍTULO DE LA PÁGINA ANTES DE INCLUIR EL MENÚ.
-$pageTitle = "Historial de Órdenes Clínicas";
+$pageTitle = "Mis Órdenes Clínicas Generadas";
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <?php 
-// BLOQUE 4: INCLUSIÓN DE LA VISTA (ENCABEZADO Y MENÚ)
-// INCLUYE EL MENÚ. COMO 'config.php' YA SE CARGÓ, TODAS LAS VARIABLES Y CONSTANTES ESTARÁN DISPONIBLES.
 require_once ROOT_PATH . '/include/menu.php'; 
 ?>
-<!-- EL '<body>' YA ESTÁ INCLUIDO DENTRO DE 'menu.php'. -->
 <div class="container mt-4 container-ver-ordenes"> 
     <div class="page-container-table"> 
-        <!-- ENCABEZADO DE LA PÁGINA Y FORMULARIO DE BÚSQUEDA. -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <a href="<?php echo BASE_URL; ?>/medi/citas_hoy.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i> Volver</a>
             <h2 class="mb-0 text-center flex-grow-1 fs-4"><?php echo htmlspecialchars($pageTitle); ?></h2>
             <div style="width:90px;"></div> 
         </div>
-        <form method="GET" action="<?php echo BASE_URL; ?>/medi/ver_ordenes.php" class="mb-3"> 
+        <form method="GET" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" class="mb-3"> 
             <div class="input-group input-group-sm">
-                <input type="text" name="buscar" class="form-control" placeholder="Buscar en detalles..." value="<?php echo htmlspecialchars($busqueda); ?>">
+                <input type="text" name="buscar" class="form-control" placeholder="Buscar en mis órdenes..." value="<?php echo htmlspecialchars($busqueda); ?>">
                 <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
                 <?php if ($busqueda != ''): ?>
                     <a href="<?php echo BASE_URL; ?>/medi/ver_ordenes.php" class="btn btn-outline-secondary">Limpiar</a>
@@ -105,16 +97,9 @@ require_once ROOT_PATH . '/include/menu.php';
             </div>
         </form>
         
-        <?php 
-        // BLOQUE 5: RENDERIZADO DE DATOS
-        // SI NO HAY DETALLES PARA MOSTRAR, SE MUESTRA UNA ALERTA.
-        if (empty($detalles)): 
-        ?>
-            <div class="alert alert-info text-center">No hay detalles para mostrar <?php echo ($busqueda != '') ? 'con el criterio "' . htmlspecialchars($busqueda) . '"' : ''; ?>.</div>
-        <?php 
-        // SI HAY DETALLES, SE MUESTRA LA TABLA Y LA PAGINACIÓN.
-        else: 
-        ?>
+        <?php if (empty($detalles)): ?>
+            <div class="alert alert-info text-center">No ha generado órdenes <?php echo ($busqueda != '') ? 'con el criterio "' . htmlspecialchars($busqueda) . '"' : ''; ?>.</div>
+        <?php else: ?>
             <div class="table-container"> 
                 <table class="table table-bordered table-hover table-detalles table-responsive-cards"> 
                     <thead> 
@@ -144,8 +129,7 @@ require_once ROOT_PATH . '/include/menu.php';
                 </table>
             </div>
 
-            <!-- BLOQUE DE PAGINACIÓN -->
-            <?php if ($total_paginas > 0): ?>
+            <?php if ($total_paginas > 1): ?>
                 <div class="pagination-compact d-flex justify-content-center mt-4">
                     <ul class="pagination mb-0">
                         <li class="page-item <?php echo ($pagina_actual <= 1) ? 'disabled' : ''; ?>">
@@ -166,6 +150,5 @@ require_once ROOT_PATH . '/include/menu.php';
 </div>
 
 <?php 
-// BLOQUE 6: INCLUSIÓN DEL PIE DE PÁGINA
 require_once ROOT_PATH . '/include/footer.php'; 
 ?>

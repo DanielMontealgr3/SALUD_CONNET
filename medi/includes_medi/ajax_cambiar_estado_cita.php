@@ -1,51 +1,52 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+require_once __DIR__ . '/../../include/config.php';
 
-// Asegurar que la salida sea siempre JSON
 header('Content-Type: application/json');
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || $_SESSION['id_rol'] != 4) {
+// Validar sesión y rol
+if (!isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 4) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Acceso no autorizado.']);
     exit;
 }
 
-$id_cita = isset($_POST['id_cita']) ? (int)$_POST['id_cita'] : 0;
-if ($id_cita <= 0) {
+$id_cita = filter_input(INPUT_POST, 'id_cita', FILTER_VALIDATE_INT);
+if (!$id_cita) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'ID de cita inválido.']);
     exit;
 }
 
-define('ID_ESTADO_EN_PROCESO', 11);
+// Definimos los estados relevantes
+define('ID_ESTADO_PROGRAMADA', 3);
+define('ID_ESTADO_LISTA_PARA_LLAMAR', 10); // Este es el estado al que cambiaremos la cita
 
 try {
-    $db = new Database();
-    $pdo = $db->conectar();
+    // Primero, verificamos que la cita esté en el estado correcto para ser actualizada
+    $check_stmt = $con->prepare("SELECT id_est FROM citas WHERE id_cita = ?");
+    $check_stmt->execute([$id_cita]);
+    $current_state = $check_stmt->fetchColumn();
     
-    // Solo actualiza si está en estado 'Asignada' (3)
-    $sql = "UPDATE citas SET id_est = ? WHERE id_cita = ? AND id_est = 3";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([ID_ESTADO_EN_PROCESO, $id_cita]);
-    
-    if ($stmt->rowCount() > 0) {
-        echo json_encode(['success' => true]);
-    } else {
-        // Puede que ya se haya procesado o el estado inicial no era 'Asignada'
-        $check_sql = "SELECT id_est FROM citas WHERE id_cita = ?";
-        $check_stmt = $pdo->prepare($check_sql);
-        $check_stmt->execute([$id_cita]);
-        $current_state = $check_stmt->fetchColumn();
+    if ($current_state == ID_ESTADO_PROGRAMADA) {
+        $sql = "UPDATE citas SET id_est = ? WHERE id_cita = ?";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([ID_ESTADO_LISTA_PARA_LLAMAR, $id_cita]);
 
-        if($current_state == ID_ESTADO_EN_PROCESO){
-            // Si ya está en proceso, lo consideramos un éxito para el JS.
-            echo json_encode(['success' => true]);
+        if ($stmt->rowCount() > 0) {
+            // Obtenemos el nombre del nuevo estado para devolverlo
+            $stmt_estado = $con->prepare("SELECT nom_est FROM estado WHERE id_est = ?");
+            $stmt_estado->execute([ID_ESTADO_LISTA_PARA_LLAMAR]);
+            $nuevo_estado = $stmt_estado->fetchColumn();
+            echo json_encode(['success' => true, 'nuevo_estado' => $nuevo_estado]);
         } else {
-             echo json_encode(['success' => false, 'message' => 'La cita no se pudo actualizar. Es posible que ya haya sido procesada o cancelada.']);
+            echo json_encode(['success' => false, 'message' => 'No se pudo actualizar la cita.']);
         }
+    } elseif ($current_state == ID_ESTADO_LISTA_PARA_LLAMAR) {
+         echo json_encode(['success' => true, 'message' => 'La cita ya estaba lista para llamar.']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'La cita no se puede actualizar desde su estado actual.']);
     }
+
 } catch (PDOException $e) {
     error_log("Error en ajax_cambiar_estado_cita.php: " . $e->getMessage());
     http_response_code(500);
