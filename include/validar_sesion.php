@@ -1,4 +1,12 @@
 <?php
+// --- CORRECCIÓN CLAVE ---
+// AÑADIMOS ESTA LÍNEA PARA ASEGURAR QUE 'config.php' SIEMPRE ESTÉ CARGADO.
+// __DIR__ es la carpeta actual ('include'), así que '/../' sube a la raíz del proyecto.
+// Esto garantiza que la sesión se inicie y las constantes como BASE_URL existan.
+require_once __DIR__ . '/../include/config.php';
+
+// --- TU CÓDIGO ORIGINAL INTACTO COMIENZA AQUÍ ---
+
 // BLOQUE 1: VERIFICACIÓN DE SESIÓN VÁLIDA
 // ESTE SCRIPT ASUME QUE 'config.php' YA HA SIDO INCLUIDO Y LA SESIÓN YA HA SIDO INICIADA.
 
