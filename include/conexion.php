@@ -20,7 +20,7 @@ class Database {
             $this->hostname = "localhost"; 
             $this->database = "u701947995_salud"; 
             $this->username = "u701947995_salud_user";
-            $this->password = "AslyBrianDaniel2025*"; 
+            $this->password = "BrianAslyDaniel2025*"; 
         }
     }
 
