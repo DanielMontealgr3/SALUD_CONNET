@@ -12,16 +12,19 @@
 /* --- Estilos del Calendario (FullCalendar) --- */
 
 #calendar {
-    /* 
-     * ¡AQUÍ ESTÁ EL AJUSTE!
-     * 1em es el tamaño normal. Lo hemos restaurado.
-     * Si después de guardar todavía lo ves muy grande, puedes reducirlo
-     * un poco, por ejemplo a "0.95em". ¡No bajes de 0.9em!
-    */
-    font-size: 0.5em; 
-    max-width: 500px; /* Le ponemos un ancho máximo para que no se estire demasiado en pantallas grandes */
+    font-size: 0.5em;
+    max-width: 500px;
     margin-left: auto;
     margin-right: auto;
+}
+.fc-theme-standard th,
+.fc-theme-standard td {
+    border: 1px solid #343a40 !important; /* gris oscuro, puedes usar #000 para negro puro */
+}
+fc-daygrid-day-number {
+    font-size: 2.5em; /* Puedes subir a 1.2em si aún se ven pequeños */
+    font-weight: 600; /* Opcional: los hace un poco más gruesos */
+    color: #077ef6; /* Asegura un color legible (gris muy oscuro) */
 }
 
 /* Título del mes/año en la barra de herramientas */
@@ -69,8 +72,3 @@
         overflow: hidden;
     }
 
-
-.fc-theme-standard th,
-.fc-theme-standard td {
-    border: 1px solid #343a40 !important; /* gris oscuro, puedes usar #000 para negro puro */
-}

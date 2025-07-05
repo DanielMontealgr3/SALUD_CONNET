@@ -1,16 +1,7 @@
 <?php
-// =======================================================================================
-// BLOQUE 1: CONFIGURACIÓN CENTRAL Y SEGURIDAD
-// Incluye config.php para la conexión ($con) y el inicio de sesión.
-// Incluye validar_sesion.php para proteger el endpoint usando la ruta absoluta con ROOT_PATH.
-// =======================================================================================
-require_once __DIR__ . '/../../include/config.php';
-require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once '../../include/conexion.php';
+require_once '../../include/validar_sesion.php';
 
-// =======================================================================================
-// BLOQUE 2: VERIFICACIÓN DE ACCESO
-// Se asegura de que solo un paciente (rol 2) pueda acceder a este script.
-// =======================================================================================
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || $_SESSION['id_rol'] != 2) {
     echo "<option value=''>Error: Sesión no válida</option>";
     exit;
@@ -18,10 +9,9 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || $_SESSION
 
 $doc_usuario = $_SESSION['doc_usu'];
 
-// =======================================================================================
-// BLOQUE 3: LÓGICA DE CONSULTA
-// Busca las IPS asociadas al paciente según su EPS y municipio.
-// =======================================================================================
+$conex = new database();
+$con = $conex->conectar();
+
 try {
     $stmt = $con->prepare("SELECT i.Nit_IPS, i.nom_ips 
                            FROM usuarios u 
@@ -33,17 +23,15 @@ try {
     $stmt->execute([$doc_usuario]);
     $ips_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Se genera el HTML para las opciones del <select>.
     echo "<option value=''>Seleccione una IPS</option>";
     if (empty($ips_list)) {
         echo "<option value='' disabled>No hay IPS disponibles para su municipio y EPS</option>";
     } else {
         foreach ($ips_list as $row) {
-            echo "<option value='" . htmlspecialchars($row['Nit_IPS']) . "'>" . htmlspecialchars($row['nom_ips']) . "</option>";
+            echo "<option value='{$row['Nit_IPS']}'>{$row['nom_ips']}</option>";
         }
     }
 } catch (PDOException $e) {
-    error_log("Error en ips.php: " . $e->getMessage());
-    echo "<option value='' disabled>Error al cargar las IPS</option>";
+    echo "<option value='' disabled>Error: " . htmlspecialchars($e->getMessage()) . "</option>";
 }
 ?>

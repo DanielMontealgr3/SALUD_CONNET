@@ -1,5 +1,8 @@
 <?php
-require_once '../include/validar_sesion.php';
+// Archivo: paciente/cita_examen.php (VERSIÓN FINAL COMPLETA)
+
+// Se incluye el archivo de validación de sesión ya corregido.
+require_once '../include/validar_sesion.php'; 
 require_once '../include/inactividad.php';
 require_once '../include/conexion.php';
 require_once '../include/PHPMailer/PHPMailer.php';
@@ -19,12 +22,9 @@ $nombresitio = "Salud Connected";
 $email_soporte = 'saludconneted@gmail.com';
 $email_password = 'czlr pxjh jxeu vzsz';
 
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2) {
-    header('Location: ../inicio_sesion.php');
+// La validación de rol se queda aquí, ya que es específica de esta página.
+if (!isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2) {
+    header('Location: ../inicio_sesion.php'); // Redirige si no es paciente
     exit;
 }
 
@@ -32,6 +32,7 @@ $doc_usuario = $_SESSION['doc_usu'];
 $show_confirm_modal = false;
 $modal_data = [];
 
+// ========= BLOQUE 1: PREVALIDACIÓN DE LA CITA =========
 if (isset($_POST['prevalidar'])) {
     $id_detalle = $_POST['id_detalle'] ?? '';
     $fecha = $_POST['fecha'] ?? '';
@@ -45,14 +46,14 @@ if (isset($_POST['prevalidar'])) {
 
     if (!empty($errores)) {
         $mensaje_tipo = 'error';
-        $mensaje_texto = 'Por favor, complete los siguientes campos: ' . implode(', ', $errores) . '.';
+        $mensaje_texto = 'Por favor, complete todos los campos requeridos: ' . implode(', ', $errores) . '.';
     } else {
         $stmtDetalle = $con->prepare("SELECT hc.id_historia, c.doc_pac FROM detalles_histo_clini dhc JOIN historia_clinica hc ON dhc.id_historia = hc.id_historia JOIN citas c ON hc.id_cita = c.id_cita WHERE dhc.id_detalle = ?");
         $stmtDetalle->execute([$id_detalle]);
         $detalle = $stmtDetalle->fetch(PDO::FETCH_ASSOC);
 
         if (!$detalle) {
-            $mensaje_tipo = 'error'; $mensaje_texto = 'El ID de detalle no existe.';
+            $mensaje_tipo = 'error'; $mensaje_texto = 'El ID de detalle de historia clínica no es válido.';
         } elseif ($detalle['doc_pac'] != $doc_usuario) {
             $mensaje_tipo = 'error'; $mensaje_texto = 'Este detalle de historia clínica no le pertenece.';
         } else {
@@ -62,15 +63,16 @@ if (isset($_POST['prevalidar'])) {
             $nombre_examen = $stmtExamen->fetchColumn();
 
             if (!$nombre_examen) {
-                $mensaje_tipo = 'advertencia'; $mensaje_texto = 'No hay exámenes válidos en este detalle.';
+                $mensaje_tipo = 'advertencia'; $mensaje_texto = 'No se encontraron exámenes válidos asociados a este detalle.';
             } else {
-                $stmtDuplicado = $con->prepare("SELECT COUNT(*) FROM turno_examen WHERE id_historia = ? AND id_est != 7");
+                // CORRECCIÓN CLAVE: Busca solo turnos con estado 'Agendado' (id_est = 3), ignorando los cancelados.
+                $stmtDuplicado = $con->prepare("SELECT COUNT(*) FROM turno_examen WHERE id_historia = ? AND id_est = 3");
                 $stmtDuplicado->execute([$id_historia]);
                 if ($stmtDuplicado->fetchColumn() > 0) {
                     $mensaje_tipo = 'advertencia';
-                    $mensaje_texto = 'Ya existe un turno de examen activo para esta historia.';
+                    $mensaje_texto = 'Ya tiene un turno de examen activo. Si necesita reagendar, primero cancele el actual desde "Mis Citas".';
                 } else {
-                    $show_confirm_modal = true;
+                    $show_confirm_modal = true; // Prepara todo para mostrar el modal de confirmación
                     $fecha_ts = strtotime($fecha);
                     $fecha_formateada = ucfirst(strftime('%A, %d de %B de %Y', $fecha_ts));
                     $modal_data = ['id_detalle' => $id_detalle, 'fecha' => $fecha, 'id_horario' => $id_horario_exan_prevalidar, 'nombre_examen' => $nombre_examen, 'fecha_formateada' => $fecha_formateada, 'hora_formateada' => $hora_texto];
@@ -78,13 +80,14 @@ if (isset($_POST['prevalidar'])) {
             }
         }
     }
+// ========= BLOQUE 2: CONFIRMACIÓN FINAL Y REGISTRO DE LA CITA =========
 } elseif (isset($_POST['confirmar_agendamiento'])) {
     $id_detalle = $_POST['id_detalle_final'] ?? '';
     $fecha = $_POST['fecha_final'] ?? '';
     $id_horario_exan = $_POST['hora_final'] ?? '';
     
     if (empty($id_detalle) || empty($fecha) || empty($id_horario_exan)) {
-        $mensaje_tipo = 'error'; $mensaje_texto = 'Faltan datos para confirmar el agendamiento.';
+        $mensaje_tipo = 'error'; $mensaje_texto = 'Faltan datos para confirmar el agendamiento. Intente de nuevo.';
     } else {
         $stmtDetalle = $con->prepare("SELECT id_historia FROM detalles_histo_clini WHERE id_detalle = ?");
         $stmtDetalle->execute([$id_detalle]);
@@ -95,7 +98,7 @@ if (isset($_POST['prevalidar'])) {
             $stmt_horario = $con->prepare("SELECT horario FROM horario_examen WHERE id_horario_exan = :id_horario AND id_estado = 4 FOR UPDATE");
             $stmt_horario->execute([':id_horario' => $id_horario_exan]);
             $hora_obj = $stmt_horario->fetch(PDO::FETCH_ASSOC);
-            if (!$hora_obj) { throw new Exception('La hora seleccionada ya no está disponible.'); }
+            if (!$hora_obj) { throw new Exception('La hora seleccionada ya no está disponible. Por favor, elija otra.'); }
             $hora_24h = $hora_obj['horario'];
 
             $con->prepare("UPDATE horario_examen SET id_estado = 3 WHERE id_horario_exan = ?")->execute([$id_horario_exan]);
@@ -106,6 +109,7 @@ if (isset($_POST['prevalidar'])) {
             $paciente = $stmtPaciente->fetch(PDO::FETCH_ASSOC);
             
             if ($paciente) {
+                // ... (código de envío de email sin cambios) ...
                 $fecha_formateada = ucfirst(strftime('%A, %d de %B de %Y', strtotime($fecha)));
                 $hora_12h = (new DateTime($hora_24h))->format('h:i a');
                 $mail = new PHPMailer(true);
@@ -124,7 +128,7 @@ if (isset($_POST['prevalidar'])) {
             
             $con->commit();
             $mensaje_tipo = 'exito'; 
-            $mensaje_texto = '¡Turno agendado! Serás redirigido a "Mis Citas".';
+            $mensaje_texto = '¡Turno agendado con éxito! Será redirigido a "Mis Citas".';
         } catch (Exception $e) {
             $con->rollBack();
             $mensaje_tipo = 'error'; $mensaje_texto = $e->getMessage();
@@ -139,15 +143,10 @@ if (isset($_POST['prevalidar'])) {
     <title>Agendar Turno de Examen</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
-<script src="js/form-submission.js"></script>    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css"> 
     <style>
         .fc-day-disabled { background-color: #f2f2f2 !important; cursor: not-allowed; }
-        /* ===== ESTILOS PARA BLOQUEAR EL CALENDARIO ===== */
-        #calendar-wrapper.disabled {
-            opacity: 0.5;
-            pointer-events: none; /* Esto evita cualquier clic o interacción */
-            cursor: not-allowed;
-        }
+        #calendar-wrapper.disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
     </style>
 </head>
 <?php include '../include/menu.php'; ?>
@@ -160,12 +159,11 @@ if (isset($_POST['prevalidar'])) {
             <input type="hidden" name="hora_id" id="selected-hour-id">
             <input type="hidden" name="hora_texto" id="selected-hour-text">
             <input type="hidden" name="prevalidar" value="1">
-            
             <div class="row align-items-start">
                 <div class="col-lg-4">
                     <div class="form-group">
                         <label for="id_detalle" class="form-label fw-bold">1. Ingrese el numero de historia:</label>
-                        <input type="number" name="id_detalle" id="id_detalle" class="form-control" required value="<?php echo htmlspecialchars($_POST['id_detalle'] ?? ''); ?>" placeholder="ID de la orden médica">
+                        <input type="number" name="id_detalle" id="id_detalle" class="form-control" required value="<?php echo htmlspecialchars($_POST['id_detalle'] ?? ''); ?>" placeholder="Ej: 12345">
                     </div>
                 </div>
                 <div class="col-lg-8">
@@ -178,17 +176,19 @@ if (isset($_POST['prevalidar'])) {
         </form>
     </div>
 
+    <!-- Modales (HTML sin cambios) -->
     <div class="modal fade" id="hourModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Seleccione una Hora</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p class="text-center mb-3">Horas disponibles para el <strong id="fecha-modal-titulo"></strong></p><div id="horas-container" class="d-flex flex-wrap justify-content-center gap-2"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button></div></div></div></div>
     <div class="modal fade" id="confirmModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="bi bi-calendar-check me-2"></i>Confirmar Turno</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="form-confirmar" action="cita_examen.php" method="POST"><div class="modal-body" id="confirm-modal-body"></div><input type="hidden" name="id_detalle_final" id="id_detalle_final"><input type="hidden" name="fecha_final" id="fecha_final"><input type="hidden" name="hora_final" id="hora_final"><input type="hidden" name="confirmar_agendamiento" value="1"></form><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" form="form-confirmar" class="btn btn-success">Confirmar y Agendar</button></div></div></div></div>
     <div class="modal fade" id="notificationModal" tabindex="-1"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-center"><div class="modal-header border-0"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 pb-4"><h5 class="modal-title mb-2" id="notificationModalLabel"></h5><p id="notification-text" class="mb-0"></p></div><div class="modal-footer border-0 justify-content-center"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button></div></div></div></div>
 </main>
 <?php include '../include/footer.php'; ?>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="js/form-submission.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js'></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');
     const calendarWrapper = document.getElementById('calendar-wrapper');
     const idDetalleInput = document.getElementById('id_detalle');
@@ -209,76 +209,55 @@ document.addEventListener('DOMContentLoaded', function () {
         modalTitle.innerHTML = iconHtml + title;
         notificationModal.show();
     }
-
-    <?php if (!empty($mensaje_tipo)): ?>
-        showNotification('<?php echo ucfirst($mensaje_tipo); ?>', '<?php echo addslashes($mensaje_texto); ?>', '<?php echo $mensaje_tipo; ?>');
+    
+    <?php if (!empty($mensaje_texto)): ?>
+        showNotification('<?php echo ucfirst(htmlspecialchars($mensaje_tipo)); ?>', '<?php echo addslashes(htmlspecialchars($mensaje_texto)); ?>', '<?php echo htmlspecialchars($mensaje_tipo); ?>');
         <?php if ($mensaje_tipo === 'exito'): ?>
+            // La redirección es relativa a la carpeta actual (paciente/), lo cual es correcto aquí.
             setTimeout(() => window.location.href = 'citas_actuales.php', 2500);
         <?php endif; ?>
     <?php endif; ?>
-
-    <?php if ($show_confirm_modal): ?>
-        // Mostrar modal de confirmación (puedes completarlo aquí si lo estás usando)
+    
+    <?php if ($show_confirm_modal && !empty($modal_data)): ?>
+        const modalData = <?php echo json_encode($modal_data); ?>;
+        const confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmModal'));
+        const modalBody = document.getElementById('confirm-modal-body');
+        modalBody.innerHTML = `
+            <p>Por favor, revise y confirme los datos de su turno:</p>
+            <ul class="list-group">
+                <li class="list-group-item"><strong>Examen:</strong> ${modalData.nombre_examen}</li>
+                <li class="list-group-item"><strong>Fecha:</strong> ${modalData.fecha_formateada}</li>
+                <li class="list-group-item"><strong>Hora:</strong> ${modalData.hora_formateada}</li>
+            </ul>`;
+        document.getElementById('id_detalle_final').value = modalData.id_detalle;
+        document.getElementById('fecha_final').value = modalData.fecha;
+        document.getElementById('hora_final').value = modalData.id_horario;
+        confirmModalInstance.show();
     <?php endif; ?>
 
-    // ===== LÓGICA DE BLOQUEO/DESBLOQUEO DEL CALENDARIO =====
     function toggleCalendarState() {
-        if (idDetalleInput.value.trim() !== '') {
-            calendarWrapper.classList.remove('disabled');
-        } else {
-            calendarWrapper.classList.add('disabled');
-        }
+        calendarWrapper.classList.toggle('disabled', idDetalleInput.value.trim() === '');
     }
-
-    toggleCalendarState();
+    toggleCalendarState(); 
     idDetalleInput.addEventListener('input', toggleCalendarState);
 
-    // ===== INICIALIZACIÓN DEL CALENDARIO AJUSTADO =====
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        locale: 'es',
-        initialView: 'dayGridMonth',
-        selectable: true,
-        height: 'auto', 
-        aspectRatio: 1.5, // Relación ancho/alto menor → más compacto
-        contentHeight: 450, // Limita altura del calendario
-        dayMaxEventRows: 2, // Limita filas internas
-        headerToolbar: {
-            left: 'prev',
-            center: 'title',
-            right: 'next'
-        },
-        validRange: {
-            start: new Date()
-        },
-        dateClick: function (info) {
-            if (info.dayEl.classList.contains('fc-day-disabled')) return;
-
+        locale: 'es', initialView: 'dayGridMonth', selectable: true, aspectRatio: 1.8,
+        validRange: { start: new Date() }, headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+        dateClick: function(info) {
+            if (info.dayEl.classList.contains('fc-day-disabled') || calendarWrapper.classList.contains('disabled')) return;
             $('#selected-date').val(info.dateStr);
-            $('#fecha-modal-titulo').text(info.date.toLocaleDateString('es-ES', { dateStyle: 'full' }));
+            $('#fecha-modal-titulo').text(new Date(info.dateStr + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
             loadHours(info.dateStr);
         },
-        dayCellDidMount: function (info) {
-            // Desactivar fines de semana
-            if (info.date.getDay() === 0 || info.date.getDay() === 6) {
-                info.el.classList.add('fc-day-disabled');
-            }
-
-            // Reducir tamaño de número del día
-            const el = info.el.querySelector('.fc-daygrid-day-number');
-            if (el) {
-                el.style.fontSize = '0.9rem';
-                el.style.padding = '2px';
-            }
-        }
+        dayCellDidMount: function(info) { if (info.date.getDay() === 0) info.el.classList.add('fc-day-disabled'); },
     });
     calendar.render();
 
-    // ===== LÓGICA PARA HORAS DISPONIBLES =====
-    $(document).on('click', '.hour-btn', function () {
+    $(document).on('click', '.hour-btn', function() {
         if ($(this).is(':disabled')) return;
-
         $('#selected-hour-id').val($(this).data('id-horario'));
-        $('#selected-hour-text').val($(this).text());
+        $('#selected-hour-text').val($(this).text().trim());
         hourModal.hide();
         $('#form-principal-turno').submit();
     });
@@ -288,29 +267,22 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#horas-container').html('<div class="spinner-border text-primary" role="status"></div>');
         $.ajax({
             url: 'consultas_citas/horas_turno_examen.php',
-            type: 'POST',
-            dataType: 'json',
-            data: { fecha: fecha },
-            success: function (response) {
+            type: 'POST', dataType: 'json', data: { fecha: fecha },
+            success: function(response) {
                 let html = '';
                 if (response.error) {
                     html = `<p class="text-danger text-center">${response.error}</p>`;
                 } else if (response.hours && response.hours.length > 0) {
-                    html = response.hours.map(row =>
-                        `<button type="button" class="btn btn-outline-primary hour-btn" data-id-horario="${row.id}" ${row.isOccupied ? 'disabled' : ''}>${row.hora12}</button>`
-                    ).join('');
+                    html = response.hours.map(row => `<button type="button" class="btn btn-outline-primary hour-btn" data-id-horario="${row.id}" ${row.isOccupied ? 'disabled' : ''}>${row.hora12}</button>`).join('');
                 } else {
                     html = '<p class="text-muted text-center">No hay horas disponibles este día.</p>';
                 }
                 $('#horas-container').html(html);
             },
-            error: function () {
-                $('#horas-container').html('<p class="text-danger">Error al cargar las horas.</p>');
-            }
+            error: function() { $('#horas-container').html('<p class="text-danger">Error al cargar las horas.</p>'); }
         });
     }
 });
 </script>
-
 </body>
 </html>

@@ -1,201 +1,221 @@
 <?php
 require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
 require_once '../include/conexion.php';
+require_once '../include/tcpdf/tcpdf.php';
+
+if (!isset($_GET['id_historia']) || !is_numeric($_GET['id_historia'])) {
+    die("ID de historial no proporcionado o inválido.");
+}
+
+$id_historia = $_GET['id_historia'];
+$doc_usuario = $_SESSION['doc_usu'];
 
 $conex = new Database();
 $con = $conex->conectar();
-$doc_usuario = $_SESSION['doc_usu'];
 
-// Obtener lista de especialidades disponibles
-$stmt_especialidades = $con->prepare("SELECT id_espe, nom_espe FROM especialidad WHERE id_espe != 46 ORDER BY nom_espe");
-$stmt_especialidades->execute();
-$especialidades = $stmt_especialidades->fetchAll(PDO::FETCH_ASSOC);
-
-// Filtros y paginación
-$registros_por_pagina = 3;
-$pagina_actual = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$offset = ($pagina_actual - 1) * $registros_por_pagina;
-
-$filtro_mes = $_GET['mes'] ?? '';
-$filtro_anio = $_GET['anio'] ?? '';
-$filtro_especialidad = $_GET['especialidad'] ?? 'todos';
-$hay_filtros = (!empty($filtro_mes) || !empty($filtro_anio) || $filtro_especialidad !== 'todos');
-
-// Consulta para obtener el historial de citas
+// Consulta principal para obtener los datos del historial
 $sql = "
     SELECT 
-        dh.id_detalle,
+        pac.doc_usu AS doc_paciente, pac.nom_usu AS nom_paciente, pac.fecha_nac, pac.tel_usu, pac.correo_usu,
+        med.nom_usu AS nom_medico,
+        esp.nom_espe,
+        hc.motivo_de_cons, hc.saturacion, hc.presion, hc.peso, hc.estatura,
+        det.id_detalle, det.id_diagnostico, diag.diagnostico, det.prescripcion,
         c.id_cita,
-        hm.fecha_horario,
-        esp.nom_espe
+        ips.nit_ips, ips.nom_IPS, af.id_eps, eps.nombre_eps
     FROM historia_clinica hc
-    JOIN detalles_histo_clini dh ON hc.id_historia = dh.id_historia
     JOIN citas c ON hc.id_cita = c.id_cita
-    JOIN horario_medico hm ON c.id_horario_med = hm.id_horario_med
-    JOIN usuarios u ON c.doc_med = u.doc_usu
-    JOIN especialidad esp ON u.id_especialidad = esp.id_espe
-    WHERE c.doc_pac = :doc_usuario
+    JOIN usuarios pac ON c.doc_pac = pac.doc_usu
+    JOIN usuarios med ON c.doc_med = med.doc_usu
+    JOIN especialidad esp ON med.id_especialidad = esp.id_espe
+    JOIN ips ON c.nit_IPS = ips.nit_ips
+    JOIN afiliados af ON pac.doc_usu = af.doc_afiliado
+    JOIN eps ON af.id_eps = eps.nit_eps
+    JOIN detalles_histo_clini det ON hc.id_historia = det.id_historia
+    LEFT JOIN diagnostico diag ON det.id_diagnostico = diag.id_diagnos
+    WHERE hc.id_historia = :id_historia AND pac.doc_usu = :doc_usuario
+    LIMIT 1
 ";
 
-$params = [':doc_usuario' => $doc_usuario];
-
-if ($hay_filtros) {
-    $where_clauses = [];
-    if (!empty($filtro_mes) && !empty($filtro_anio)) {
-        $where_clauses[] = "MONTH(hm.fecha_horario) = :mes AND YEAR(hm.fecha_horario) = :anio";
-        $params[':mes'] = $filtro_mes;
-        $params[':anio'] = $filtro_anio;
-    }
-    if ($filtro_especialidad !== 'todos') {
-        $where_clauses[] = "esp.id_espe = :especialidad";
-        $params[':especialidad'] = $filtro_especialidad;
-    }
-    if (!empty($where_clauses)) {
-        $sql .= " AND " . implode(" AND ", $where_clauses);
-    }
-}
-
-$sql .= " ORDER BY hm.fecha_horario DESC";
-
-// Contar total de registros para paginación
-$stmt_count = $con->prepare($sql);
-$stmt_count->execute($params);
-$total_registros = $stmt_count->rowCount();
-$total_paginas = ceil($total_registros / $registros_por_pagina);
-
-// Consulta paginada
-$sql .= " LIMIT :limit OFFSET :offset";
 $stmt = $con->prepare($sql);
-$params[':limit'] = $registros_por_pagina;
-$params[':offset'] = $offset;
-foreach ($params as $key => &$val) {
-    $stmt->bindValue($key, $val, is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+$stmt->execute([':id_historia' => $id_historia, ':doc_usuario' => $doc_usuario]);
+$datos = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$datos) {
+    die("Historial no encontrado o no le pertenece.");
 }
-$stmt->execute();
-$historial = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Obtener todos los medicamentos y procedimientos
+$stmt_meds = $con->prepare("SELECT m.nom_medicamento, d.can_medica FROM detalles_histo_clini d JOIN medicamentos m ON d.id_medicam = m.id_medicamento WHERE d.id_historia = ? AND d.id_medicam IS NOT NULL");
+$stmt_meds->execute([$id_historia]);
+$medicamentos = $stmt_meds->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt_procs = $con->prepare("SELECT p.procedimiento, d.cant_proced FROM detalles_histo_clini d JOIN procedimientos p ON d.id_proced = p.id_proced WHERE d.id_historia = ? AND d.id_proced IS NOT NULL");
+$stmt_procs->execute([$id_historia]);
+$procedimientos = $stmt_procs->fetchAll(PDO::FETCH_ASSOC);
+
+
+// === CLASE PDF CON HEADER CORREGIDO ===
+class MYPDF extends TCPDF {
+    public $id_detalle;
+    public $eps_data;
+
+    public function Header() {
+        // 1. Logo a la izquierda
+        $image_file = __DIR__ . '/../img/logo.png';
+        if (file_exists($image_file)) {
+            $this->Image($image_file, 15, 10, 30, '', 'PNG', '', 'T', false, 300, '', false, false, 0);
+        }
+        
+        // 2. Título principal centrado
+        $this->SetY(15);
+        $this->SetFont('helvetica', 'B', 20);
+        $this->Cell(0, 10, 'Historia Clínica #' . $this->id_detalle, 0, true, 'C');
+        
+        // === 3. CORRECCIÓN: Usar MultiCell para los datos de la derecha ===
+        $this->SetFont('helvetica', 'B', 8);
+        
+        // Texto para EPS
+        $eps_text = 'EPS: ' . htmlspecialchars($this->eps_data['nombre_eps']) . ' (NIT: ' . htmlspecialchars($this->eps_data['id_eps']) . ')';
+        // Texto para IPS
+        $ips_text = 'IPS: ' . htmlspecialchars($this->eps_data['nom_IPS']) . ' (NIT: ' . htmlspecialchars($this->eps_data['nit_ips']) . ')';
+
+        // Definimos la posición y el tamaño del bloque de texto
+        $x_pos = 145; // Posición X (desde la izquierda)
+        $y_pos = 10;  // Posición Y (desde arriba)
+        $width = 50;  // Ancho del bloque de texto
+
+        // Imprimir el bloque de la EPS
+        $this->SetXY($x_pos, $y_pos);
+        $this->MultiCell($width, 5, $eps_text, 0, 'R', 0, 1, '', '', true);
+
+        // Imprimir el bloque de la IPS justo debajo
+        $this->SetX($x_pos); // Mantenemos la misma posición X
+        $this->MultiCell($width, 5, $ips_text, 0, 'R', 0, 1, '', '', true);
+        
+        // 4. Línea divisoria debajo de todo el encabezado
+        $this->Line(15, 38, 195, 38);
+    }
+
+    public function Footer() {
+        $this->SetY(-15);
+        $this->SetFont('helvetica', 'I', 8);
+        $this->Cell(0, 10, 'Página '.$this->getAliasNumPage().'/'.$this->getAliasNbPages(), 0, false, 'C');
+        $this->Cell(0, 10, 'Generado el ' . date('d/m/Y h:i A'), 0, false, 'R');
+    }
+}
+
+// Creación del objeto PDF
+$pdf = new MYPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+
+// Asignación de los datos para el header
+$pdf->id_detalle = $datos['id_detalle'];
+$pdf->eps_data = [
+    'nombre_eps' => $datos['nombre_eps'],
+    'id_eps' => $datos['id_eps'],
+    'nom_IPS' => $datos['nom_IPS'],
+    'nit_ips' => $datos['nit_ips']
+];
+
+// Configuración de metadatos del documento
+$pdf->SetCreator(PDF_CREATOR);
+$pdf->SetAuthor('Salud Connected');
+$pdf->SetTitle('Historia Clínica #' . $datos['id_detalle'] . ' - ' . $datos['nom_paciente']);
+$pdf->SetSubject('Resumen de Atención Médica');
+
+// Configuración de márgenes
+$pdf->SetMargins(PDF_MARGIN_LEFT, 40, PDF_MARGIN_RIGHT);
+$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+$pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
+
+// Añadir una página
+$pdf->AddPage();
+$pdf->SetFont('helvetica', '', 10);
+
+// Función auxiliar para crear secciones
+function seccion($pdf, $titulo, $contenido) {
+    $pdf->Ln(4);
+    $pdf->SetFont('helvetica', 'B', 12);
+    $pdf->SetFillColor(220, 230, 240);
+    $pdf->Cell(0, 8, $titulo, 0, 1, 'L', true);
+    $pdf->SetFont('helvetica', '', 10);
+    $pdf->writeHTML($contenido, true, false, true, false, '');
+}
+
+// Cálculo de la edad
+$edad = (new DateTime($datos['fecha_nac']))->diff(new DateTime())->y;
+
+// Contenido del PDF (sin cambios aquí)
+$html_paciente = '...'; // (El resto de tu código para el contenido del PDF es correcto y no necesita cambios)
+// ...
+// ...
+
+$html_paciente = '
+<table cellpadding="4" cellspacing="0" border="0">
+    <tr>
+        <td width="50%"><b>Nombre:</b> ' . htmlspecialchars($datos['nom_paciente']) . '</td>
+        <td width="50%"><b>Documento:</b> ' . htmlspecialchars($datos['doc_paciente']) . '</td>
+    </tr>
+    <tr>
+        <td width="50%"><b>Edad:</b> ' . $edad . ' años</td>
+        <td width="50%"><b>Teléfono:</b> ' . htmlspecialchars($datos['tel_usu']) . '</td>
+    </tr>
+    <tr>
+        <td colspan="2"><b>Correo:</b> ' . htmlspecialchars($datos['correo_usu']) . '</td>
+    </tr>
+</table>';
+seccion($pdf, 'Datos del Paciente', $html_paciente);
+
+$html_consulta = '
+<table cellpadding="4" cellspacing="0" border="0">
+    <tr>
+        <td width="50%"><b>Médico Tratante:</b> ' . htmlspecialchars($datos['nom_medico']) . '</td>
+        <td width="50%"><b>Especialidad:</b> ' . htmlspecialchars($datos['nom_espe']) . '</td>
+    </tr>
+</table>';
+seccion($pdf, 'Información de la Consulta', $html_consulta);
+
+$html_motivo = '<div>' . nl2br(htmlspecialchars($datos['motivo_de_cons'])) . '</div>';
+seccion($pdf, 'Motivo de Consulta', $html_motivo);
+
+
+$html_signos = '
+<table cellpadding="4" cellspacing="0" border="0">
+    <tr>
+        <td width="50%"><b>Presión Arterial:</b> ' . htmlspecialchars($datos['presion']) . ' mmHg</td>
+        <td width="50%"><b>Saturación O₂:</b> ' . htmlspecialchars($datos['saturacion']) . ' %</td>
+    </tr>
+    <tr>
+        <td width="50%"><b>Peso:</b> ' . htmlspecialchars($datos['peso']) . ' kg</td>
+        <td width="50%"><b>Estatura:</b> ' . htmlspecialchars($datos['estatura']) . ' m</td>
+    </tr>
+</table>';
+seccion($pdf, 'Signos Vitales y Medidas', $html_signos);
+
+$html_diagnostico = '
+    <p><b>Diagnóstico Principal:</b> ' . htmlspecialchars($datos['diagnostico'] ?? 'No especificado') . '</p>
+    <p><b>Prescripción y Comentarios:</b><br>' . nl2br(htmlspecialchars($datos['prescripcion'] ?? 'Sin prescripción.')) . '</p>';
+seccion($pdf, 'Diagnóstico y Plan de Manejo', $html_diagnostico);
+
+if (!empty($medicamentos)) {
+    $html_medicamentos = '<ul>';
+    foreach ($medicamentos as $med) {
+        $html_medicamentos .= '<li>' . htmlspecialchars($med['nom_medicamento']) . ' (Cantidad: ' . htmlspecialchars($med['can_medica']) . ')</li>';
+    }
+    $html_medicamentos .= '</ul>';
+    seccion($pdf, 'Medicamentos Recetados', $html_medicamentos);
+}
+
+if (!empty($procedimientos)) {
+    $html_procedimientos = '<ul>';
+    foreach ($procedimientos as $proc) {
+        $html_procedimientos .= '<li>' . htmlspecialchars($proc['procedimiento']) . ' (Cantidad: ' . htmlspecialchars($proc['cant_proced']) . ')</li>';
+    }
+    $html_procedimientos .= '</ul>';
+    seccion($pdf, 'Procedimientos Ordenados', $html_procedimientos);
+}
+
+// Generar el PDF y mostrarlo en el navegador
+$pdf->Output('historial_' . $datos['id_detalle'] . '.pdf', 'I');
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Mi Historial Médico - Salud Connect</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="estilos.css">
-</head>
-
-<?php include '../include/menu.php'; ?>
-
-<body class="d-flex flex-column min-vh-100">
-<main class="container py-5">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h2 class="mb-4 text-center" style="color: #004a99;">Mi Historial de Atenciones</h2>
-            <p class="text-center text-muted mb-4">Aquí puede ver y descargar un resumen de sus atenciones médicas pasadas.</p>
-            
-            <form method="GET" action="" class="row g-3 mb-4">
-                <div class="col-md-6 col-lg-3">
-                    <label for="especialidad" class="form-label">Especialidad</label>
-                    <select name="especialidad" id="especialidad" class="form-select">
-                        <option value="todos" <?php echo $filtro_especialidad == 'todos' ? 'selected' : ''; ?>>Todas</option>
-                        <?php foreach ($especialidades as $esp): ?>
-                            <option value="<?php echo $esp['id_espe']; ?>" <?php echo $filtro_especialidad == $esp['id_espe'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($esp['nom_espe']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <label for="mes" class="form-label">Mes</label>
-                    <select name="mes" id="mes" class="form-select">
-                        <option value="">Todos</option>
-                        <?php
-                        $meses = [
-                            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
-                            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
-                            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
-                        ];
-                        foreach ($meses as $num => $nombre): ?>
-                            <option value="<?php echo $num; ?>" <?php echo $filtro_mes == $num ? 'selected' : ''; ?>>
-                                <?php echo $nombre; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-6 col-lg-2">
-                    <label for="anio" class="form-label">Año</label>
-                    <select name="anio" id="anio" class="form-select">
-                        <option value="">Todos</option>
-                        <?php for ($i = date('Y') + 5; $i >= date('Y') - 10; $i--): ?>
-                            <option value="<?php echo $i; ?>" <?php echo $filtro_anio == $i ? 'selected' : ''; ?>>
-                                <?php echo $i; ?>
-                            </option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-                <div class="col-lg-3 d-flex align-items-end mt-3 mt-lg-0">
-                    <button type="submit" class="btn btn-primary me-2">Filtrar</button>
-                    <?php if ($hay_filtros): ?>
-                        <a href="historial_medico.php" class="btn btn-outline-danger ms-2" title="Quitar filtros"><i class="bi bi-x-lg"></i></a>
-                    <?php endif; ?>
-                </div>
-            </form>
-            
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>ID Detalle Historial</th>
-                            <th>Fecha de Atención</th>
-                            <th>Especialidad</th>
-                            <th class="text-center">Descargar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($historial)): ?>
-                            <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No tiene historiales médicos disponibles.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($historial as $registro): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($registro['id_detalle']); ?></td>
-                                    <td><strong><?php echo date('d/m/Y', strtotime($registro['fecha_horario'])); ?></strong></td>
-                                    <td><?php echo htmlspecialchars($registro['nom_espe']); ?></td>
-                                    <td class="text-center">
-                                        <a href="generar_pdf_historial.php?id_historia=<?php echo $registro['id_detalle']; ?>" 
-                                           class="btn btn-danger btn-sm" 
-                                           target="_blank"
-                                           title="Descargar PDF">
-                                            <i class="bi bi-file-earmark-pdf-fill"></i> PDF
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-            <?php if ($total_paginas > 1): ?>
-                <nav>
-                    <ul class="pagination justify-content-center align-items-center">
-                        <?php
-                        $query_params = $_GET;
-                        unset($query_params['page']);
-                        $query_string = http_build_query($query_params);
-                        echo '<li class="page-item ' . ($pagina_actual <= 1 ? 'disabled' : '') . '"><a class="page-link" href="?page=' . ($pagina_actual - 1) . '&' . $query_string . '"><</a></li>';
-                        echo '<li class="page-item active"><span class="page-link">' . $pagina_actual . '/' . $total_paginas . '</span></li>';
-                        echo '<li class="page-item ' . ($pagina_actual >= $total_paginas ? 'disabled' : '') . '"><a class="page-link" href="?page=' . ($pagina_actual + 1) . '&' . $query_string . '">></a></li>';
-                        ?>
-                    </ul>
-                </nav>
-            <?php endif; ?>
-        </div>
-    </div>
-</main>
-
-<?php include '../include/footer.php'; ?>
-
-</body>
-</html>

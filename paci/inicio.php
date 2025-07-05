@@ -2,23 +2,23 @@
 // =================================================================
 // 1. INCLUIR LA CONFIGURACIÓN CENTRAL
 // Esta es la línea MÁS IMPORTANTE. Debe ir primero.
-// Define ROOT_PATH y BASE_URL y también inicia la sesión y la conexión a la BD.
+// Se corrige _DIR_ por __DIR__ (con dos guiones bajos).
 // =================================================================
 require_once __DIR__ . '/../include/config.php';
 
 // =================================================================
 // 2. INCLUIR ARCHIVOS DE LÓGICA USANDO ROOT_PATH
-// Ya no se usan rutas relativas como '../'.
-// Nota: conexion.php y session_start() ya no son necesarios aquí, 
-// porque config.php ya se encarga de ellos.
+// Esta parte ya estaba correcta. config.php se encarga de iniciar
+// la sesión y la conexión a la BD, por lo que no se necesitan aquí.
 // =================================================================
 require_once ROOT_PATH . '/include/validar_sesion.php';
 require_once ROOT_PATH . '/include/inactividad.php';
 
 // =================================================================
 // 3. LÓGICA DE LA PÁGINA (verificación de rol, etc.)
+// El uso de BASE_URL para la redirección es perfecto para que funcione
+// tanto en local como en producción.
 // =================================================================
-// Esta lógica se mantiene, pero la redirección ahora usa BASE_URL.
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 2 || !isset($_SESSION['nombre_usuario'])) {
     // Redirección corregida con BASE_URL
     header('Location: ' . BASE_URL . '/inicio_sesion.php');
@@ -34,6 +34,7 @@ $pageTitle = "Inicio Paciente";
     <?php
     // =================================================================
     // 4. INCLUIR PARTES DE LA PLANTILLA (HTML) USANDO ROOT_PATH
+    // Esto es correcto para inclusiones del lado del servidor.
     // =================================================================
     require_once ROOT_PATH . '/include/menu.php';
     ?>
@@ -50,6 +51,7 @@ $pageTitle = "Inicio Paciente";
                     <?php
                     // =================================================================
                     // 5. RUTAS DE RECURSOS PÚBLICOS (imágenes, CSS, JS) USANDO BASE_URL
+                    // Esto es perfecto para recursos que el navegador necesita cargar.
                     // =================================================================
                     ?>
                     <img src="<?php echo BASE_URL; ?>/img/bodyadmi.png" alt="Imagen Paciente" class="imagen-rol img-fluid rounded" style="max-width: 500px; height: auto;">
@@ -59,7 +61,7 @@ $pageTitle = "Inicio Paciente";
     </main>
 
     <?php
-    // Incluyendo el footer con la ruta correcta
+    // Incluyendo el footer con la ruta correcta del servidor.
     require_once ROOT_PATH . '/include/footer.php';
     ?>
 
