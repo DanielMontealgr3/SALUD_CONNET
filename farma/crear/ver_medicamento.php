@@ -1,22 +1,20 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/inactividad.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
 $pageTitle = "Gestionar Medicamentos";
 
-if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
-    $db = new database();
-    $con = $db->conectar();
-}
-$nombre_farmacia_asignada = "";
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? '';
-if ($nit_farmacia_actual) {
-    $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
-    $stmt_nombre->execute([$nit_farmacia_actual]);
-    $nombre_farmacia_asignada = $stmt_nombre->fetchColumn();
+// La conexión $con ya está disponible desde el archivo config.php
+$nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? '';
+if (empty($nit_farmacia_actual)) {
+    header('Location: ' . BASE_URL . '/farma/inicio.php');
+    exit;
 }
 
+// --- BLOQUE 2: FUNCIÓN PARA RENDERIZAR LA TABLA Y PAGINACIÓN ---
 function renderizar_tabla_y_paginacion($con)
 {
     $registros_por_pagina = 3;
@@ -37,7 +35,6 @@ function renderizar_tabla_y_paginacion($con)
         $params[':searchTerm1'] = $searchValue;
         $params[':searchTerm2'] = $searchValue;
     }
-
     if ($filtro_tipo !== 'todos') {
         $sql_where_conditions[] = "m.id_tipo_medic = :tipo_id";
         $params[':tipo_id'] = $filtro_tipo;
@@ -57,15 +54,12 @@ function renderizar_tabla_y_paginacion($con)
     if ($pagina_actual > $total_paginas) $pagina_actual = $total_paginas;
     
     $offset = ($pagina_actual - 1) * $registros_por_pagina;
-
     $order_by = ($filtro_orden === 'desc') ? "m.nom_medicamento DESC" : "m.nom_medicamento ASC";
     $sql_final = "SELECT m.id_medicamento, m.nom_medicamento, tm.nom_tipo_medi, m.descripcion, m.codigo_barras " . $sql_con_where . " ORDER BY " . $order_by . " LIMIT :limit OFFSET :offset";
     
     $stmt = $con->prepare($sql_final);
 
-    foreach ($params as $key => &$val) {
-        $stmt->bindParam($key, $val, PDO::PARAM_STR);
-    }
+    foreach ($params as $key => &$val) $stmt->bindParam($key, $val, PDO::PARAM_STR);
     $stmt->bindParam(':limit', $registros_por_pagina, PDO::PARAM_INT);
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
@@ -118,15 +112,15 @@ function renderizar_tabla_y_paginacion($con)
     return ob_get_clean();
 }
 
+// --- BLOQUE 3: LÓGICA PRINCIPAL DE LA PÁGINA ---
+// Si la solicitud es por AJAX, solo se devuelve el HTML de la tabla y paginación.
 if (isset($_GET['ajax'])) {
-    if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
-        $db = new database();
-        $con = $db->conectar();
-    }
+    header('Content-Type: text/html');
     echo renderizar_tabla_y_paginacion($con);
     exit;
 }
 
+// Para la carga inicial, se obtienen los tipos de medicamentos para el filtro.
 $stmt_tipos = $con->prepare("SELECT id_tip_medic, nom_tipo_medi FROM tipo_de_medicamento ORDER BY nom_tipo_medi ASC");
 $stmt_tipos->execute();
 $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
@@ -135,8 +129,13 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
 <!DOCTYPE html>
 <html lang="es">
 <head>
-     <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <!-- --- BLOQUE 4: METADATOS Y ENLACES CSS/JS DEL HEAD --- -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
+    <!-- Rutas a recursos corregidas con BASE_URL -->
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
     <style>
         .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: block; }
         .barcode-detail { width: 100%; max-width: 300px; height: auto; }
@@ -144,13 +143,13 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
+        <!-- --- BLOQUE 5: CONTENIDO HTML PRINCIPAL --- -->
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="titulo-lista-tabla m-0">Medicamentos de: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></h3>
-                    <a href="crear_medicamento.php" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Medicamento</a>
+                    <a href="<?php echo BASE_URL; ?>/farma/crear/crear_medicamento.php" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Medicamento</a>
                 </div>
                 
                 <form id="formFiltros" class="mb-4 filtros-tabla-container">
@@ -188,6 +187,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </main>
 
+    <!-- --- BLOQUE 6: MODALES Y SCRIPTS FINALES --- -->
     <div class="modal fade" id="modalDetallesMedicamento" tabindex="-1" aria-labelledby="modalDetallesLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -195,8 +195,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                     <h5 class="modal-title" id="modalDetallesLabel">Detalles del Medicamento</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="cuerpoModalDetalles">
-                </div>
+                <div class="modal-body" id="cuerpoModalDetalles"></div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
@@ -212,8 +211,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                         <h5 class="modal-title" id="modalEditarLabel">Editar Medicamento</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body" id="cuerpoModalEditar">
-                    </div>
+                    <div class="modal-body" id="cuerpoModalEditar"></div>
                     <div class="modal-footer">
                         <input type="hidden" name="id_medicamento" id="edit-id-medicamento">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -224,8 +222,10 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <?php include '../../include/footer.php'; ?>
-    <script src="../includes_farm/JsBarcode.all.min.js"></script>
-    <script src="../js/gestion_medicamentos.js?v=<?php echo time(); ?>"></script>
+    <!-- Se incluye el footer usando ROOT_PATH -->
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
+    <!-- Rutas a los scripts JS corregidas con BASE_URL -->
+    <script src="<?php echo BASE_URL; ?>/farma/includes_farm/JsBarcode.all.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>/farma/js/gestion_medicamentos.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

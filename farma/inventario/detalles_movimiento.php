@@ -1,11 +1,18 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CABECERAS Y CONFIGURACIÓN INICIAL ---
+// Se establece la cabecera para indicar que la respuesta será en formato JSON.
+header('Content-Type: application/json; charset=utf-8');
 
-header('Content-Type: application/json');
+// Se incluye el archivo de configuración central. La ruta __DIR__ . '/../../' sube dos niveles
+// desde 'farma/inventario/' para encontrar la carpeta 'include/'.
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
 
+// --- BLOQUE 2: RESPUESTA POR DEFECTO Y VALIDACIÓN DE DATOS ---
+// Se inicializa una respuesta de error por defecto.
 $response = ['success' => false, 'message' => 'Error inesperado.'];
 
+// Se verifica que se haya proporcionado un ID de movimiento válido a través de la URL (GET).
 if (!isset($_GET['id_movimiento']) || !is_numeric($_GET['id_movimiento'])) {
     $response['message'] = 'ID de movimiento no válido.';
     echo json_encode($response);
@@ -13,12 +20,20 @@ if (!isset($_GET['id_movimiento']) || !is_numeric($_GET['id_movimiento'])) {
 }
 
 $id_movimiento = intval($_GET['id_movimiento']);
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'];
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? null;
 
-$db = new database();
-$con = $db->conectar();
+// Se verifica que el NIT de la farmacia esté en la sesión.
+if (!$nit_farmacia_actual) {
+    $response['message'] = 'No se pudo identificar la farmacia.';
+    echo json_encode($response);
+    exit;
+}
 
+// --- BLOQUE 3: CONSULTA A LA BASE DE DATOS ---
 try {
+    // La conexión $con ya está disponible desde el archivo config.php.
+    
+    // Consulta SQL para obtener todos los detalles de un movimiento específico.
     $sql = "SELECT 
                 mi.id_movimiento, 
                 mi.cantidad, 
@@ -44,15 +59,23 @@ try {
     $stmt->execute([':id_movimiento' => $id_movimiento, ':nit_farm' => $nit_farmacia_actual]);
     $movimiento = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // --- BLOQUE 4: RESPUESTA JSON ---
+    // Si la consulta encuentra el movimiento, se envía una respuesta exitosa con los datos.
     if ($movimiento) {
         $response['success'] = true;
         $response['data'] = $movimiento;
     } else {
+        // Si no se encuentra, se envía un mensaje de error.
         $response['message'] = 'No se encontró el movimiento o no tiene permiso para verlo.';
     }
 
 } catch (PDOException $e) {
-    $response['message'] = 'Error en la base de datos: ' . $e->getMessage();
+    // En caso de un error en la base de datos, se envía un mensaje genérico y se registra el detalle.
+    $response['message'] = 'Error en la base de datos.';
+    error_log("Error en detalles_movimiento.php: " . $e->getMessage());
 }
 
+// --- BLOQUE 5: ENVÍO DE LA RESPUESTA FINAL ---
+// Se imprime la respuesta final en formato JSON.
 echo json_encode($response);
+?>

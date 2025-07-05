@@ -1,19 +1,45 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
-require_once '../../include/SimpleXLSXGen.php';
+// =========================================================================
+// ==                 REPORTE_ACTUAL.PHP - VERSIÓN CORREGIDA                ==
+// =========================================================================
 
+// --- BLOQUE 1: CONFIGURACIÓN CENTRALIZADA ---
+// CAMBIO 1: Se elimina la inclusión de archivos por separado.
+// Se incluye PRIMERO y ÚNICAMENTE el archivo de configuración central.
+// Este archivo ya inicia la sesión, define ROOT_PATH y crea la conexión $con.
+require_once __DIR__ . '/../../include/config.php';
+
+// CAMBIO 2: Ahora incluimos la validación de sesión DESPUÉS de config.php.
+// Usamos ROOT_PATH para una ruta segura.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+
+// CAMBIO 3: Usamos ROOT_PATH para incluir la librería.
+// OJO: Asegúrate de que la ruta a SimpleXLSXGen.php es correcta desde la raíz.
+// Si está en 'farma/includes_farm', la ruta sería: ROOT_PATH . '/farma/includes_farm/SimpleXLSXGen.php'
+// Por tu ruta original, parece que está en 'include', así que lo dejo así:
+require_once ROOT_PATH . '/include/SimpleXLSXGen.php'; 
+
+// Se importa la clase de la librería.
 use Shuchkin\SimpleXLSXGen;
 
-$db = new database();
-$con = $db->conectar();
+// --- BLOQUE 2: LÓGICA DEL REPORTE ---
 
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+// CAMBIO 4: Se elimina la creación manual de la conexión.
+// La variable $con ya existe y está configurada correctamente desde config.php.
+// $db = new database(); // <- ELIMINADO
+// $con = $db->conectar(); // <- ELIMINADO
+
+// CAMBIO 5: Se estandariza la variable de sesión.
+// Usamos 'nit_farma' que es la que se usa en la página de inventario y en el otro reporte.
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? null;
 if (!$nit_farmacia_actual) {
-    SimpleXLSXGen::fromArray([['Error: No se ha podido identificar la farmacia.']])->downloadAs('error_reporte.xlsx');
+    // Si no se encuentra la farmacia, se genera un Excel de error.
+    SimpleXLSXGen::fromArray([['Error: No se ha podido identificar la farmacia. Verifique su sesión.']])->downloadAs('error_reporte.xlsx');
     exit;
 }
 
+// El resto de tu lógica para obtener los filtros y construir la consulta es CORRECTA.
+// No necesita cambios, ya que usa la variable $con.
 $filtro_tipo = trim($_GET['filtro_tipo'] ?? 'todos');
 $filtro_nombre = trim($_GET['filtro_nombre'] ?? '');
 $filtro_estado_stock = trim($_GET['filtro_stock'] ?? 'todos');
@@ -53,9 +79,11 @@ $stmt_inventario = $con->prepare($sql_final);
 $stmt_inventario->execute($params);
 $inventario_list = $stmt_inventario->fetchAll(PDO::FETCH_ASSOC);
 
+// CAMBIO 6: Se estandariza la variable de sesión para el nombre de la farmacia.
 $nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
 $datos_para_excel = [];
 
+// Tu lógica para construir el array para Excel es PERFECTA. No necesita cambios.
 $header_texts = [
     'Código Barras', 'Medicamento', 'Tipo', 'Cantidad Total', 'Estado', 'Lotes Activos (Vencimiento)', 'Última Actualización'
 ];
@@ -98,11 +126,13 @@ if (empty($inventario_list)) {
 
 $fileName = "reporte_inventario_" . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre_farmacia_asignada) . "_" . date('Y-m-d') . ".xlsx";
 
+// La generación del Excel es PERFECTA. No necesita cambios.
 SimpleXLSXGen::fromArray($datos_para_excel)
-    ->setColWidth(1, 35) // Medicamento
-    ->setColWidth(2, 20) // Tipo
-    ->setColWidth(6, 45) // Lotes
-    ->setColWidth(7, 20) // Fecha
+    ->setColWidth(1, 35)
+    ->setColWidth(2, 20)
+    ->setColWidth(6, 45)
+    ->setColWidth(7, 20)
     ->downloadAs($fileName);
 
 exit;
+?>

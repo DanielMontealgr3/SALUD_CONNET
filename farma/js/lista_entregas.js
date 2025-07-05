@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // --- 1. SELECCIÓN DE ELEMENTOS Y CONFIGURACIÓN ---
     const filtroDocInput = document.getElementById('filtro_doc');
     const filtroIdInput = document.getElementById('filtro_id');
     const filtroOrdenFechaSelect = document.getElementById('filtro_orden_fecha');
@@ -8,34 +9,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnGenerarReporte = document.getElementById('btnGenerarReporte');
     const tbody = document.getElementById('entregas-tbody');
     const paginacionContainer = document.getElementById('paginacion-container');
-    const modalVerDetalles = new bootstrap.Modal(document.getElementById('modalVerDetalles'));
+
+    const modalVerDetallesElem = document.getElementById('modalVerDetalles');
+    const modalVerDetalles = modalVerDetallesElem ? new bootstrap.Modal(modalVerDetallesElem) : null;
     const contenidoModalDetalles = document.getElementById('contenidoModalDetalles');
-    const modalConfirmarReporte = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
+    const modalConfirmarReporteElem = document.getElementById('modalConfirmarReporte');
+    const modalConfirmarReporte = modalConfirmarReporteElem ? new bootstrap.Modal(modalConfirmarReporteElem) : null;
     const confirmarReporteTexto = document.getElementById('confirmarReporteTexto');
     const btnConfirmarGeneracion = document.getElementById('btnConfirmarGeneracion');
-    let debounceTimer;
+    
+    // MEJORA: Se obtienen las rutas desde el DOM para no tenerlas fijas en el JS.
+    const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '/SALUDCONNECT/farma/entregar/';
 
-    let hayResultados = false; // Variable para rastrear si hay datos en la tabla
+    let debounceTimer;
+    let hayResultados = false;
+
+    // --- 2. FUNCIONES AUXILIARES ---
 
     function cargarEntregas(pagina = 1) {
+        if (!tbody || !paginacionContainer) return;
+
         const params = getCurrentFilters();
         params.set('ajax_search', 1);
         params.set('pagina', pagina);
         
-        const url = `lista_entregas.php?${params.toString()}`;
+        // MEJORA: La URL de la API es ahora dinámica.
+        const url = `${API_BASE_URL}lista_entregas.php?${params.toString()}`;
 
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 tbody.innerHTML = data.filas;
                 paginacionContainer.innerHTML = data.paginacion;
-
                 hayResultados = data.total_registros > 0;
-                actualizarEstadoBotonReporte(); // Actualizar el estado del botón
+                actualizarEstadoBotonReporte();
             })
             .catch(error => {
                 console.error('Error al cargar las entregas:', error);
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger p-4">Error al cargar los datos. Intente de nuevo.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger p-4">Error al cargar los datos.</td></tr>';
                 hayResultados = false;
                 actualizarEstadoBotonReporte();
             });
@@ -43,11 +54,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function getCurrentFilters() {
         return new URLSearchParams({
-            filtro_doc: filtroDocInput.value,
-            filtro_id: filtroIdInput.value,
-            filtro_orden_fecha: filtroOrdenFechaSelect.value,
-            filtro_fecha_inicio: filtroFechaInicioInput.value,
-            filtro_fecha_fin: filtroFechaFinInput.value
+            filtro_doc: filtroDocInput?.value || '',
+            filtro_id: filtroIdInput?.value || '',
+            filtro_orden_fecha: filtroOrdenFechaSelect?.value || 'desc',
+            filtro_fecha_inicio: filtroFechaInicioInput?.value || '',
+            filtro_fecha_fin: filtroFechaFinInput?.value || ''
         });
     }
 
@@ -57,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function validarFecha(inputElement) {
+        if (!inputElement) return true;
         const fechaSeleccionada = inputElement.value;
         let esValida = true;
         
@@ -75,102 +87,106 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             inputElement.classList.remove('is-invalid-date');
         }
-        actualizarEstadoBotonReporte(); // Actualizar después de validar
+        actualizarEstadoBotonReporte();
         return esValida;
     }
 
-    // --- ¡NUEVA FUNCIÓN CLAVE! ---
     function actualizarEstadoBotonReporte() {
-        const fechaInicioInvalida = filtroFechaInicioInput.classList.contains('is-invalid-date');
-        const fechaFinInvalida = filtroFechaFinInput.classList.contains('is-invalid-date');
-
-        if (hayResultados && !fechaInicioInvalida && !fechaFinInvalida) {
-            btnGenerarReporte.disabled = false;
-        } else {
-            btnGenerarReporte.disabled = true;
-        }
+        if (!btnGenerarReporte) return;
+        const fechaInicioInvalida = filtroFechaInicioInput?.classList.contains('is-invalid-date');
+        const fechaFinInvalida = filtroFechaFinInput?.classList.contains('is-invalid-date');
+        btnGenerarReporte.disabled = !(hayResultados && !fechaInicioInvalida && !fechaFinInvalida);
     }
     
-    filtroDocInput.addEventListener('keyup', aplicarFiltros);
-    filtroIdInput.addEventListener('keyup', aplicarFiltros);
-    filtroOrdenFechaSelect.addEventListener('change', () => cargarEntregas(1));
+    // --- 3. INICIALIZACIÓN DE EVENTOS ---
     
-    filtroFechaInicioInput.addEventListener('change', function() {
+    filtroDocInput?.addEventListener('keyup', aplicarFiltros);
+    filtroIdInput?.addEventListener('keyup', aplicarFiltros);
+    filtroOrdenFechaSelect?.addEventListener('change', () => cargarEntregas(1));
+    
+    filtroFechaInicioInput?.addEventListener('change', function() {
         validarFecha(this);
         cargarEntregas(1);
     });
-    filtroFechaFinInput.addEventListener('change', function() {
+    filtroFechaFinInput?.addEventListener('change', function() {
         validarFecha(this);
         cargarEntregas(1);
     });
 
-    btnLimpiar.addEventListener('click', () => {
-        document.getElementById('formFiltros').reset();
-        filtroFechaInicioInput.classList.remove('is-invalid-date');
-        filtroFechaFinInput.classList.remove('is-invalid-date');
+    btnLimpiar?.addEventListener('click', () => {
+        document.getElementById('formFiltros')?.reset();
+        filtroFechaInicioInput?.classList.remove('is-invalid-date');
+        filtroFechaFinInput?.classList.remove('is-invalid-date');
         cargarEntregas(1);
     });
     
-    btnGenerarReporte.addEventListener('click', () => {
-        // La comprobación ahora está implícita porque el botón estará deshabilitado.
-        // Pero mantenemos esto como una doble seguridad.
-        if (btnGenerarReporte.disabled) {
-            return;
-        }
+    btnGenerarReporte?.addEventListener('click', () => {
+        if (btnGenerarReporte.disabled) return;
 
-        let texto = "<ul>";
+        // MEJORA DE SEGURIDAD: Construcción segura del HTML.
+        confirmarReporteTexto.innerHTML = '';
+        const ul = document.createElement('ul');
         let hayFiltros = false;
         
-        if (filtroDocInput.value) { texto += `<li>Doc. Paciente: <strong>${filtroDocInput.value}</strong></li>`; hayFiltros = true; }
-        if (filtroIdInput.value) { texto += `<li>ID Entrega: <strong>${filtroIdInput.value}</strong></li>`; hayFiltros = true; }
-        if (filtroFechaInicioInput.value) { texto += `<li>Fecha Inicio: <strong>${filtroFechaInicioInput.value}</strong></li>`; hayFiltros = true; }
-        if (filtroFechaFinInput.value) { texto += `<li>Fecha Fin: <strong>${filtroFechaFinInput.value}</strong></li>`; hayFiltros = true; }
+        const addFilterItem = (label, value) => {
+            const li = document.createElement('li');
+            li.innerHTML = `${label}: <strong></strong>`;
+            li.querySelector('strong').textContent = value;
+            ul.appendChild(li);
+            hayFiltros = true;
+        };
+        
+        if (filtroDocInput.value) { addFilterItem('Doc. Paciente', filtroDocInput.value); hayFiltros = true; }
+        if (filtroIdInput.value) { addFilterItem('ID Entrega', filtroIdInput.value); hayFiltros = true; }
+        if (filtroFechaInicioInput.value) { addFilterItem('Fecha Inicio', filtroFechaInicioInput.value); hayFiltros = true; }
+        if (filtroFechaFinInput.value) { addFilterItem('Fecha Fin', filtroFechaFinInput.value); hayFiltros = true; }
         
         if (!hayFiltros) {
-            texto += "<li><strong>Se incluirán TODOS los registros sin filtros.</strong></li>";
+            const li = document.createElement('li');
+            li.innerHTML = '<strong>Se incluirán TODOS los registros sin filtros.</strong>';
+            ul.appendChild(li);
         }
-        texto += "</ul>";
 
-        confirmarReporteTexto.innerHTML = texto;
+        confirmarReporteTexto.appendChild(ul);
         modalConfirmarReporte.show();
     });
 
-    btnConfirmarGeneracion.addEventListener('click', () => {
+    btnConfirmarGeneracion?.addEventListener('click', () => {
         const params = getCurrentFilters();
-        const urlReporte = `generar_reporte.php?${params.toString()}`;
-        window.location.href = urlReporte;
+        // MEJORA: URL dinámica.
+        const urlReporte = `${API_BASE_URL}generar_reporte.php?${params.toString()}`;
+        window.open(urlReporte, '_blank');
         modalConfirmarReporte.hide();
     });
 
-    paginacionContainer.addEventListener('click', (e) => {
+    paginacionContainer?.addEventListener('click', (e) => {
         e.preventDefault();
         const link = e.target.closest('a.page-link');
         if (link && !link.parentElement.classList.contains('disabled')) {
             const pagina = link.getAttribute('data-pagina');
-            if (pagina) {
-                cargarEntregas(parseInt(pagina));
-            }
+            if (pagina) cargarEntregas(parseInt(pagina));
         }
     });
 
-    tbody.addEventListener('click', (e) => {
+    tbody?.addEventListener('click', (e) => {
         const boton = e.target.closest('.btn-ver-detalles');
         if (boton) {
             const idEntrega = boton.getAttribute('data-id-entrega');
-            contenidoModalDetalles.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+            contenidoModalDetalles.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div></div>';
             modalVerDetalles.show();
             
-            fetch(`ajax_detalles_entrega.php?id=${idEntrega}`)
+            // MEJORA: URL dinámica.
+            fetch(`${API_BASE_URL}ajax_detalles_entrega.php?id=${idEntrega}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.error) {
-                        contenidoModalDetalles.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    if (data.error || !data.success) { // Se revisa también `success` por consistencia
+                        contenidoModalDetalles.innerHTML = `<div class="alert alert-danger">${data.message || data.error}</div>`;
                         return;
                     }
                     
-                    let html = `<h6><i class="bi bi-person-fill"></i> Datos del Paciente</h6><p><strong>Nombre:</strong> ${data.paciente.nombre_paciente}<br><strong>Documento:</strong> ${data.paciente.doc_paciente}</p><hr><h6><i class="bi bi-person-badge-fill"></i> Datos de la Entrega</h6><p><strong>Entregado por:</strong> ${data.entrega.nombre_farmaceuta}<br><strong>Fecha y Hora:</strong> ${data.entrega.fecha_entrega}</p><hr><h6><i class="bi bi-capsule"></i> Medicamento Entregado</h6><p><strong>Medicamento:</strong> ${data.medicamento.nom_medicamento}<br><strong>Cantidad Entregada:</strong> ${data.entrega.cantidad_entregada} unidades<br><strong>Observaciones:</strong> ${data.entrega.observaciones}</p><hr>`;
-                    if(data.pendiente){
-                        html += `<div class="alert alert-warning"><h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente Generado</h6><p><strong>Medicamento:</strong> ${data.pendiente.nom_medicamento}<br><strong>Cantidad Pendiente:</strong> ${data.pendiente.cantidad_pendiente} unidades<br><strong>Fecha de Generación:</strong> ${data.pendiente.fecha_generacion}</p></div>`;
+                    let html = `<h6><i class="bi bi-person-fill"></i> Datos del Paciente</h6><p><strong>Nombre:</strong> ${data.data.paciente.nombre_paciente}<br><strong>Documento:</strong> ${data.data.paciente.doc_paciente}</p><hr><h6><i class="bi bi-person-badge-fill"></i> Datos de la Entrega</h6><p><strong>Entregado por:</strong> ${data.data.entrega.nombre_farmaceuta}<br><strong>Fecha y Hora:</strong> ${data.data.entrega.fecha_entrega}</p><hr><h6><i class="bi bi-capsule"></i> Medicamento Entregado</h6><p><strong>Medicamento:</strong> ${data.data.medicamento.nom_medicamento}<br><strong>Cantidad Entregada:</strong> ${data.data.entrega.cantidad_entregada} unidades<br><strong>Observaciones:</strong> ${data.data.entrega.observaciones}</p><hr>`;
+                    if(data.data.pendiente){
+                        html += `<div class="alert alert-warning"><h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente Generado</h6><p><strong>Medicamento:</strong> ${data.data.medicamento.nom_medicamento}<br><strong>Cantidad Pendiente:</strong> ${data.data.pendiente.cantidad_pendiente} unidades<br><strong>Fecha de Generación:</strong> ${data.data.pendiente.fecha_generacion}</p></div>`;
                     } else {
                          html += `<div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> No se generaron pendientes para esta entrega.</div>`;
                     }
@@ -183,5 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Carga inicial de datos.
     cargarEntregas(1);
 });

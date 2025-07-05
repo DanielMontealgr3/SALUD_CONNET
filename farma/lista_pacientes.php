@@ -1,44 +1,41 @@
 <?php
-require_once '../include/validar_sesion.php';
-require_once '../include/inactividad.php';
-require_once '../include/conexion.php';
-if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
-    $db = new database();
-    $con = $db->conectar();
-}
-if (session_status() == PHP_SESSION_NONE) { session_start(); }
+require_once __DIR__ . '/../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
+
 date_default_timezone_set('America/Bogota');
+
 $doc_farmaceuta_logueado = $_SESSION['doc_usu'] ?? null;
-if (!$doc_farmaceuta_logueado || !isset($_SESSION['id_rol']) || $_SESSION['id_rol'] != 3) {
-    header('Location: ../inicio_sesion.php?error=nosession');
+if (!$doc_farmaceuta_logueado || ($_SESSION['id_rol'] ?? null) != 3) {
+    header('Location: ' . BASE_URL . '/inicio_sesion.php?error=nosession');
     exit;
 }
-$nit_farmacia_asignada_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+
+$nit_farmacia_asignada_actual = $_SESSION['nit_farma'] ?? $_SESSION['nit_farmacia_asignada_actual'] ?? null;
 $nombre_farmacia_asignada = 'Farmacia';
 
 if (!$nit_farmacia_asignada_actual) {
     $stmt_check_farma = $con->prepare("SELECT nit_farma FROM asignacion_farmaceuta WHERE doc_farma = :doc_farma AND id_estado = 1 LIMIT 1");
     $stmt_check_farma->execute([':doc_farma' => $doc_farmaceuta_logueado]);
     if ($farma_asignada = $stmt_check_farma->fetch(PDO::FETCH_ASSOC)) {
+        $_SESSION['nit_farma'] = $farma_asignada['nit_farma'];
         $_SESSION['nit_farmacia_asignada_actual'] = $farma_asignada['nit_farma'];
         $nit_farmacia_asignada_actual = $farma_asignada['nit_farma'];
     } else {
-        header('Location: inicio.php');
+        header('Location: ' . BASE_URL . '/farma/inicio.php');
         exit;
     }
 }
 
-if ($nit_farmacia_asignada_actual && isset($con)) {
+if ($nit_farmacia_asignada_actual) {
     try {
         $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
         $stmt_nombre->execute([$nit_farmacia_asignada_actual]);
-        $nombre_farma = $stmt_nombre->fetchColumn();
-        if ($nombre_farma) {
+        if ($nombre_farma = $stmt_nombre->fetchColumn()) {
             $nombre_farmacia_asignada = $nombre_farma;
         }
     } catch (PDOException $e) { }
 }
-
 
 if (empty($_SESSION['csrf_token_farma_lista'])) {
     $_SESSION['csrf_token_farma_lista'] = bin2hex(random_bytes(32));
@@ -46,50 +43,55 @@ if (empty($_SESSION['csrf_token_farma_lista'])) {
 $csrf_token = $_SESSION['csrf_token_farma_lista'];
 $pageTitle = "Lista de Pacientes para Entrega";
 $pacientes_pendientes = [];
-if (isset($con)) {
-    try {
-        $sql_base = "SELECT * FROM (
-                        SELECT
-                            tem.id_turno_ent, tem.id_historia, u.doc_usu AS documento_paciente, u.nom_usu AS nombre_paciente,
-                            CASE WHEN mer.id_periodo = 2 AND TIME_FORMAT(hf.horario, '%H:%i:%s') < '12:00:00' THEN ADDTIME(hf.horario, '12:00:00') ELSE hf.horario END AS hora_24h,
-                            vt.id_farmaceuta AS farmaceuta_atendiendo, vt.hora_llamado, vt.id_estado AS estado_llamado
-                        FROM turno_ent_medic tem
-                        JOIN historia_clinica hc ON tem.id_historia = hc.id_historia
-                        JOIN citas ci ON hc.id_cita = ci.id_cita
-                        JOIN usuarios u ON ci.doc_pac = u.doc_usu
-                        JOIN afiliados afi ON u.doc_usu = afi.doc_afiliado
-                        JOIN detalle_eps_farm def ON afi.id_eps = def.nit_eps
-                        JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm
-                        LEFT JOIN meridiano mer ON hf.meridiano = mer.id_periodo
-                        LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno
-                        WHERE tem.id_est IN (3, 11) AND tem.fecha_entreg = CURDATE() AND def.nit_farm= :nit_farma AND def.id_estado = 1
-                        GROUP BY tem.id_turno_ent
-                    ) AS t
-                    JOIN (
-                        SELECT id_historia, GROUP_CONCAT(DISTINCT med.nom_medicamento SEPARATOR ', ') AS medicamentos, SUM(can_medica) AS cantidad_total
-                        FROM detalles_histo_clini
-                        JOIN medicamentos med ON detalles_histo_clini.id_medicam = med.id_medicamento
-                        GROUP BY id_historia
-                    ) AS dh ON t.id_historia = dh.id_historia
-                    ORDER BY CASE WHEN t.estado_llamado = 11 THEN 0 ELSE 1 END ASC, t.hora_24h ASC, t.nombre_paciente ASC";
-        
-        $stmt_pacientes = $con->prepare($sql_base);
-        $stmt_pacientes->execute([':nit_farma' => $nit_farmacia_asignada_actual]);
-        $pacientes_pendientes = $stmt_pacientes->fetchAll(PDO::FETCH_ASSOC);
 
-    } catch (PDOException $e) { }
-}
+try {
+    $filtro_fecha_sql = "1=1";
+
+    $sql_base = "SELECT * FROM (
+                    SELECT
+                        tem.id_turno_ent, tem.id_historia, u.doc_usu AS documento_paciente, u.nom_usu AS nombre_paciente,
+                        CASE WHEN mer.id_periodo = 2 AND TIME_FORMAT(hf.horario, '%H:%i:%s') < '12:00:00' THEN ADDTIME(hf.horario, '12:00:00') ELSE hf.horario END AS hora_24h,
+                        vt.id_farmaceuta AS farmaceuta_atendiendo, vt.hora_llamado, vt.id_estado AS estado_llamado
+                    FROM turno_ent_medic tem
+                    JOIN historia_clinica hc ON tem.id_historia = hc.id_historia
+                    JOIN citas ci ON hc.id_cita = ci.id_cita
+                    JOIN usuarios u ON ci.doc_pac = u.doc_usu
+                    JOIN afiliados afi ON u.doc_usu = afi.doc_afiliado
+                    JOIN detalle_eps_farm def ON afi.id_eps = def.nit_eps
+                    JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm
+                    LEFT JOIN meridiano mer ON hf.meridiano = mer.id_periodo
+                    LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno
+                    WHERE tem.id_est IN (3, 11) AND {$filtro_fecha_sql} AND def.nit_farm = :nit_farma AND def.id_estado = 1
+                    GROUP BY tem.id_turno_ent, tem.id_historia, u.doc_usu, u.nom_usu, hora_24h, vt.id_farmaceuta, vt.hora_llamado, vt.id_estado
+                ) AS t
+                JOIN (
+                    SELECT id_historia, GROUP_CONCAT(DISTINCT med.nom_medicamento SEPARATOR ', ') AS medicamentos, SUM(can_medica) AS cantidad_total
+                    FROM detalles_histo_clini
+                    JOIN medicamentos med ON detalles_histo_clini.id_medicam = med.id_medicamento
+                    GROUP BY id_historia
+                ) AS dh ON t.id_historia = dh.id_historia
+                ORDER BY CASE WHEN t.estado_llamado = 11 THEN 0 ELSE 1 END ASC, t.hora_24h ASC, t.nombre_paciente ASC";
+
+    $stmt_pacientes = $con->prepare($sql_base);
+    $stmt_pacientes->execute([':nit_farma' => $nit_farmacia_asignada_actual]);
+    $pacientes_pendientes = $stmt_pacientes->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) { }
 
 function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
     $ahora_ts = time();
     $hora_programada_ts = strtotime(date('Y-m-d') . ' ' . $paciente['hora_24h']);
     $hora_formateada = date("h:i A", $hora_programada_ts);
-    $clase_fila = ''; $tiempo_restante_seg = 0;
+    $clase_fila = '';
+    
+    $tiempo_espera_no_asistio = 300; 
+    $tiempo_restante_seg = $tiempo_espera_no_asistio;
+
     $en_llamada = !empty($paciente['hora_llamado']);
     $estado_llamado = $paciente['estado_llamado'] ?? 0;
-    $tiempo_espera_no_asistio = 60;
-    $esta_vencido = $ahora_ts > $hora_programada_ts && !$en_llamada && $estado_llamado != 11;
     
+    $esta_vencido = $ahora_ts > $hora_programada_ts && !$en_llamada && $estado_llamado != 11;
+
     if ($en_llamada && $estado_llamado == 1) {
         $hora_llamado_obj = new DateTime($paciente['hora_llamado']);
         $diferencia = $ahora_ts - $hora_llamado_obj->getTimestamp();
@@ -101,8 +103,8 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
         $clase_fila = 'table-danger';
     }
 
-    $se_puede_llamar = ($hora_programada_ts - $ahora_ts) <= 300;
-    
+    $se_puede_llamar = true;
+
     $acciones_html = '';
     if ($estado_llamado == 1) {
         if ($paciente['farmaceuta_atendiendo'] == $doc_farmaceuta_logueado) {
@@ -121,13 +123,12 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
         $btn_class = $esta_vencido ? 'btn-danger' : 'btn-primary';
         $acciones_html .= "<button class=\"btn {$btn_class} btn-sm btn-llamar-paciente\" title=\"Llamar Paciente\" {$disabled}><i class=\"bi bi-megaphone-fill\"></i> Llamar</button>";
     }
-    
+
     return [
-        'id_turno_ent' => $paciente['id_turno_ent'],
-        'id_historia' => $paciente['id_historia'],
-        'clase_fila' => $clase_fila,
-        'estado_llamado' => $estado_llamado,
+        'id_turno_ent' => $paciente['id_turno_ent'], 'id_historia' => $paciente['id_historia'],
+        'clase_fila' => $clase_fila, 'estado_llamado' => $estado_llamado,
         'tiempo_restante' => $tiempo_restante_seg,
+        'nombre_paciente' => $paciente['nombre_paciente'],
         'celdas' => [
             "<td><span class=\"badge bg-secondary\">#" . htmlspecialchars($paciente['id_turno_ent']) . "</span></td>",
             "<td>" . htmlspecialchars($paciente['documento_paciente']) . "</td>",
@@ -135,8 +136,7 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
             "<td>" . htmlspecialchars($paciente['medicamentos']) . "</td>",
             "<td>" . htmlspecialchars($paciente['cantidad_total']) . "</td>",
             "<td>" . htmlspecialchars($hora_formateada) . "</td>"
-        ],
-        'acciones_html' => $acciones_html
+        ], 'acciones_html' => $acciones_html
     ];
 }
 
@@ -153,13 +153,15 @@ if (isset($_GET['json'])) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../img/loguito.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?php echo $csrf_token ?? ''; ?>">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../include/menu.php'; ?>
-    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100; margin-top: 62px;">
-    </div>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100; margin-top: 62px;"></div>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
@@ -193,21 +195,31 @@ if (isset($_GET['json'])) {
             </div>
         </div>
     </main>
-
     <div id="modal-entrega-placeholder"></div>
-
-    <div class="modal fade" id="modalNoAsistio" tabindex="-1" aria-labelledby="modalNoAsistioLabel" aria-hidden="true">
+    <div class="modal fade" id="modalNoAsistio" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-          <div class="modal-header border-0"><h5 class="modal-title" id="modalNoAsistioLabel"><i class="bi bi-person-x-fill text-danger me-2"></i>Paciente No Asistió</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-          <div class="modal-body text-center"><p>El paciente no se presentó dentro del tiempo de espera. El turno ha sido cancelado.</p></div>
+          <div class="modal-header border-0"><h5 class="modal-title"><i class="bi bi-person-x-fill text-danger me-2"></i>Paciente No Asistió</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body text-center"><p>El paciente no se presentó. El turno ha sido cancelado.</p></div>
           <div class="modal-footer border-0 justify-content-center"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button></div>
         </div>
       </div>
     </div>
-    <script> const csrfTokenListaPacientesGlobal = '<?php echo $csrf_token; ?>'; const docFarmaceutaLogueado = '<?php echo $doc_farmaceuta_logueado; ?>';</script>
-    <script src="js/gestion_pacientes_auto.js?v=<?php echo time(); ?>"></script>
-    <script src="js/gestion_entrega.js?v=<?php echo time(); ?>"></script>
+    
+    <!-- ================== CORRECCIÓN CLAVE AQUÍ ================== -->
+    <script>
+        // Si AppConfig no existe, lo creamos como un objeto vacío.
+        // Si ya existe, no hacemos nada, así no hay conflicto.
+        var AppConfig = window.AppConfig || {};
+
+        // Ahora, añadimos o sobreescribimos las propiedades que esta página necesita.
+        AppConfig.BASE_URL = '<?php echo BASE_URL; ?>';
+        AppConfig.API_URL = '<?php echo BASE_URL; ?>/farma/';
+    </script>
+    <!-- ========================================================== -->
+
+    <script src="<?php echo BASE_URL; ?>/farma/js/gestion_pacientes_auto.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo BASE_URL; ?>/farma/js/gestion_entrega.js?v=<?php echo time(); ?>"></script>
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
 </body>
-<?php include_once '../include/footer.php'; ?>
 </html>

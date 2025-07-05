@@ -1,24 +1,36 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/inactividad.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
+// Se incluye el archivo de configuración central. La ruta __DIR__ . '/../../' sube dos niveles
+// desde 'farma/crear/' para encontrar la carpeta 'include/'.
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
 $pageTitle = "Crear Nuevo Medicamento";
 
-$url_anterior = $_SERVER['HTTP_REFERER'] ?? 'inventario.php';
+// --- BLOQUE 2: LÓGICA DE NAVEGACIÓN ---
+// Se obtiene la URL de la página anterior para el botón "Volver".
+// Se asegura de que si el usuario recarga la página, no quede atrapado en un bucle de redirección.
+$url_anterior = $_SERVER['HTTP_REFERER'] ?? BASE_URL . '/farma/inventario/inventario.php';
 if (strpos($url_anterior, 'crear_medicamento.php') !== false) {
-    $url_anterior = 'inventario.php';
+    $url_anterior = BASE_URL . '/farma/inventario/inventario.php';
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-     <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <!-- --- BLOQUE 3: METADATOS Y ENLACES CSS/JS DEL HEAD --- -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
+    <!-- Rutas a recursos corregidas con BASE_URL -->
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
+    <!-- Se incluye el menú usando ROOT_PATH para garantizar una ruta absoluta en el servidor -->
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="centrado">
+        <!-- --- BLOQUE 4: CONTENIDO HTML PRINCIPAL --- -->
         <div class="vista-datos-container compact-form">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 class="titulo-lista-tabla mb-0">Nuevo Medicamento</h3>
@@ -53,7 +65,6 @@ if (strpos($url_anterior, 'crear_medicamento.php') !== false) {
                     </div>
                 </div>
 
-                <!-- Contenedor para centrar solo el botón -->
                 <div class="d-grid gap-2 col-6 mx-auto mt-4">
                     <button type="submit" id="btnGuardar" class="btn btn-primary" disabled>
                         <i class="bi bi-plus-circle-fill me-2"></i>Crear Medicamento
@@ -62,7 +73,10 @@ if (strpos($url_anterior, 'crear_medicamento.php') !== false) {
             </form>
         </div>
     </main>
-    <?php include '../../include/footer.php'; ?>
+    
+    <!-- --- BLOQUE 5: SCRIPTS Y FOOTER --- -->
+    <!-- Se incluye el footer usando ROOT_PATH -->
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -76,8 +90,12 @@ if (strpos($url_anterior, 'crear_medicamento.php') !== false) {
             tipo: selectTipo,
             descripcion: document.getElementById('descripcion')
         };
+        
+        // --- RUTA CORREGIDA ---
+        // Se utiliza la constante global AppConfig.BASE_URL para construir la ruta al archivo AJAX.
+        const urlTipos = `<?php echo BASE_URL; ?>/farma/crear/ajax_obtener_tipos_medi.php`;
 
-        fetch('ajax_obtener_tipos_medi.php')
+        fetch(urlTipos)
             .then(response => response.json())
             .then(data => {
                 selectTipo.innerHTML = '<option value="">Seleccione un tipo...</option>';
@@ -133,8 +151,12 @@ if (strpos($url_anterior, 'crear_medicamento.php') !== false) {
             btnGuardar.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
 
             const formData = new FormData(form);
+            
+            // --- RUTA CORREGIDA ---
+            // Se utiliza la constante global AppConfig.BASE_URL para la ruta del formulario.
+            const urlCrear = `<?php echo BASE_URL; ?>/farma/crear/ajax_crear_medicamento.php`;
 
-            fetch('ajax_crear_medicamento.php', {
+            fetch(urlCrear, {
                 method: 'POST',
                 body: formData
             })

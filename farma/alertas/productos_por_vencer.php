@@ -1,10 +1,9 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- RUTA CORREGIDA ---
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
 
-$db = new database();
-$con = $db->conectar();
-
+// La conexión $con ya está disponible desde config.php
 $nit_farmacia = $_SESSION['nit_farma'] ?? null;
 $dias_aviso = 30;
 
@@ -16,7 +15,7 @@ if (!$nit_farmacia) {
 $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov = 1 THEN cantidad ELSE -cantidad END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
 
 $sql = "SELECT 
-            med.nom_medicamento, -- CORREGIDO
+            med.nom_medicamento,
             mi.lote, 
             mi.fecha_vencimiento,
             DATEDIFF(mi.fecha_vencimiento, CURDATE()) AS dias_restantes,

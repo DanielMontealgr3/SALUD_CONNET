@@ -1,20 +1,23 @@
 <?php
-header('Content-Type: application/json');
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD ---
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
 
+// Se define la respuesta como JSON.
+header('Content-Type: application/json; charset=utf-8');
+
+// --- BLOQUE 2: VALIDACIÓN DE ENTRADA ---
 $id_medicamento = filter_input(INPUT_GET, 'id_medicamento', FILTER_VALIDATE_INT);
-$nit_farmacia = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+$nit_farmacia = $_SESSION['nit_farma'] ?? null; // Variable de sesión estandarizada.
 
 if (!$id_medicamento || !$nit_farmacia) {
     echo json_encode(['success' => false, 'message' => 'Datos insuficientes para la consulta.']);
     exit;
 }
 
+// --- BLOQUE 3: CONSULTA A BASE DE DATOS ---
 try {
-    $db = new database();
-    $con = $db->conectar();
-    
+    // Se usa la conexión global $con de config.php.
     $sql = "SELECT 
                 lote, 
                 fecha_vencimiento,
@@ -36,12 +39,13 @@ try {
     $stmt->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
     $lotes_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- BLOQUE 4: PROCESAMIENTO Y RESPUESTA JSON ---
     $lotes_procesados = [];
     foreach($lotes_raw as $lote) {
         $estado = 'vigente';
         if ($lote['dias_restantes'] < 0) {
             $estado = 'vencido';
-        } elseif ($lote['dias_restantes'] <= 15) {
+        } elseif ($lote['dias_restantes'] <= 30) { // Umbral común de 30 días para "próximo a vencer"
             $estado = 'proximo_vencer';
         }
         $lote['estado'] = $estado;
@@ -51,7 +55,7 @@ try {
     echo json_encode(['success' => true, 'lotes' => $lotes_procesados]);
 
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
+    error_log("Error en ajax_obtener_lotes.php: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Error al consultar la base de datos.']);
 }
 ?>

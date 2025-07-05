@@ -1,9 +1,9 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- RUTA CORREGIDA ---
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
 
-$db = new database();
-$con = $db->conectar();
+// La conexión $con ya está disponible desde config.php
 $nit_farmacia = $_SESSION['nit_farma'] ?? null;
 $tipo_retiro = $_GET['tipo'] ?? 'vencidos';
 

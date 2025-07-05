@@ -1,9 +1,15 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/inactividad.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
+// Se incluye el archivo de configuración central. La ruta __DIR__ . '/../../' sube dos niveles
+// desde 'farma/inventario/' para encontrar la carpeta 'include/'.
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
+// --- BLOQUE 2: FUNCIÓN PARA GENERAR EL CONTENIDO DE LA TABLA Y PAGINACIÓN ---
+// Esta función encapsula toda la lógica para buscar, filtrar y paginar los resultados.
 function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registros_ref) {
+    // Definición de paginación y recolección de filtros.
     $registros_por_pagina = 3; 
     $pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
     if ($pagina_actual < 1) $pagina_actual = 1;
@@ -16,6 +22,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
     $filtro_lote = trim($_GET['filtro_lote'] ?? '');
     $filtro_vencimiento = trim($_GET['filtro_vencimiento'] ?? '');
 
+    // Construcción de la consulta base.
     $sql_base_from = "
         FROM movimientos_inventario mi
         JOIN medicamentos med ON mi.id_medicamento = med.id_medicamento
@@ -23,6 +30,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
         LEFT JOIN usuarios u ON mi.id_usuario_responsable = u.doc_usu
     ";
 
+    // Aplicación dinámica de los filtros a la consulta.
     $sql_where_conditions = ["mi.nit_farm = :nit_farma_actual"];
     $params = [':nit_farma_actual' => $nit_farmacia_actual];
 
@@ -36,6 +44,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
 
     $sql_where = " WHERE " . implode(" AND ", $sql_where_conditions);
     
+    // Se cuenta el total de registros que coinciden con los filtros para la paginación.
     $stmt_total = $con->prepare("SELECT COUNT(*) " . $sql_base_from . $sql_where);
     $stmt_total->execute($params);
     $total_registros_ref = (int)$stmt_total->fetchColumn();
@@ -46,6 +55,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
     
     $offset = ($pagina_actual - 1) * $registros_por_pagina;
     
+    // Se construye la consulta final para obtener solo los registros de la página actual.
     $sql_final = "
         SELECT 
             mi.id_movimiento, med.nom_medicamento, tm.nom_mov, mi.id_tipo_mov, mi.cantidad, mi.lote, 
@@ -62,6 +72,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
     $stmt_movimientos->execute();
     $lista_movimientos = $stmt_movimientos->fetchAll(PDO::FETCH_ASSOC);
 
+    // Se genera el HTML para las filas de la tabla.
     ob_start();
     if (!empty($lista_movimientos)):
         foreach ($lista_movimientos as $mov):
@@ -87,6 +98,7 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
     <?php endif;
     $filas_html = ob_get_clean();
 
+    // Se genera el HTML para la paginación.
     ob_start();
     if ($total_registros_ref > 0): ?>
         <nav aria-label="Paginación de movimientos">
@@ -102,17 +114,19 @@ function generarContenidoMovimientos($con, $nit_farmacia_actual, &$total_registr
     return ['filas' => $filas_html, 'paginacion' => $paginacion_html, 'total_registros' => $total_registros_ref];
 }
 
-$db = new database();
-$con = $db->conectar();
+// --- BLOQUE 3: LÓGICA PRINCIPAL DE LA PÁGINA ---
+// La conexión $con ya está disponible desde el archivo config.php
 $total_registros = 0;
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? null;
 $nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
 
 if (!$nit_farmacia_actual) { die("Error: No se ha identificado la farmacia."); }
 
+// Obtiene los tipos de movimiento para el filtro.
 $stmt_tipos = $con->query("SELECT id_tipo_mov, nom_mov FROM tipo_movimiento ORDER BY nom_mov");
 $tipos_movimiento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
 
+// Si la solicitud es por AJAX (para filtros o paginación), se devuelve solo el JSON.
 if (isset($_GET['ajax_search'])) {
     header('Content-Type: application/json');
     $contenido = generarContenidoMovimientos($con, $nit_farmacia_actual, $total_registros);
@@ -120,6 +134,7 @@ if (isset($_GET['ajax_search'])) {
     exit;
 }
 
+// Para la carga inicial de la página, se genera el contenido inicial.
 $contenido_inicial = generarContenidoMovimientos($con, $nit_farmacia_actual, $total_registros);
 $filas_html = $contenido_inicial['filas'];
 $paginacion_html = $contenido_inicial['paginacion'];
@@ -129,25 +144,26 @@ $pageTitle = "Historial de Movimientos de Inventario";
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- --- BLOQUE 4: METADATOS Y ENLACES CSS/JS DEL HEAD --- -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <!-- Rutas a recursos corregidas con BASE_URL -->
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
+    <!-- Se incluye el menú usando ROOT_PATH para garantizar una ruta absoluta en el servidor -->
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
     <style>
         .vista-datos-container { display: flex; flex-direction: column; flex-grow: 1; }
         .table-responsive { flex-grow: 1; }
         .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
         .modal-body .alert { background-color: #e9ecef; border-color: #ced4da; }
-        .is-invalid-date {
-            border-color: #dc3545 !important;
-            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-        }
+        .is-invalid-date { border-color: #dc3545 !important; box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25); }
         .filtros-tabla-container .form-label { font-size: 0.8rem; margin-bottom: 0.2rem; display: block;}
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
+        <!-- --- BLOQUE 5: CONTENIDO HTML PRINCIPAL --- -->
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
                 <h3 class="titulo-lista-tabla mb-3">Historial de Movimientos en: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></h3>
@@ -166,7 +182,6 @@ $pageTitle = "Historial de Movimientos de Inventario";
                             <button id="btnGenerarReporte" type="button" class="btn btn-sm btn-success" <?php if ($total_registros === 0) echo 'disabled'; ?>><i class="bi bi-file-earmark-excel-fill"></i> Reporte</button>
                         </div>
                     </div>
-
                     <input type="date" id="filtro_fecha_inicio" name="filtro_fecha_inicio" class="d-none">
                     <input type="date" id="filtro_fecha_fin" name="filtro_fecha_fin" class="d-none">
                     <input type="date" id="filtro_vencimiento" name="filtro_vencimiento" class="d-none">
@@ -183,6 +198,7 @@ $pageTitle = "Historial de Movimientos de Inventario";
         </div>
     </main>
     
+    <!-- --- BLOQUE 6: MODALES Y SCRIPTS FINALES --- -->
     <div class="modal fade" id="modalFiltrosAvanzados" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -215,12 +231,17 @@ $pageTitle = "Historial de Movimientos de Inventario";
             <div class="modal-content">
                 <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-excel-fill me-2"></i>Generar Reporte de Movimientos</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body"><p>Se generará un reporte en Excel con los siguientes filtros aplicados:</p><div id="confirmarReporteTexto" class="alert"></div></div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success" id="btnConfirmarGeneracion"><i class="bi bi-check-circle-fill"></i> Confirmar y Generar</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmarGeneracion"><i class="bi bi-check-circle-fill"></i> Confirmar y Generar</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <?php include '../../include/footer.php'; ?>
-    <script src="../js/gestion_movi_inven.js?v=<?php echo time(); ?>"></script>
+    <!-- Se incluye el footer usando ROOT_PATH -->
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
+    <!-- Rutas a los scripts JS corregidas con BASE_URL -->
+    <script src="<?php echo BASE_URL; ?>/farma/js/gestion_movi_inven.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

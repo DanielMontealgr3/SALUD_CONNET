@@ -1,6 +1,9 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- RUTA CORREGIDA ---
+// Sube dos niveles desde 'farma/alertas/' para encontrar la carpeta 'include/'.
+require_once __DIR__ . '/../../include/config.php';
+
+// El resto de los require_once ya no son necesarios porque config.php los maneja.
 
 header('Content-Type: application/json');
 $response = ['success' => false, 'message' => 'Acción no válida.'];
@@ -26,10 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notas = 'Retiro por producto próximo a vencer.';
     }
 
-
     try {
-        $db = new database();
-        $con = $db->conectar();
+        // La conexión $con ya está disponible desde config.php
         $con->beginTransaction();
 
         $stmt_vencimiento = $con->prepare("SELECT MIN(fecha_vencimiento) FROM movimientos_inventario WHERE id_medicamento = ? AND lote = ? AND nit_farm = ?");
@@ -57,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = ['success' => true, 'message' => 'Lote retirado del inventario correctamente.'];
 
     } catch (PDOException | Exception $e) {
-        $con->rollBack();
+        if ($con->inTransaction()) {
+            $con->rollBack();
+        }
         $response['message'] = 'Error en la base de datos: ' . $e->getMessage();
     }
     

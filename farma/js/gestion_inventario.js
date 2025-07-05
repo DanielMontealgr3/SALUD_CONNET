@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // --- 1. SELECCIÓN DE ELEMENTOS Y CONFIGURACIÓN ---
     const tableBody = document.getElementById('inventario-tbody');
     const modalLotesPlaceholder = document.getElementById('modal-lotes-placeholder');
     const modalSecundarioPlaceholder = document.getElementById('modal-secundario-placeholder');
@@ -8,33 +9,45 @@ document.addEventListener('DOMContentLoaded', function () {
     // Elementos para el reporte
     const btnGenerarReporte = document.getElementById('btnGenerarReporte');
     const btnLimpiar = document.getElementById('btnLimpiar');
-    const modalConfirmarReporte = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
+    const modalConfirmarReporteElem = document.getElementById('modalConfirmarReporte');
     const confirmarReporteTexto = document.getElementById('confirmarReporteTexto');
     const btnConfirmarGeneracion = document.getElementById('btnConfirmarGeneracion');
+    const modalConfirmarReporte = modalConfirmarReporteElem ? new bootstrap.Modal(modalConfirmarReporteElem) : null;
+
+    // MEJORA: Se obtienen las rutas desde el DOM para no tenerlas fijas en el JS.
+    // Asumimos que la página de inventario está en /farma/inventario/
+    const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '/SALUDCONNECT/farma/';
 
     let activeLotesModal = null;
     let debounceTimer;
-    let hayResultados = !tableBody.querySelector('td[colspan="8"]');
+    let hayResultados = tableBody ? !tableBody.querySelector('td[colspan="8"]') : false;
 
+    // --- 2. FUNCIONES AUXILIARES ---
+
+    /** Inicializa o re-inicializa los códigos de barras en la página. */
     function renderBarcodes() {
-        try { JsBarcode(".barcode").init(); } catch (e) {}
+        try { JsBarcode(".barcode").init(); } catch (e) { /* JsBarcode puede fallar si no hay elementos, es seguro ignorarlo */ }
     }
     
+    /** Habilita o deshabilita el botón de generar reporte según si hay resultados. */
     function actualizarEstadoBotonReporte() {
-        btnGenerarReporte.disabled = !hayResultados;
+        if (btnGenerarReporte) btnGenerarReporte.disabled = !hayResultados;
     }
 
+    /** Realiza una búsqueda AJAX con los filtros actuales del formulario. */
     function searchWithFilters() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            if(!formFiltros) return;
+            if (!formFiltros || !tableBody) return;
+            
             const formData = new FormData(formFiltros);
             const params = new URLSearchParams(formData).toString();
             
-            fetch(`inventario.php?ajax_search=1&${params}`)
+            // MEJORA: La URL de la API es ahora dinámica.
+            fetch(`${API_BASE_URL}inventario/inventario.php?ajax_search=1&${params}`)
                 .then(response => response.text())
                 .then(html => {
-                    if (tableBody) tableBody.innerHTML = html;
+                    tableBody.innerHTML = html;
                     hayResultados = !html.includes('colspan="8"');
                     actualizarEstadoBotonReporte();
                     renderBarcodes();
@@ -45,65 +58,75 @@ document.addEventListener('DOMContentLoaded', function () {
                     hayResultados = false;
                     actualizarEstadoBotonReporte();
                 });
-        }, 300);
+        }, 300); // Debounce de 300ms para no sobrecargar el servidor al teclear.
     }
     
+    // --- 3. INICIALIZACIÓN DE EVENTOS ---
+
+    // Ejecución inicial
     renderBarcodes();
     actualizarEstadoBotonReporte();
 
     formFiltros?.addEventListener('input', searchWithFilters);
     formFiltros?.addEventListener('submit', e => e.preventDefault());
 
-    if (btnLimpiar) {
-        btnLimpiar.addEventListener('click', () => {
-            formFiltros.reset();
-            searchWithFilters();
-        });
-    }
+    btnLimpiar?.addEventListener('click', () => {
+        formFiltros.reset();
+        searchWithFilters();
+    });
     
-    if (btnGenerarReporte) {
-        btnGenerarReporte.addEventListener('click', () => {
-            if (btnGenerarReporte.disabled) return;
+    btnGenerarReporte?.addEventListener('click', () => {
+        if (btnGenerarReporte.disabled) return;
 
-            const filtroTipoSelect = document.getElementById('filtro_tipo');
-            const filtroStockSelect = document.getElementById('filtro_stock');
-            const filtroNombreInput = document.getElementById('filtro_nombre');
-            const filtroCodigoInput = document.getElementById('filtro_codigo_barras');
+        const filtroTipoSelect = document.getElementById('filtro_tipo');
+        const filtroStockSelect = document.getElementById('filtro_stock');
+        const filtroNombreInput = document.getElementById('filtro_nombre');
+        const filtroCodigoInput = document.getElementById('filtro_codigo_barras');
 
-            let texto = "<ul>";
-            let hayFiltros = false;
-            
-            if (filtroTipoSelect.value !== 'todos') { texto += `<li>Tipo: <strong>${filtroTipoSelect.options[filtroTipoSelect.selectedIndex].text}</strong></li>`; hayFiltros = true; }
-            if (filtroStockSelect.value !== 'todos') { texto += `<li>Estado Stock: <strong>${filtroStockSelect.options[filtroStockSelect.selectedIndex].text}</strong></li>`; hayFiltros = true; }
-            if (filtroNombreInput.value) { texto += `<li>Nombre: <strong>${filtroNombreInput.value}</strong></li>`; hayFiltros = true; }
-            if (filtroCodigoInput.value) { texto += `<li>Código: <strong>${filtroCodigoInput.value}</strong></li>`; hayFiltros = true; }
-            
-            if (!hayFiltros) {
-                texto += "<li><strong>Se incluirán TODOS los registros sin filtros.</strong></li>";
-            }
-            texto += "</ul>";
+        // MEJORA DE SEGURIDAD: Se construye el HTML de forma segura.
+        confirmarReporteTexto.innerHTML = '';
+        const ul = document.createElement('ul');
+        let hayFiltros = false;
 
-            confirmarReporteTexto.innerHTML = texto;
-            modalConfirmarReporte.show();
-        });
-    }
+        const addFilterItem = (label, value) => {
+            const li = document.createElement('li');
+            li.innerHTML = `${label}: <strong></strong>`;
+            li.querySelector('strong').textContent = value;
+            ul.appendChild(li);
+            hayFiltros = true;
+        };
+        
+        if (filtroTipoSelect.value !== 'todos') addFilterItem('Tipo', filtroTipoSelect.options[filtroTipoSelect.selectedIndex].text);
+        if (filtroStockSelect.value !== 'todos') addFilterItem('Estado Stock', filtroStockSelect.options[filtroStockSelect.selectedIndex].text);
+        if (filtroNombreInput.value) addFilterItem('Nombre', filtroNombreInput.value);
+        if (filtroCodigoInput.value) addFilterItem('Código', filtroCodigoInput.value);
+        
+        if (!hayFiltros) {
+            const li = document.createElement('li');
+            li.innerHTML = '<strong>Se incluirán TODOS los registros sin filtros.</strong>';
+            ul.appendChild(li);
+        }
+        confirmarReporteTexto.appendChild(ul);
+        modalConfirmarReporte?.show();
+    });
     
-    if (btnConfirmarGeneracion) {
-        btnConfirmarGeneracion.addEventListener('click', () => {
-            const params = new URLSearchParams(new FormData(formFiltros));
-            const urlReporte = `reporte_actual.php?${params.toString()}`;
-            window.location.href = urlReporte;
-            modalConfirmarReporte.hide();
-        });
-    }
+    btnConfirmarGeneracion?.addEventListener('click', () => {
+        const params = new URLSearchParams(new FormData(formFiltros));
+        // MEJORA: La URL de la API es ahora dinámica.
+        const urlReporte = `${API_BASE_URL}inventario/reporte_actual.php?${params.toString()}`;
+        window.open(urlReporte, '_blank'); // Se abre en nueva pestaña para no interrumpir el flujo.
+        modalConfirmarReporte?.hide();
+    });
 
+    // Delegación de eventos en el body para manejar clics en elementos dinámicos.
     document.body.addEventListener('click', function(e) {
         const verLotesBtn = e.target.closest('.btn-ver-lotes');
         const detalleLoteBtn = e.target.closest('.btn-ver-detalle-lote');
 
         if (verLotesBtn) {
             const idMedicamento = verLotesBtn.dataset.idMedicamento;
-            fetch(`../gestion_lotes/modal_ver_lotes.php?id=${idMedicamento}`)
+            // MEJORA: La URL de la API es ahora dinámica.
+            fetch(`${API_BASE_URL}gestion_lotes/modal_ver_lotes.php?id=${idMedicamento}`)
                 .then(response => response.text())
                 .then(html => {
                     modalLotesPlaceholder.innerHTML = html;
@@ -119,7 +142,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (detalleLoteBtn) {
             const idMedicamento = detalleLoteBtn.dataset.idMedicamento;
             const lote = detalleLoteBtn.dataset.lote;
-            fetch(`../gestion_lotes/ajax_detalle_lote.php?id=${idMedicamento}&lote=${lote}`)
+            // MEJORA: La URL de la API es ahora dinámica.
+            fetch(`${API_BASE_URL}gestion_lotes/ajax_detalle_lote.php?id=${idMedicamento}&lote=${lote}`)
                 .then(response => response.json())
                 .then(result => {
                     if (result.success) {
@@ -131,34 +155,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     
-    if (modalDetallesElement) {
-        modalDetallesElement.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const idMedicamento = button.getAttribute('data-id-medicamento');
-            const modalBody = modalDetallesElement.querySelector('#contenidoModalDetalles');
-            modalBody.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>`;
-            
-            fetch(`detalles_medicamento.php?id=${idMedicamento}`)
-                .then(response => response.json())
-                .then(data => {
-                    if(data.success) {
-                        const med = data.medicamento;
-                        let clase_badge = 'bg-secondary';
-                        if (med.id_est == 13) clase_badge = 'bg-success';
-                        if (med.id_est == 14) clase_badge = 'bg-warning text-dark';
-                        if (med.id_est == 15) clase_badge = 'bg-danger';
-                        let barcodeHTML = med.codigo_barras ? `<svg class="barcode-detail" jsbarcode-value="${med.codigo_barras}"></svg>` : 'No disponible';
-                        const contenidoHTML = `<div class="row"><div class="col-md-8"><dl class="row"><dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">${med.nom_medicamento||'N/A'}</dd><dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">${med.nom_tipo_medi||'N/A'}</dd><dt class="col-sm-4">Descripción</dt><dd class="col-sm-8">${med.descripcion||'Sin descripción.'}</dd><dt class="col-sm-4">Cantidad Total</dt><dd class="col-sm-8"><strong>${med.cantidad_actual!==null?med.cantidad_actual:'N/A'}</strong></dd><dt class="col-sm-4">Estado</dt><dd class="col-sm-8"><span class="badge ${clase_badge}">${med.nom_est||'N/A'}</span></dd></dl></div><div class="col-md-4 text-center"><strong>Código Barras</strong><div class="mt-2 p-2 border rounded bg-light" style="min-height: 80px; display: flex; align-items-center; justify-content: center;">${barcodeHTML}</div></div></div>`;
-                        modalBody.innerHTML = contenidoHTML;
-                        if (med.codigo_barras) { JsBarcode(".barcode-detail").init(); }
-                    } else {
-                         modalBody.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-                    }
-                });
-        });
-    }
+    modalDetallesElement?.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const idMedicamento = button.getAttribute('data-id-medicamento');
+        const modalBody = modalDetallesElement.querySelector('#contenidoModalDetalles');
+        modalBody.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>`;
+        
+        // MEJORA: La URL de la API es ahora dinámica.
+        fetch(`${API_BASE_URL}inventario/detalles_medicamento.php?id=${idMedicamento}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const med = data.medicamento;
+                    // ... (Tu lógica para construir el HTML del detalle era correcta y se mantiene)
+                    let clase_badge = 'bg-secondary';
+                    if (med.id_est == 13) clase_badge = 'bg-success';
+                    if (med.id_est == 14) clase_badge = 'bg-warning text-dark';
+                    if (med.id_est == 15) clase_badge = 'bg-danger';
+                    let barcodeHTML = med.codigo_barras ? `<svg class="barcode-detail" jsbarcode-value="${med.codigo_barras}"></svg>` : 'No disponible';
+                    const contenidoHTML = `<div class="row"><div class="col-md-8"><dl class="row"><dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">${med.nom_medicamento||'N/A'}</dd><dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">${med.nom_tipo_medi||'N/A'}</dd><dt class="col-sm-4">Descripción</dt><dd class="col-sm-8">${med.descripcion||'Sin descripción.'}</dd><dt class="col-sm-4">Cantidad Total</dt><dd class="col-sm-8"><strong>${med.cantidad_actual!==null?med.cantidad_actual:'N/A'}</strong></dd><dt class="col-sm-4">Estado</dt><dd class="col-sm-8"><span class="badge ${clase_badge}">${med.nom_est||'N/A'}</span></dd></dl></div><div class="col-md-4 text-center"><strong>Código Barras</strong><div class="mt-2 p-2 border rounded bg-light" style="min-height: 80px; display: flex; align-items-center; justify-content: center;">${barcodeHTML}</div></div></div>`;
+                    modalBody.innerHTML = contenidoHTML;
+                    if (med.codigo_barras) { JsBarcode(".barcode-detail").init(); }
+                } else {
+                     modalBody.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                }
+            });
+    });
 
+    /** Muestra un SweetAlert con los detalles de un lote específico. */
     function mostrarDetalleLote(data) {
+        // ... (Tu lógica para mostrar el detalle del lote era excelente y se mantiene sin cambios)
         let titulo = `Detalle del Lote: ${data.lote}`;
         let html = `<dl class="row"><dt class="col-sm-4">Fecha Vencimiento</dt><dd class="col-sm-8">${data.fecha_vencimiento}</dd><dt class="col-sm-4">Stock en Lote</dt><dd class="col-sm-8"><strong>${data.stock_lote}</strong></dd></dl>`;
         let icon = 'info';
@@ -188,23 +214,25 @@ document.addEventListener('DOMContentLoaded', function () {
             showConfirmButton: !footer,
             confirmButtonText: confirmButtonText,
             showCloseButton: true,
-            footer: footer
-        });
-
-        const retirarBtn = document.getElementById('swal-retirar-btn');
-        if(retirarBtn) {
-            retirarBtn.addEventListener('click', () => {
-                const tipo_retiro = data.dias_restantes < 0 ? 'vencidos' : 'por_vencer';
-                if(activeLotesModal) activeLotesModal.hide();
-                Swal.close();
-                fetch(`../alertas/modal_retirar_inventario.php?tipo=${tipo_retiro}`)
-                    .then(response => response.text())
-                    .then(html => {
-                        modalSecundarioPlaceholder.innerHTML = html;
-                        const modalRetiro = new bootstrap.Modal(document.getElementById('modalRetiroInventario'));
-                        modalRetiro.show();
+            footer: footer,
+            didOpen: () => {
+                const retirarBtn = document.getElementById('swal-retirar-btn');
+                if (retirarBtn) {
+                    retirarBtn.addEventListener('click', () => {
+                        const tipo_retiro = data.dias_restantes < 0 ? 'vencidos' : 'por_vencer';
+                        if (activeLotesModal) activeLotesModal.hide();
+                        Swal.close();
+                        // MEJORA: La URL de la API es ahora dinámica.
+                        fetch(`${API_BASE_URL}alertas/modal_retirar_inventario.php?tipo=${tipo_retiro}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                modalSecundarioPlaceholder.innerHTML = html;
+                                const modalRetiro = new bootstrap.Modal(document.getElementById('modalRetiroInventario'));
+                                modalRetiro.show();
+                            });
                     });
-            });
-        }
+                }
+            }
+        });
     }
 });

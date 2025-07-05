@@ -1,7 +1,7 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/inactividad.php';
-require_once '../../include/conexion.php';
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
 function generarContenidoEntregas($con, $nit_farmacia_actual, &$total_registros_ref) {
     $registros_por_pagina = 3;
@@ -99,11 +99,7 @@ function generarContenidoEntregas($con, $nit_farmacia_actual, &$total_registros_
     return ['filas' => $filas_html, 'paginacion' => $paginacion_html, 'total_registros' => $total_registros_ref];
 }
 
-$db = new database();
-$con = $db->conectar();
-$total_registros = 0;
-
-$nit_farmacia_asignada_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+$nit_farmacia_asignada_actual = $_SESSION['nit_farma'] ?? null;
 $nombre_farmacia_asignada = 'Farmacia';
 if (!$nit_farmacia_asignada_actual) { die("Error de sesión: No se ha identificado la farmacia. Por favor, vuelva a iniciar sesión."); }
 
@@ -121,11 +117,13 @@ if (isset($con)) {
 
 if (isset($_GET['ajax_search'])) {
     header('Content-Type: application/json');
+    $total_registros = 0;
     $contenido = generarContenidoEntregas($con, $nit_farmacia_asignada_actual, $total_registros);
     echo json_encode($contenido);
     exit;
 }
 
+$total_registros = 0;
 $contenido_inicial = generarContenidoEntregas($con, $nit_farmacia_asignada_actual, $total_registros);
 $filas_html = $contenido_inicial['filas'];
 $paginacion_html = $contenido_inicial['paginacion'];
@@ -138,7 +136,8 @@ $pageTitle = "Historial de Entregas";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
     <style>
         .vista-datos-container { display: flex; flex-direction: column; flex-grow: 1; }
         .table-responsive { flex-grow: 1; }
@@ -151,7 +150,7 @@ $pageTitle = "Historial de Entregas";
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../../include/menu.php'; ?>
+    
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
@@ -208,7 +207,7 @@ $pageTitle = "Historial de Entregas";
         </div>
     </div>
 
-    <?php include '../../include/footer.php'; ?>
-    <script src="../js/lista_entregas.js?v=<?php echo time(); ?>"></script>
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
+    <script src="<?php echo BASE_URL; ?>/farma/js/lista_entregas.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

@@ -1,21 +1,30 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD ---
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
 
+// Se define la respuesta como JSON.
+header('Content-Type: application/json; charset=utf-8');
+
+// --- BLOQUE 2: VALIDACIÓN DE ENTRADA ---
 $id_pendiente = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if (!$id_pendiente) {
-    echo json_encode(['success' => false, 'message' => 'ID no válido.']);
+    echo json_encode(['success' => false, 'message' => 'ID de pendiente no proporcionado o inválido.']);
     exit;
 }
 
+// --- BLOQUE 3: CONSULTA A BASE DE DATOS ---
 try {
-    $db = new database();
-    $con = $db->conectar();
-
+    // Se usa la conexión global $con de config.php.
     $sql = "SELECT 
-                ep.radicado_pendiente, ep.fecha_generacion, ep.cantidad_pendiente,
-                u.nom_usu, u.doc_usu, u.tel_usu, u.correo_usu, u.direccion_usu,
+                ep.radicado_pendiente, 
+                ep.fecha_generacion, 
+                ep.cantidad_pendiente,
+                u.nom_usu, 
+                u.doc_usu, 
+                u.tel_usu, 
+                u.correo_usu, 
+                u.direccion_usu,
                 m.nom_medicamento,
                 ug.nom_usu AS farmaceuta_genera
             FROM entrega_pendiente ep
@@ -25,18 +34,27 @@ try {
             JOIN usuarios u ON c.doc_pac = u.doc_usu
             JOIN medicamentos m ON dh.id_medicam = m.id_medicamento
             JOIN usuarios ug ON ep.id_farmaceuta_genera = ug.doc_usu
-            WHERE ep.id_entrega_pendiente = :id_pendiente";
+            WHERE ep.id_entrega_pendiente = :id_pendiente
+            LIMIT 1";
 
     $stmt = $con->prepare($sql);
     $stmt->execute([':id_pendiente' => $id_pendiente]);
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // --- BLOQUE 4: RESPUESTA JSON ---
     if ($data) {
+        // Formatear fechas y escapar datos para seguridad
+        $data['fecha_generacion_formatted'] = date('d/m/Y H:i', strtotime($data['fecha_generacion']));
+        foreach ($data as $key => $value) {
+            $data[$key] = htmlspecialchars($value);
+        }
         echo json_encode(['success' => true, 'data' => $data]);
     } else {
         echo json_encode(['success' => false, 'message' => 'No se encontraron detalles para este pendiente.']);
     }
+
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Error de base de datos.']);
+    error_log("Error en ajax_detalles_pendientes.php: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Error al consultar la base de datos.']);
 }
 ?>

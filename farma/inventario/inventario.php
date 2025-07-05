@@ -1,10 +1,14 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/inactividad.php';
-require_once '../../include/conexion.php';
+// --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
+// Se incluye el archivo de configuración central.
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+require_once ROOT_PATH . '/include/inactividad.php';
 
+// --- BLOQUE 2: FUNCIÓN PARA GENERAR EL CONTENIDO DE LA TABLA DEL INVENTARIO ---
 function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_ref)
 {
+    // ... (El contenido de la función se mantiene, ya que su lógica interna es correcta)
     $filtro_tipo = trim($_GET['filtro_tipo'] ?? 'todos');
     $filtro_nombre = trim($_GET['filtro_nombre'] ?? '');
     $filtro_estado_stock = trim($_GET['filtro_stock'] ?? 'todos');
@@ -116,19 +120,17 @@ function generarFilasInventario($con, $nit_farmacia_actual, &$total_registros_re
     return ob_get_clean();
 }
 
-
-if (class_exists('database') && (!isset($con) || !($con instanceof PDO))) {
-    $db = new database();
-    $con = $db->conectar();
-}
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// --- BLOQUE 3: LÓGICA PRINCIPAL DE LA PÁGINA ---
+if (session_status() == PHP_SESSION_NONE) { session_start(); }
 if (!isset($_SESSION['doc_usu']) || $_SESSION['id_rol'] != 3) {
-    header('Location: ../../inicio_sesion.php?error=no_permiso');
+    header('Location: ' . BASE_URL . '/inicio_sesion.php?error=no_permiso');
     exit;
 }
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? '';
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? '';
+if (empty($nit_farmacia_actual)) {
+    header('Location: ' . BASE_URL . '/farma/inicio.php');
+    exit;
+}
 
 if (isset($_GET['ajax_search'])) {
     $total_registros_ajax = 0;
@@ -140,23 +142,20 @@ $total_registros = 0;
 $filas_html = generarFilasInventario($con, $nit_farmacia_actual, $total_registros);
 
 $pageTitle = "Inventario de Farmacia";
-$nombre_farmacia_asignada = "";
+$nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
 $count_stock_bajo = 0;
 $count_por_vencer = 0;
 $count_vencidos = 0;
 
 if ($nit_farmacia_actual) {
-    $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
-    $stmt_nombre->execute([$nit_farmacia_actual]);
-    $nombre_farmacia_asignada = $stmt_nombre->fetchColumn();
-
-    $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND cantidad_actual <= 10";
+    // Estas consultas se podrían optimizar si el rendimiento es un problema.
+    // Por ahora, se mantienen para la funcionalidad de las alertas.
+    $sql_stock = "SELECT COUNT(*) FROM inventario_farmacia WHERE nit_farm = :nit AND id_estado = 14";
     $stmt_stock = $con->prepare($sql_stock);
     $stmt_stock->execute(['nit' => $nit_farmacia_actual]);
     $count_stock_bajo = $stmt_stock->fetchColumn();
 
     $stock_por_lote_sql = "(SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) FROM movimientos_inventario WHERE lote = mi.lote AND id_medicamento = mi.id_medicamento AND nit_farm = mi.nit_farm)";
-
     $sql_por_vencer = "SELECT COUNT(DISTINCT mi.lote, mi.id_medicamento) FROM movimientos_inventario mi WHERE mi.nit_farm = :nit AND mi.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND $stock_por_lote_sql > 0";
     $stmt_por_vencer = $con->prepare($sql_por_vencer);
     $stmt_por_vencer->execute(['nit' => $nit_farmacia_actual]);
@@ -171,35 +170,30 @@ if ($nit_farmacia_actual) {
 $stmt_tipos = $con->prepare("SELECT id_tip_medic, nom_tipo_medi FROM tipo_de_medicamento ORDER BY nom_tipo_medi ASC");
 $stmt_tipos->execute();
 $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="icon" type="image/png" href="../../img/loguito.png">
+    <!-- --- BLOQUE 4: METADATOS Y ENLACES CSS/JS DEL HEAD --- -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
+    <?php require_once ROOT_PATH . '/include/menu.php'; ?>
     <style>
         .barcode-cell svg { height: 30px; width: auto; max-width: 150px; display: inline-block; }
         .btn .badge { margin-left: 8px; }
         .has-alerts { animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
         .btn-warning.has-alerts { animation-name: pulse-warning; }
-        @keyframes pulse-warning {
-            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-        }
-         .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
+        @keyframes pulse-warning { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
+        .form-row-actions { display: flex; align-items: flex-end; gap: 0.5rem; }
         .modal-body .alert { background-color: #e9ecef; border-color: #ced4da; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <?php include '../../include/menu.php'; ?>
     <main id="contenido-principal" class="flex-grow-1 d-flex flex-column">
+        <!-- --- BLOQUE 5: CONTENIDO HTML PRINCIPAL --- -->
         <div class="container-fluid mt-3 flex-grow-1 d-flex flex-column">
             <div class="vista-datos-container">
                 <div class="d-flex justify-content-between align-items-center mb-3 header-form-responsive">
@@ -263,14 +257,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
                     <table class="tabla-admin-mejorada">
                         <thead>
                             <tr>
-                                <th>Medicamento</th>
-                                <th>Tipo</th>
-                                <th>Código de Barras</th>
-                                <th>Cantidad Total</th>
-                                <th>Lotes</th>
-                                <th>Estado</th>
-                                <th>Fecha Actualización</th>
-                                <th class="columna-acciones-fija">Acciones</th>
+                                <th>Medicamento</th><th>Tipo</th><th>Código de Barras</th><th>Cantidad Total</th><th>Lotes</th><th>Estado</th><th>Fecha Actualización</th><th class="columna-acciones-fija">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="inventario-tbody">
@@ -282,6 +269,7 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </main>
 
+    <!-- --- BLOQUE 6: MODALES Y SCRIPTS FINALES --- -->
     <div id="modal-lotes-placeholder"></div>
     <div id="modal-secundario-placeholder"></div>
     
@@ -320,9 +308,11 @@ $tipos_medicamento = $stmt_tipos->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <?php include '../../include/footer.php'; ?>
-    <script src="../js/gestion_inventario.js?v=<?php echo time(); ?>"></script>
-    <script src="../js/alertas_dashboard.js?v=<?php echo time(); ?>"></script>
-    <script src="../includes_farm/JsBarcode.all.min.js"></script>
+    <!-- Se incluye el footer usando ROOT_PATH -->
+    <?php require_once ROOT_PATH . '/include/footer.php'; ?>
+    <!-- Rutas a los scripts JS corregidas con BASE_URL -->
+    <script src="<?php echo BASE_URL; ?>/farma/js/gestion_inventario.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo BASE_URL; ?>/farma/js/alertas_dashboard.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo BASE_URL; ?>/farma/includes_farm/JsBarcode.all.min.js"></script>
 </body>
 </html>

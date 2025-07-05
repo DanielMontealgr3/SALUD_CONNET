@@ -1,19 +1,41 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
-require_once '../../include/SimpleXLSXGen.php';
+// =========================================================================
+// ==              REPORTE_MOVIMIENTOS.PHP - VERSIÓN CORREGIDA              ==
+// =========================================================================
 
+// --- BLOQUE 1: CONFIGURACIÓN CENTRALIZADA ---
+// CAMBIO 1: Reemplazamos las inclusiones separadas por una única llamada a config.php.
+// Este archivo se encarga de todo: sesión, rutas, conexión a BD.
+require_once __DIR__ . '/../../include/config.php';
+
+// CAMBIO 2: Incluimos la validación de sesión DESPUÉS de config.php, usando ROOT_PATH.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+
+// CAMBIO 3: Incluimos la librería de Excel usando ROOT_PATH para una ruta infalible.
+// Verificamos que la ruta sea correcta desde la raíz del proyecto.
+require_once ROOT_PATH . '/include/SimpleXLSXGen.php'; 
+
+// Importamos la clase de la librería.
 use Shuchkin\SimpleXLSXGen;
 
-$db = new database();
-$con = $db->conectar();
+// --- BLOQUE 2: LÓGICA DEL REPORTE ---
 
-$nit_farmacia_actual = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+// CAMBIO 4: Eliminamos la creación manual de la conexión.
+// La variable $con ya está disponible globalmente desde config.php.
+// $db = new database(); // <- ELIMINADO
+// $con = $db->conectar(); // <- ELIMINADO
+
+// CAMBIO 5: Estandarizamos el nombre de la variable de sesión para el NIT de la farmacia.
+// Usamos 'nit_farma', que es la que se establece al iniciar sesión y se usa en otras partes.
+$nit_farmacia_actual = $_SESSION['nit_farma'] ?? null;
 if (!$nit_farmacia_actual) {
-    SimpleXLSXGen::fromArray([['Error: No se ha identificado la farmacia.']])->downloadAs('error_reporte.xlsx');
+    // Si no hay farmacia, se genera un Excel de error claro.
+    SimpleXLSXGen::fromArray([['Error: No se ha podido identificar la farmacia. Verifique su sesión.']])->downloadAs('error_reporte_movimientos.xlsx');
     exit;
 }
 
+// Tu lógica para recoger los filtros y construir la consulta es CORRECTA.
+// No necesita cambios, ya que usa la variable $con.
 $filtro_doc_resp = trim($_GET['filtro_doc_resp'] ?? '');
 $filtro_medicamento = trim($_GET['filtro_medicamento'] ?? '');
 $filtro_tipo_mov = trim($_GET['filtro_tipo_mov'] ?? 'todos');
@@ -42,8 +64,8 @@ if (!empty($filtro_vencimiento)) { $sql_where_conditions[] = "mi.fecha_vencimien
 $sql_where = " WHERE " . implode(" AND ", $sql_where_conditions);
 $sql_final = "
     SELECT 
-        mi.id_movimiento, med.nom_medicamento, tm.nom_mov, mi.cantidad, mi.lote, 
-        mi.fecha_vencimiento, u.nom_usu, u.doc_usu, mi.fecha_movimiento, mi.notas
+        mi.id_movimiento, mi.fecha_movimiento, med.nom_medicamento, tm.nom_mov, mi.cantidad, 
+        mi.lote, mi.fecha_vencimiento, u.doc_usu, u.nom_usu, mi.notas
     " . $sql_base_from . $sql_where . "
     ORDER BY mi.fecha_movimiento DESC, mi.id_movimiento DESC
 ";
@@ -52,9 +74,12 @@ $stmt = $con->prepare($sql_final);
 $stmt->execute($params);
 $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// CAMBIO 6: Estandarizamos el nombre de la variable de sesión para el NOMBRE de la farmacia.
+// Usamos 'nombre_farmacia_actual' para mantener la consistencia.
 $nombre_farmacia_asignada = $_SESSION['nombre_farmacia_actual'] ?? 'Farmacia';
 $datos_para_excel = [];
 
+// Tu lógica para construir el array para Excel es PERFECTA. No necesita cambios.
 $header_texts = [
     'ID Movimiento', 'Fecha Movimiento', 'Medicamento', 'Tipo Movimiento', 'Cantidad',
     'Lote', 'Fecha Vencimiento', 'Doc. Responsable', 'Nombre Responsable', 'Notas'
@@ -83,8 +108,14 @@ if (empty($movimientos)) {
 
 $fileName = "reporte_movimientos_" . preg_replace('/[^a-zA-Z0-9]/', '_', $nombre_farmacia_asignada) . "_" . date('Y-m-d') . ".xlsx";
 
+// La generación del Excel es PERFECTA. No necesita cambios.
 SimpleXLSXGen::fromArray($datos_para_excel)
-    ->setColWidth(2, 35)->setColWidth(3, 20)->setColWidth(8, 30)->setColWidth(9, 40)
+    ->setColWidth(2, 35) // Medicamento
+    ->setColWidth(3, 20) // Tipo Movimiento
+    ->setColWidth(8, 25) // Doc. Responsable
+    ->setColWidth(9, 35) // Nombre Responsable
+    ->setColWidth(10, 40) // Notas
     ->downloadAs($fileName);
 
 exit;
+?>

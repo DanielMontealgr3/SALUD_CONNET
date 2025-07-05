@@ -1,33 +1,40 @@
 <?php
+// --- BLOQUE 1: PREPARACIÓN Y SEGURIDAD ---
+// Se inicia el buffer de salida para poder limpiar cualquier contenido no deseado antes de enviar la respuesta JSON.
 ob_start();
-require_once '../../include/conexion.php';
-require_once '../../include/validar_sesion.php';
 
+// Se incluye el archivo de configuración central. La ruta __DIR__ . '/../../' sube dos niveles
+// desde 'farma/televisor/' para encontrar la carpeta 'include/'.
+require_once __DIR__ . '/../../include/config.php';
+require_once ROOT_PATH . '/include/validar_sesion.php';
+
+// --- BLOQUE 2: FUNCIÓN DE MANEJO DE ERRORES ---
+// Una función centralizada para enviar respuestas de error en formato JSON y detener la ejecución.
 function send_json_error($message) {
-    ob_end_clean();
+    ob_end_clean(); // Limpia el buffer de salida para evitar contenido extra.
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => $message]);
     exit;
 }
 
+// Se establece la zona horaria para consistencia en las operaciones de fecha y hora.
 date_default_timezone_set('America/Bogota');
 
+// Se verifica que el rol del usuario sea Administrador (1) o Farmaceuta (3).
 if (!isset($_SESSION['id_rol']) || !in_array($_SESSION['id_rol'], [1, 3])) {
     send_json_error('Acceso no autorizado.');
 }
 
-$nit_farmacia_sesion = $_SESSION['nit_farmacia_asignada_actual'] ?? null;
+// Se obtiene el NIT de la farmacia desde la sesión, que es crucial para filtrar los turnos.
+$nit_farmacia_sesion = $_SESSION['nit_farma'] ?? null;
 if (!$nit_farmacia_sesion) {
     send_json_error('No se pudo determinar la farmacia.');
 }
 
-try {
-    $db = new database();
-    $con = $db->conectar();
-} catch (Exception $e) {
-    send_json_error('Error de conexión a la base de datos.');
-}
+// La conexión a la base de datos ($con) ya está disponible desde config.php, no es necesario crearla de nuevo.
 
+// --- BLOQUE 3: CONSULTA A LA BASE DE DATOS ---
+// Consulta SQL para obtener los turnos que están "Llamando" (id_estado = 1) o "En Atención" (id_estado = 11).
 $sql_base = "
     SELECT
         vt.id_turno,
@@ -55,31 +62,39 @@ try {
     send_json_error('Error al consultar los turnos.');
 }
 
+// --- BLOQUE 4: PROCESAMIENTO DE LOS DATOS ---
+// Se inicializan los arrays para clasificar los turnos.
 $turnos_notificacion = [];
 $turnos_llamando = [];
 $turnos_atencion = [];
 $ahora = new DateTime();
 
+// Se itera sobre los resultados de la consulta para clasificarlos.
 foreach ($todos_los_turnos as $turno) {
-    if ($turno['id_estado'] == 1) { 
+    if ($turno['id_estado'] == 1) { // Estado 'Llamando'
         $turnos_llamando[] = $turno;
         $hora_llamado = new DateTime($turno['hora_llamado']);
         $diferencia = $ahora->getTimestamp() - $hora_llamado->getTimestamp();
         
+        // Si el llamado se hizo hace 5 segundos o menos, se añade a la lista de notificaciones.
         if ($diferencia <= 5) {
             $turnos_notificacion[] = $turno;
         }
     }
-    if ($turno['id_estado'] == 11) { 
+    if ($turno['id_estado'] == 11) { // Estado 'En Atención'
         $turnos_atencion[] = $turno; 
     }
 }
 
+// --- BLOQUE 5: ENVÍO DE LA RESPUESTA JSON ---
+// Se limpia cualquier posible salida del buffer.
 ob_end_clean();
+// Se establece la cabecera para la respuesta JSON.
 header('Content-Type: application/json; charset=utf-8');
+// Se envía la respuesta final con los turnos clasificados y limitados en cantidad.
 echo json_encode([
-    'notificacion' => array_slice($turnos_notificacion, 0, 1),
-    'llamando' => array_slice($turnos_llamando, 0, 5),
-    'en_atencion' => array_slice($turnos_atencion, 0, 10)
+    'notificacion' => array_slice($turnos_notificacion, 0, 1), // Solo la notificación más reciente
+    'llamando' => array_slice($turnos_llamando, 0, 5),      // Máximo 5 turnos en la lista de 'Llamando'
+    'en_atencion' => array_slice($turnos_atencion, 0, 10)   // Máximo 10 turnos en la lista de 'En Atención'
 ]);
 ?>

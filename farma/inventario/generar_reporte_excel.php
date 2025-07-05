@@ -1,9 +1,17 @@
 <?php
-require_once '../../include/validar_sesion.php';
-require_once '../../include/conexion.php';
-// Reemplaza la línea del require_once con esta:
-require_once '../farma/includes_farm/PhpSpreadsheet-master/src/Bootstrap.php';
+// --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
+// ¡CORRECCIÓN CLAVE! Se incluye PRIMERO el archivo de configuración central.
+// Este archivo inicia la sesión, define las constantes ROOT_PATH y BASE_URL, y crea la conexión $con.
+require_once __DIR__ . '/../../include/config.php';
 
+// Se incluye el script de validación de sesión, que ahora funcionará correctamente.
+require_once ROOT_PATH . '/include/validar_sesion.php';
+
+// Se incluye el archivo de arranque de la librería PhpSpreadsheet, usando la constante ROOT_PATH
+// para asegurar una ruta absoluta y correcta desde la raíz del proyecto.
+require_once ROOT_PATH . '/farma/includes_farm/PhpSpreadsheet-master/src/Bootstrap.php';
+
+// Se importan las clases necesarias de PhpSpreadsheet.
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Font;
@@ -11,23 +19,23 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
+// Se verifica que la petición sea de tipo POST.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     die("Acceso no permitido.");
 }
 
-// ... (El resto del código PHP para la consulta y creación del Excel no cambia)
-// ... (Puedes usar el código completo de la respuesta anterior, solo asegúrate de que la línea `require_once` de arriba sea la correcta)
-
+// --- BLOQUE 2: RECOLECCIÓN DE FILTROS Y CONSTRUCCIÓN DE CONSULTA ---
 try {
-    $db = new database();
-    $con = $db->conectar();
+    // La conexión $con ya está disponible y lista para usar desde config.php.
 
+    // Recolección de los filtros del formulario.
     $fecha_inicio = $_POST['fecha_inicio'] . ' 00:00:00';
     $fecha_fin = $_POST['fecha_fin'] . ' 23:59:59';
     $tipo_movimiento = $_POST['tipo_movimiento'];
     $tipo_medicamento = $_POST['tipo_medicamento'];
-    $nit_farmacia = $_SESSION['nit_farmacia_asignada_actual'];
+    $nit_farmacia = $_SESSION['nit_farma']; // Usamos la variable de sesión correcta.
 
+    // Construcción de la consulta SQL.
     $sql = "SELECT 
                 mov.fecha_movimiento, m.nom_medicamento, m.codigo_barras, tm.nom_tipo_medi,
                 tmov.nom_mov, mov.cantidad, mov.lote, mov.fecha_vencimiento, u.nom_usu,
@@ -48,6 +56,7 @@ try {
         ':fecha_fin' => $fecha_fin
     ];
 
+    // Se añaden los filtros opcionales.
     if ($tipo_movimiento !== 'todos') {
         $sql .= " AND mov.id_tipo_mov = :tipo_mov";
         $params[':tipo_mov'] = $tipo_movimiento;
@@ -58,20 +67,24 @@ try {
     }
     $sql .= " ORDER BY mov.fecha_movimiento DESC";
     
+    // Se ejecuta la consulta.
     $stmt = $con->prepare($sql);
     $stmt->execute($params);
     $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- BLOQUE 3: CREACIÓN Y CONFIGURACIÓN DEL ARCHIVO EXCEL ---
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Movimientos');
     
+    // Se inserta el logo. La ruta se construye con ROOT_PATH para ser infalible.
     $drawing = new Drawing();
-    $logoPath = __DIR__ . '/../../img/Logo.png';
+    $logoPath = ROOT_PATH . '/img/Logo.png'; 
     if (file_exists($logoPath)) {
         $drawing->setName('Logo')->setDescription('Logo')->setPath($logoPath)->setHeight(60)->setCoordinates('A1')->setWorksheet($sheet);
     }
     
+    // Se configuran los títulos y estilos.
     $sheet->mergeCells('C1:M2')->setCellValue('C1', 'Reporte de Movimientos de Inventario');
     $sheet->getStyle('C1')->getFont()->setBold(true)->setSize(22)->setName('Calibri');
     $sheet->getStyle('C1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
@@ -92,6 +105,7 @@ try {
     ];
     $sheet->getStyle('A5:M5')->applyFromArray($headerStyle);
     
+    // Se insertan los datos.
     $rowNum = 6;
     if (!empty($resultados)) {
         foreach ($resultados as $row) {
@@ -104,6 +118,7 @@ try {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
     
+    // --- BLOQUE 4: GENERACIÓN Y ENVÍO DEL ARCHIVO EXCEL ---
     $nombre_archivo = "Reporte_Movimientos_" . date('Y-m-d') . ".xlsx";
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $nombre_archivo . '"');
