@@ -140,6 +140,8 @@ function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
     ];
 }
 
+
+
 if (isset($_GET['json'])) {
     header('Content-Type: application/json');
     $pacientes_data = [];
