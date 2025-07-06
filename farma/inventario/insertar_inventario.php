@@ -1,60 +1,55 @@
 <?php
 // --- BLOQUE 1: CONFIGURACIÓN INICIAL Y SEGURIDAD ---
-// Se incluye el archivo de configuración central. La ruta __DIR__ . '/../../' sube dos niveles
-// desde 'farma/inventario/' para encontrar la carpeta 'include/'.
 require_once __DIR__ . '/../../include/config.php';
 require_once ROOT_PATH . '/include/validar_sesion.php';
 require_once ROOT_PATH . '/include/inactividad.php';
 
 // --- BLOQUE 2: VERIFICACIÓN DE ROL Y OBTENCIÓN DE DATOS DE FARMACIA ---
-// La conexión $con ya está disponible desde el archivo config.php
 $nombre_farmacia_asignada = "No Asignada";
+// Se usa la variable de sesión estandarizada
 $nit_farmacia_actual = $_SESSION['nit_farma'] ?? '';
+
 if (empty($nit_farmacia_actual)) {
-    // Si no hay farmacia en sesión, redirigir al inicio para que se asigne una.
+    // Si no hay farmacia en sesión, redirigir al inicio
     header('Location: ' . BASE_URL . '/farma/inicio.php');
     exit;
 }
 
-if ($nit_farmacia_actual) {
-    try {
-        $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
-        $stmt_nombre->execute([$nit_farmacia_actual]);
-        $nombre_farmacia_asignada = $stmt_nombre->fetchColumn();
-        if (!$nombre_farmacia_asignada) {
-            $nombre_farmacia_asignada = "Farmacia no encontrada";
-        }
-        // Guardar el nombre en sesión para no tener que consultarlo en cada página
-        $_SESSION['nombre_farmacia_actual'] = $nombre_farmacia_asignada; 
-    } catch(PDOException $e) {
-        error_log("Error al obtener nombre de farmacia: " . $e->getMessage());
-        // Se mantiene el nombre por defecto 'No Asignada'
+try {
+    // Se usa la conexión global $con de config.php
+    $stmt_nombre = $con->prepare("SELECT nom_farm FROM farmacias WHERE nit_farm = ?");
+    $stmt_nombre->execute([$nit_farmacia_actual]);
+    $nombre_farma_obtenido = $stmt_nombre->fetchColumn();
+    if ($nombre_farma_obtenido) {
+        $nombre_farmacia_asignada = $nombre_farma_obtenido;
     }
+} catch(PDOException $e) {
+    error_log("Error al obtener nombre de farmacia: " . $e->getMessage());
 }
+
 $pageTitle = "Registrar Entrada de Inventario";
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- --- BLOQUE 3: METADATOS Y ENLACES CSS/JS DEL HEAD --- -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?> - Salud Connected</title>
-    <!-- Rutas a recursos corregidas con BASE_URL -->
+    <!-- Se usa BASE_URL para la ruta del ícono -->
     <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/img/loguito.png">
-    <!-- Se incluye el menú usando ROOT_PATH para garantizar una ruta absoluta en el servidor -->
+    <!-- Se usa ROOT_PATH para la ruta del menú -->
     <?php require_once ROOT_PATH . '/include/menu.php'; ?>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <main id="contenido-principal" class="centrado">
-        <!-- --- BLOQUE 4: CONTENIDO HTML PRINCIPAL --- -->
+        <!-- Tu HTML original se mantiene intacto -->
         <div class="vista-datos-container compact-form">
             <div class="d-flex justify-content-between align-items-center mb-3 header-form-responsive">
                 <div>
                     <h3 class="titulo-lista-tabla mb-0">Registrar Entrada</h3>
                     <small class="text-muted">Farmacia: <strong><?php echo htmlspecialchars($nombre_farmacia_asignada); ?></strong></small>
                 </div>
-                <!-- La ruta de retorno también usa BASE_URL para ser robusta -->
+                <!-- Se usa BASE_URL para el enlace de retorno -->
                 <a href="<?php echo BASE_URL; ?>/farma/inventario/inventario.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
             </div>
             
@@ -112,11 +107,8 @@ $pageTitle = "Registrar Entrada de Inventario";
             </div>
         </div>
     </main>
-    
-    <!-- --- BLOQUE 5: SCRIPTS Y FOOTER --- -->
-    <!-- Se incluye el footer usando ROOT_PATH -->
     <?php require_once ROOT_PATH . '/include/footer.php'; ?>
-    <!-- Se enlaza el script JS usando BASE_URL para que la ruta sea correcta desde el navegador -->
+    <!-- Se usa BASE_URL para la ruta del script JS -->
     <script src="<?php echo BASE_URL; ?>/farma/js/insertar_inventario.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

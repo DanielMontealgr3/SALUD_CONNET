@@ -1,14 +1,8 @@
 <?php
-// ===== INICIO DE CÓDIGO DE DEPURACIÓN =====
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-// ===== FIN DE CÓDIGO DE DEPURACIÓN =====
-
 // --- BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD ---
 require_once __DIR__ . '/../include/config.php';
 require_once ROOT_PATH . '/include/validar_sesion.php';
-require_once ROOT_PATH . '/farma/correo_no_asistio.php';
+// Se ha ELIMINADO la línea: require_once __DIR__ . '/correo_no_asistio.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -16,6 +10,7 @@ header('Content-Type: application/json; charset=utf-8');
 $response = ['success' => false, 'message' => 'Acción no válida o datos insuficientes.'];
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['accion']) || !isset($_SESSION['doc_usu']) || !isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token_farma_lista'] ?? '', $_POST['csrf_token'])) {
+    http_response_code(403);
     $response['message'] = 'Error de seguridad o sesión inválida.';
     echo json_encode($response);
     exit;
@@ -26,7 +21,12 @@ $accion = $_POST['accion'];
 $doc_farmaceuta = $_SESSION['doc_usu'];
 
 try {
-    // Se usa la conexión global $con de config.php.
+    global $con;
+    if (!$con) {
+        throw new Exception("La conexión a la base de datos no está disponible.");
+    }
+    $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
     switch ($accion) {
         
         case 'llamar_paciente':
@@ -72,7 +72,8 @@ try {
 
             $con->beginTransaction();
             
-            $info_query = "SELECT u.correo_usu, u.nom_usu, hf.horario, tem.hora_entreg, vt.hora_llamado FROM turno_ent_medic tem JOIN historia_clinica hc ON tem.id_historia = hc.id_historia JOIN citas ci ON hc.id_cita = ci.id_cita JOIN usuarios u ON ci.doc_pac = u.doc_usu JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno WHERE tem.id_turno_ent = ?";
+            // Solo necesitamos el id del horario para liberarlo.
+            $info_query = "SELECT hora_entreg FROM turno_ent_medic WHERE id_turno_ent = ?";
             $stmt_info = $con->prepare($info_query);
             $stmt_info->execute([$id_turno]);
             $paciente_info = $stmt_info->fetch(PDO::FETCH_ASSOC);
@@ -85,12 +86,9 @@ try {
                     $con->prepare("UPDATE horario_farm SET id_estado = 4 WHERE id_horario_farm = ?")->execute([$paciente_info['hora_entreg']]);
                 }
                 
-                $hora_programada_str = date("h:i A", strtotime($paciente_info['horario']));
-                $hora_llamado_str = $paciente_info['hora_llamado'] ? date("h:i A", strtotime($paciente_info['hora_llamado'])) : 'No alcanzado a llamar';
+                // Se ha ELIMINADO la llamada a la función: enviarCorreoNoAsistio(...)
                 
-                enviarCorreoNoAsistio($paciente_info['correo_usu'], $paciente_info['nom_usu'], $id_turno, $hora_programada_str, $hora_llamado_str);
-                
-                $response = ['success' => true, 'message' => 'Turno marcado como "No Asistido" y notificado.'];
+                $response = ['success' => true, 'message' => 'Turno marcado como "No Asistido".'];
             } else {
                 throw new Exception("No se encontró información del turno para cancelar.");
             }
@@ -112,4 +110,3 @@ try {
 }
 
 echo json_encode($response);
-?>

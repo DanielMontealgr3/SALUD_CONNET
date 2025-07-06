@@ -3,38 +3,43 @@
 require_once __DIR__ . '/../../include/config.php';
 require_once ROOT_PATH . '/include/validar_sesion.php';
 
-// Se define la respuesta como JSON.
+// Se define la respuesta como JSON desde el principio.
 header('Content-Type: application/json; charset=utf-8');
 
 // --- BLOQUE 2: VALIDACIÓN INICIAL Y PREPARACIÓN ---
+$response = ['success' => false, 'message' => 'Petición o sesión inválida.'];
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+    $response['message'] = 'Método no permitido.';
+    http_response_code(405);
+    echo json_encode($response);
     exit;
 }
 
-$response = ['success' => false, 'message' => 'Acción no especificada o inválida.'];
 $accion = $_POST['accion'] ?? '';
-
-// Se obtienen datos de sesión estandarizados.
 $doc_farmaceuta = $_SESSION['doc_usu'] ?? null;
-$nit_farmacia = $_SESSION['nit_farma'] ?? null;
+// Corregido para usar la variable de sesión consistente
+$nit_farmacia = $_SESSION['nit_farma'] ?? $_SESSION['nit_farmacia_asignada_actual'] ?? null;
 
 // Se usa la conexión global $con de config.php.
 if (empty($accion) || !$doc_farmaceuta || !$nit_farmacia) {
-    echo json_encode(['success' => false, 'message' => 'Petición o sesión inválida.']);
+    http_response_code(403);
+    echo json_encode($response);
     exit;
 }
 
 // --- BLOQUE 3: CONTROLADOR DE ACCIONES (switch) ---
-// Se usa una estructura 'switch' para manejar las diferentes acciones. Es más limpio que 'if/elseif'.
 try {
+    // Se usa la conexión global y se establece el modo de error
+    global $con;
+    $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
     switch ($accion) {
 
         case 'verificar_stock_pendiente':
             $id_detalle = filter_input(INPUT_POST, 'id_detalle', FILTER_VALIDATE_INT);
             if (!$id_detalle) throw new Exception("ID de detalle no válido.");
             
-            // Lógica para verificar stock... (tu código es correcto)
             $stmt_info = $con->prepare("SELECT d.id_medicam, ep.cantidad_pendiente FROM entrega_pendiente ep JOIN detalles_histo_clini d ON ep.id_detalle_histo = d.id_detalle WHERE ep.id_detalle_histo = :id_detalle AND ep.id_estado = 10");
             $stmt_info->execute([':id_detalle' => $id_detalle]);
             $info = $stmt_info->fetch(PDO::FETCH_ASSOC);
@@ -44,10 +49,9 @@ try {
             $id_medicamento = $info['id_medicam'];
             $cantidad_requerida = (int)$info['cantidad_pendiente'];
 
-            // Se calcula el stock total de lotes vigentes (vencimiento > 30 días es una buena práctica)
-            $sql_stock_total = "SELECT SUM(stock_lote) FROM (SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_medicamento AND nit_farm = :nit_farm AND fecha_vencimiento > DATE_ADD(CURDATE(), INTERVAL 30 DAY) GROUP BY lote, fecha_vencimiento HAVING stock_lote > 0) as lotes_vigentes";
-            $stmt_stock = $con->prepare($sql_stock_total);
-            $stmt_stock->execute([':id_medicamento' => $id_medicamento, ':nit_farm' => $nit_farmacia]);
+            $sql_stock = "SELECT SUM(stock_lote) FROM (SELECT SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_m AND nit_farm = :nit_f AND fecha_vencimiento > DATE_ADD(CURDATE(), INTERVAL 15 DAY) GROUP BY lote, fecha_vencimiento HAVING stock_lote > 0) as lotes_vigentes";
+            $stmt_stock = $con->prepare($sql_stock);
+            $stmt_stock->execute([':id_m' => $id_medicamento, ':nit_f' => $nit_farmacia]);
             $stock_valido = (int)$stmt_stock->fetchColumn();
 
             if ($stock_valido < $cantidad_requerida) {
@@ -65,7 +69,6 @@ try {
 
             $con->beginTransaction();
             
-            // Lógica para entregar y/o generar pendientes... (tu código es correcto)
             $stmt_detalle = $con->prepare("SELECT id_medicam, can_medica FROM detalles_histo_clini WHERE id_detalle = :id_detalle");
             $stmt_detalle->execute([':id_detalle' => $id_detalle]);
             $detalle_medicamento = $stmt_detalle->fetch(PDO::FETCH_ASSOC);
@@ -83,7 +86,6 @@ try {
 
             if ($cantidad_necesaria <= 0) throw new Exception("La cantidad requerida no es válida.");
             
-            // Se obtienen los lotes vigentes ordenados por fecha de vencimiento (FIFO/FEFO)
             $sql_lotes = "SELECT lote, fecha_vencimiento, SUM(CASE WHEN id_tipo_mov IN (1, 3, 5) THEN cantidad WHEN id_tipo_mov IN (2, 4) THEN -cantidad ELSE 0 END) as stock_lote FROM movimientos_inventario WHERE id_medicamento = :id_m AND nit_farm = :nit_f AND fecha_vencimiento > CURDATE() GROUP BY lote, fecha_vencimiento HAVING stock_lote > 0 ORDER BY fecha_vencimiento ASC";
             $stmt_lotes = $con->prepare($sql_lotes);
             $stmt_lotes->execute([':id_m' => $id_medicamento, ':nit_f' => $nit_farmacia]);
@@ -93,18 +95,34 @@ try {
             $cantidad_a_entregar = min($cantidad_necesaria, $stock_total_disponible);
             $cantidad_pendiente = $cantidad_necesaria - $cantidad_a_entregar;
             
+            $entregas_realizadas = [];
+            $radicado_generado = null;
+
             if ($cantidad_a_entregar > 0) {
-                // ... (La lógica de descontar de lotes es compleja y se asume correcta)
-                // Aquí iría tu bucle `foreach` que inserta en `entrega_medicamentos`
+                $cantidad_restante_por_entregar = $cantidad_a_entregar;
+                foreach ($lotes_disponibles as $lote) {
+                    if ($cantidad_restante_por_entregar <= 0) break;
+                    
+                    $cantidad_a_sacar_de_lote = min($cantidad_restante_por_entregar, (int)$lote['stock_lote']);
+                    
+                    $sql_insert = "INSERT INTO entrega_medicamentos (id_detalle_histo, doc_farmaceuta, id_estado, lote, cantidad_entregada, Observaciones) VALUES (:id_detalle, :doc_farma, 9, :lote, :cantidad, 'Entrega completa de lote.')";
+                    $stmt_insert = $con->prepare($sql_insert);
+                    $stmt_insert->execute([':id_detalle' => $id_detalle, ':doc_farma' => $doc_farmaceuta, ':lote' => $lote['lote'], ':cantidad' => $cantidad_a_sacar_de_lote]);
+                    
+                    $entregas_realizadas[] = ['lote' => $lote['lote'], 'cantidad' => $cantidad_a_sacar_de_lote];
+                    $cantidad_restante_por_entregar -= $cantidad_a_sacar_de_lote;
+                }
             }
             
             if ($accion !== 'entregar_pendiente' && $cantidad_pendiente > 0) {
                 $radicado_generado = 'PEND-' . strtoupper(substr(uniqid(), -8));
-                // ... (Aquí iría tu INSERT en `entrega_pendiente`)
+                $sql_pendiente = "INSERT INTO entrega_pendiente (id_detalle_histo, radicado_pendiente, id_farmaceuta_genera, cantidad_pendiente, id_estado) VALUES (:id_detalle, :radicado, :doc_farma, :cantidad_p, 10)";
+                $stmt_pendiente = $con->prepare($sql_pendiente);
+                $stmt_pendiente->execute([':id_detalle' => $id_detalle, ':radicado' => $radicado_generado, ':doc_farma' => $doc_farmaceuta, ':cantidad_p' => $cantidad_pendiente]);
             }
             
             $con->commit();
-            $response = ['success' => true, 'message' => 'Proceso de entrega completado.'];
+            $response = ['success' => true, 'message' => 'Proceso de entrega completado.', 'entregas' => $entregas_realizadas, 'pendiente' => $cantidad_pendiente, 'radicado' => $radicado_generado];
             break;
 
         case 'finalizar_entrega_pendiente':
@@ -130,15 +148,14 @@ try {
             break;
 
         default:
-            // Si la acción no coincide con ninguna de las anteriores.
             throw new Exception('La acción solicitada no es válida.');
             break;
     }
 } catch (Exception $e) {
-    // Si en algún punto del `try` se lanzó una excepción, se captura aquí.
     if ($con->inTransaction()) {
-        $con->rollBack(); // Se deshacen los cambios si la transacción estaba activa.
+        $con->rollBack();
     }
+    http_response_code(500);
     $response['message'] = $e->getMessage();
     error_log("Error en ajax_procesar_entrega.php: " . $e->getMessage());
 }

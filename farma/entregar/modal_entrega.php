@@ -1,5 +1,6 @@
 <?php
 // --- BLOQUE 1: CONFIGURACIÓN Y SEGURIDAD ---
+// Se usa la nueva estructura de inclusión robusta.
 require_once __DIR__ . '/../../include/config.php';
 require_once ROOT_PATH . '/include/validar_sesion.php';
 
@@ -18,6 +19,8 @@ $id_detalle_unico = filter_input(INPUT_GET, 'id_detalle_unico', FILTER_VALIDATE_
 $id_entrega_pendiente = filter_input(INPUT_GET, 'id_entrega_pendiente', FILTER_VALIDATE_INT);
 
 // --- BLOQUE 3: CONSULTAS A LA BASE DE DATOS ---
+$cantidad_a_entregar_especifica = 0;
+
 try {
     // Se usa la conexión global $con de config.php.
     
@@ -27,7 +30,6 @@ try {
     $stmt_paciente->execute([':id_historia' => $id_historia]);
     $paciente = $stmt_paciente->fetch(PDO::FETCH_ASSOC);
     
-    $cantidad_a_entregar_especifica = 0;
     // Si se trata de un pendiente, se busca la cantidad específica a entregar.
     if ($id_entrega_pendiente && $id_detalle_unico) {
         $stmt_cant = $con->prepare("SELECT cantidad_pendiente FROM entrega_pendiente WHERE id_entrega_pendiente = :id_p AND id_detalle_histo = :id_d");
@@ -57,6 +59,14 @@ try {
 
 // --- BLOQUE 4: GENERACIÓN DEL HTML DEL MODAL ---
 ?>
+<!-- Estilos CSS restaurados de la versión funcional -->
+<style>
+    .fila-procesada { background-color: #f8f9fa !important; }
+    .fila-procesada .form-control { background-color: #e9ecef; border-color: #ced4da; }
+    .fila-pendiente-lista { background-color: #fffbe6 !important; }
+    .celda-accion { text-align: left !important; }
+</style>
+
 <div class="modal fade" id="modalRealizarEntrega" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" data-id-entrega-pendiente="<?php echo htmlspecialchars($id_entrega_pendiente ?? ''); ?>">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -122,6 +132,10 @@ try {
                 </table>
             </div>
             <div class="modal-footer">
+                <!-- Botón de pendientes restaurado -->
+                <button type="button" class="btn btn-warning" id="btn-generar-pendientes-lote" style="display: none;">
+                    <i class="bi bi-file-earmark-plus-fill me-2"></i> Generar Todos los Pendientes
+                </button>
                 <button type="button" class="btn btn-secondary" id="btn-cancelar-entrega" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="btn-finalizar-entrega-completa" disabled>
                     <i class="bi bi-truck me-2"></i> Finalizar Entrega

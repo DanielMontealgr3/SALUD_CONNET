@@ -45,12 +45,14 @@ $pageTitle = "Lista de Pacientes para Entrega";
 $pacientes_pendientes = [];
 
 try {
-    $filtro_fecha_sql = "1=1";
-
+    // ================== CONSULTA SQL MODIFICADA ==================
     $sql_base = "SELECT * FROM (
                     SELECT
                         tem.id_turno_ent, tem.id_historia, u.doc_usu AS documento_paciente, u.nom_usu AS nombre_paciente,
-                        CASE WHEN mer.id_periodo = 2 AND TIME_FORMAT(hf.horario, '%H:%i:%s') < '12:00:00' THEN ADDTIME(hf.horario, '12:00:00') ELSE hf.horario END AS hora_24h,
+                        CASE 
+                            WHEN mer.id_periodo = 2 AND TIME_FORMAT(hf.horario, '%H:%i:%s') < '12:00:00' THEN ADDTIME(hf.horario, '12:00:00') 
+                            ELSE hf.horario 
+                        END AS hora_24h,
                         vt.id_farmaceuta AS farmaceuta_atendiendo, vt.hora_llamado, vt.id_estado AS estado_llamado
                     FROM turno_ent_medic tem
                     JOIN historia_clinica hc ON tem.id_historia = hc.id_historia
@@ -61,7 +63,11 @@ try {
                     JOIN horario_farm hf ON tem.hora_entreg = hf.id_horario_farm
                     LEFT JOIN meridiano mer ON hf.meridiano = mer.id_periodo
                     LEFT JOIN vista_televisor vt ON tem.id_turno_ent = vt.id_turno
-                    WHERE tem.id_est IN (3, 11) AND {$filtro_fecha_sql} AND def.nit_farm = :nit_farma AND def.id_estado = 1
+                    WHERE 
+                        tem.id_est IN (3, 11) 
+                        AND tem.fecha_entreg = CURDATE() -- <-- CAMBIO 1: Filtro por fecha del día.
+                        AND def.nit_farm = :nit_farma 
+                        AND def.id_estado = 1
                     GROUP BY tem.id_turno_ent, tem.id_historia, u.doc_usu, u.nom_usu, hora_24h, vt.id_farmaceuta, vt.hora_llamado, vt.id_estado
                 ) AS t
                 JOIN (
@@ -70,13 +76,22 @@ try {
                     JOIN medicamentos med ON detalles_histo_clini.id_medicam = med.id_medicamento
                     GROUP BY id_historia
                 ) AS dh ON t.id_historia = dh.id_historia
-                ORDER BY CASE WHEN t.estado_llamado = 11 THEN 0 ELSE 1 END ASC, t.hora_24h ASC, t.nombre_paciente ASC";
+                ORDER BY 
+                    CASE WHEN t.estado_llamado = 11 THEN 0 ELSE 1 END ASC, -- <-- Mantiene a los que ya están en proceso arriba.
+                    ABS(TIME_TO_SEC(TIMEDIFF(NOW(), t.hora_24h))) ASC; -- <-- CAMBIO 2: Ordena por la hora más cercana a la actual.
+                ";
+    // =============================================================
 
     $stmt_pacientes = $con->prepare($sql_base);
     $stmt_pacientes->execute([':nit_farma' => $nit_farmacia_asignada_actual]);
     $pacientes_pendientes = $stmt_pacientes->fetchAll(PDO::FETCH_ASSOC);
 
-} catch (PDOException $e) { }
+} catch (PDOException $e) {
+    // En caso de error en la consulta, puedes manejarlo aquí.
+    // Por ejemplo, registrar el error y mostrar un mensaje amigable.
+    error_log("Error en consulta de lista_pacientes: " . $e->getMessage());
+    $pacientes_pendientes = []; // Asegura que la variable exista como array vacío.
+}
 
 function render_fila_paciente_data($paciente, $doc_farmaceuta_logueado) {
     $ahora_ts = time();
@@ -179,7 +194,7 @@ if (isset($_GET['json'])) {
                         <tbody id="cuerpo-tabla-pacientes">
                             <?php
                                 if (empty($pacientes_pendientes)) {
-                                    echo '<tr><td colspan="7" class="text-center p-4">No hay pacientes pendientes de entrega en este momento.</td></tr>';
+                                    echo '<tr><td colspan="7" class="text-center p-4">No hay pacientes pendientes de entrega para el día de hoy.</td></tr>';
                                 } else {
                                     foreach ($pacientes_pendientes as $paciente) {
                                         $data = render_fila_paciente_data($paciente, $doc_farmaceuta_logueado);
@@ -208,17 +223,11 @@ if (isset($_GET['json'])) {
       </div>
     </div>
     
-    <!-- ================== CORRECCIÓN CLAVE AQUÍ ================== -->
     <script>
-        // Si AppConfig no existe, lo creamos como un objeto vacío.
-        // Si ya existe, no hacemos nada, así no hay conflicto.
-        var AppConfig = window.AppConfig || {};
-
-        // Ahora, añadimos o sobreescribimos las propiedades que esta página necesita.
-        AppConfig.BASE_URL = '<?php echo BASE_URL; ?>';
-        AppConfig.API_URL = '<?php echo BASE_URL; ?>/farma/';
+        if (window.AppConfig) {
+            window.AppConfig.API_URL = '<?php echo rtrim(BASE_URL, '/'); ?>/farma/';
+        }
     </script>
-    <!-- ========================================================== -->
 
     <script src="<?php echo BASE_URL; ?>/farma/js/gestion_pacientes_auto.js?v=<?php echo time(); ?>"></script>
     <script src="<?php echo BASE_URL; ?>/farma/js/gestion_entrega.js?v=<?php echo time(); ?>"></script>
